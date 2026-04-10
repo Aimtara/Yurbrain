@@ -1,0 +1,16 @@
+{
+  "name": "yurbrain",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:mobile": "pnpm --filter mobile start",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "build": "turbo build"
+  }
+}
