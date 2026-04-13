@@ -28,6 +28,15 @@ export type MessageRecord = {
   createdAt: string;
 };
 
+export type ArtifactRecord = {
+  id: string;
+  itemId: string;
+  type: "summary" | "classification";
+  payload: Record<string, unknown>;
+  confidence: number;
+  createdAt: string;
+};
+
 export type AppState = {
   brainItems: Map<string, BrainItem>;
   events: EventRecord[];
@@ -35,6 +44,7 @@ export type AppState = {
   messages: Map<string, MessageRecord[]>;
   feedCards: Map<string, StoredFeedCard>;
   tasks: Map<string, ManualConvertTask>;
+  artifacts: Map<string, ArtifactRecord>;
 };
 
 export function createState(): AppState {
@@ -44,6 +54,7 @@ export function createState(): AppState {
     threads: new Map<string, ThreadRecord>(),
     messages: new Map<string, MessageRecord[]>(),
     feedCards: new Map<string, StoredFeedCard>(),
-    tasks: new Map<string, ManualConvertTask>()
+    tasks: new Map<string, ManualConvertTask>(),
+    artifacts: new Map<string, ArtifactRecord>()
   };
 }

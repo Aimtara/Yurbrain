@@ -12,16 +12,25 @@ export type BrainItemScreenProps = {
     rawContent: string;
   };
   comments: string[];
+  summary?: string;
+  classification?: string;
   onQuickAction: (action: QuickAction) => void;
   onAddComment: (comment: string) => void;
 };
 
-export function BrainItemScreen({ item, comments, onQuickAction, onAddComment }: BrainItemScreenProps) {
+export function BrainItemScreen({ item, comments, summary, classification, onQuickAction, onAddComment }: BrainItemScreenProps) {
   const commentPreview = useMemo(() => comments.slice(0, 3), [comments]);
 
   return (
     <section aria-label="Brain item screen">
-      <BrainItemDetail title={item.title} rawContent={item.rawContent} />
+      <BrainItemDetail
+        title={item.title}
+        rawContent={item.rawContent}
+        summary={summary}
+        classification={classification}
+        onSummarize={() => onQuickAction("summarize")}
+        onClassify={() => onQuickAction("classify")}
+      />
 
       <div>
         <h3>Quick actions</h3>

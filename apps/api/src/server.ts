@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
+import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerFeedRoutes } from "./routes/feed";
 import { registerMessageRoutes } from "./routes/messages";
@@ -27,6 +28,7 @@ registerThreadRoutes(app, state);
 registerMessageRoutes(app, state);
 registerFeedRoutes(app, state);
 registerTaskRoutes(app, state);
+registerAiRoutes(app, state);
 
 app.get("/events", async (_request, reply) => {
   return reply.code(403).send({

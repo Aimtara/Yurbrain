@@ -22,6 +22,24 @@ export function useYurbrainApi() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
+      }),
+    summarizeItem: <T>(payload: unknown) =>
+      apiClient<T>(endpoints.aiSummarize, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    classifyItem: <T>(payload: unknown) =>
+      apiClient<T>(endpoints.aiClassify, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    queryItem: <T>(payload: unknown) =>
+      apiClient<T>(endpoints.aiQuery, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
       })
   };
 }
