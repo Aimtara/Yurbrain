@@ -2,5 +2,10 @@
   "name": "@yurbrain/client",
   "version": "0.1.0",
   "private": true,
-  "main": "src/index.ts"
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "echo \"@yurbrain/client is a library package (no runtime dev server)\"",
+    "start": "echo \"@yurbrain/client is consumed by app packages\"",
+    "test": "echo \"No package-specific tests for @yurbrain/client yet\""
+  }
 }

@@ -3,8 +3,10 @@ export const endpoints = {
   feed: "/feed",
   threads: "/threads",
   messages: "/messages",
+  tasks: "/tasks",
   manualConvertTask: "/tasks/manual-convert",
   aiSummarize: "/ai/summarize",
   aiClassify: "/ai/classify",
-  aiQuery: "/ai/query"
+  aiQuery: "/ai/query",
+  aiConvert: "/ai/convert"
 } as const;

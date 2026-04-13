@@ -58,6 +58,42 @@ export function useYurbrainApi() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
+    convertToTask: <T>(payload: unknown) =>
+      apiClient<T>(endpoints.aiConvert, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    createTask: <T>(payload: unknown) =>
+      apiClient<T>(endpoints.tasks, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    updateTask: <T>(id: string, payload: unknown) =>
+      apiClient<T>(`${endpoints.tasks}/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    startTaskSession: <T>(taskId: string) =>
+      apiClient<T>(`${endpoints.tasks}/${taskId}/start`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({})
+      }),
+    pauseSession: <T>(sessionId: string) =>
+      apiClient<T>(`/sessions/${sessionId}/pause`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({})
+      }),
+    finishSession: <T>(sessionId: string) =>
+      apiClient<T>(`/sessions/${sessionId}/finish`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({})
+      }),
     summarizeItem: <T>(payload: unknown) =>
       apiClient<T>(endpoints.aiSummarize, {
         method: "POST",

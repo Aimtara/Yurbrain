@@ -1,27 +1,34 @@
 # Yurbrain Monorepo Starter
 
-This package consolidates the current Yurbrain planning work into a fresh monorepo-aligned starter.
+This monorepo contains the implemented MVP through **Sprint 5**.
 
 Included:
 - frozen architecture docs
 - product and UX specs
 - agent task pack
-- React Native / TypeScript UI scaffolds
-- design tokens
-- preview / mock data harness
+- React Native / TypeScript app scaffold (`apps/mobile`)
+- Next.js web app scaffold (`apps/web`)
 - typed client API layer
-- founder and strategy deliverables
+- API server with deterministic + AI-fallback logic
+- shared contracts, UI package, and DB schema/migrations package
 
-## Sprint 2 local runbook
+## Current local runbook
 
 - Start API: `pnpm --filter api dev`
-- Run Sprint 2 API tests: `pnpm --filter api test`
-- Typecheck API: `pnpm --filter api exec tsc --noEmit`
+- Start mobile app: `pnpm --filter mobile start`
+- Start web app: `pnpm --filter web dev`
+- Run API tests: `pnpm --filter api test`
+- Run contracts tests: `pnpm --filter @yurbrain/contracts test`
 
-Implemented deterministic loop surfaces:
+## Implemented surfaces (Sprints 1–5)
+
 - Brain item CRUD (`/brain-items`)
 - Threads/messages (`/threads`, `/messages`)
-- Deterministic stored feed (`/feed`)
-- Manual comment/content -> task conversion (`/tasks/manual-convert`)
+- Feed generation/ranking loop (`/feed`, `/ai/feed/generate-card`)
+- AI summarize/classify/item-query (`/ai/summarize`, `/ai/classify`, `/ai/query`)
+- Task conversion + CRUD (`/ai/convert`, `/tasks`, `/tasks/manual-convert`)
+- Session lifecycle (`/tasks/:id/start`, `/sessions/:id/pause`, `/sessions/:id/finish`)
 
-This repository is still an MVP starter and intentionally uses in-memory API state for Sprint 2 behavior.
+## Known current limitation
+
+- API runtime state is still in-memory for MVP behavior and tests. The `packages/db` schema/migrations are present, but runtime DB persistence wiring is planned for later hardening.

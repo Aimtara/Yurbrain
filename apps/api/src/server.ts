@@ -2,8 +2,10 @@ import Fastify from "fastify";
 import { ZodError } from "zod";
 import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
+import { registerConvertRoutes } from "./routes/convert";
 import { registerFeedRoutes } from "./routes/feed";
 import { registerMessageRoutes } from "./routes/messages";
+import { registerSessionRoutes } from "./routes/sessions";
 import { registerTaskRoutes } from "./routes/tasks";
 import { registerThreadRoutes } from "./routes/threads";
 import { createState } from "./state";
@@ -28,7 +30,9 @@ registerThreadRoutes(app, state);
 registerMessageRoutes(app, state);
 registerFeedRoutes(app, state);
 registerTaskRoutes(app, state);
+registerSessionRoutes(app, state);
 registerAiRoutes(app, state);
+registerConvertRoutes(app, state);
 
 app.get("/events", async (_request, reply) => {
   return reply.code(403).send({

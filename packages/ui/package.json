@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "main": "src/index.ts",
+  "scripts": {
+    "dev": "echo \"@yurbrain/ui is a component library (run app dev scripts)\"",
+    "start": "echo \"@yurbrain/ui has no standalone runtime\"",
+    "test": "echo \"No package-specific tests for @yurbrain/ui yet\""
+  },
   "dependencies": {
     "react": "19.0.0"
   },
