@@ -1,0 +1,16 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 24px;
+}
+
+.shell {
+  display: grid;
+  gap: 16px;
+  max-width: 720px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}

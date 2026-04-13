@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "Yurbrain",
+    "slug": "yurbrain-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "assetBundlePatterns": ["**/*"]
+  }
+}

@@ -2,5 +2,15 @@
   "name": "@yurbrain/contracts",
   "version": "0.1.0",
   "private": true,
-  "main": "src/index.ts"
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "tsx --test src/domain/__tests__/*.test.ts"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
 }
