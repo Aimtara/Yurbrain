@@ -18,7 +18,7 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 - PR-2 (Sprint 3): ✅ Completed
 - PR-3 (Sprint 4): ✅ Completed (April 13, 2026)
 - PR-4 (Sprint 5): ✅ Completed (April 13, 2026)
-- PR-5 (Sprint 6): 🚧 In progress (started April 13, 2026)
+- PR-5 (Sprint 6): ✅ Completed (April 13, 2026)
 
 ---
 
@@ -149,15 +149,15 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 
 ### File-by-file checklist
 - [x] `apps/api/src/middleware/observability.ts` *(new)* — request correlation, timing, error envelopes.
-- [x] `apps/api/src/routes/ai.ts` — structured logs for AI request/response/fallback paths.
-- [x] `apps/api/src/routes/feed.ts` — structured logs for candidate/rank steps.
-- [ ] `packages/client/src/hooks/useMutations.ts` — normalized error mapping for UI.
-- [ ] `packages/ui/src/components/**` — add explicit empty/error/retry states where missing.
-- [ ] `apps/mobile/src/App.tsx` — wire dead-end-safe fallback navigation.
-- [ ] `apps/web/app/page.tsx` — smoke fallback states for web shell.
+- [x] `apps/api/src/services/ai/*.ts` — structured logs for AI request/response/fallback paths.
+- [x] `apps/api/src/services/feed/*.ts` — structured logs for refresh/candidate/rank steps.
+- [x] `packages/client/src/hooks/useMutations.ts` — normalized error mapping for UI.
+- [x] `packages/ui/src/components/**` — add explicit empty/error/retry states where missing.
+- [x] `apps/mobile/src/App.tsx` — wire dead-end-safe fallback navigation.
+- [x] `apps/web/app/page.tsx` — smoke fallback states for web shell.
 - [x] `apps/api/src/__tests__/sprint6/*.test.ts` *(new)* — reliability and fallback tests.
-- [ ] `e2e/full-loop.spec.ts` *(new)* — capture → resurface → comment/query → convert → act flow.
-- [ ] `README.md` — final QA + observability runbook section.
+- [x] `e2e/full-loop.spec.ts` *(new)* — capture → resurface → comment/query → convert → act flow.
+- [x] `README.md` — final QA + observability runbook section.
 
 ---
 

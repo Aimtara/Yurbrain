@@ -7,16 +7,54 @@ import {
   validateAiEnvelope
 } from "../../../../../packages/ai/src";
 
+type AiTask = "summarize" | "classify" | "query";
+
 export async function resolveAiEnvelope(input: {
-  task: "summarize" | "classify" | "query";
+  task: AiTask;
   content: string;
   timeoutMs?: number;
+  correlationId?: string;
+  log?: { info: (payload: Record<string, unknown>, msg?: string) => void; warn: (payload: Record<string, unknown>, msg?: string) => void };
 }) {
+  const startedAt = Date.now();
+  input.log?.info(
+    {
+      event: "ai_task_started",
+      task: input.task,
+      correlationId: input.correlationId,
+      timeoutMs: input.timeoutMs
+    },
+    "ai task started"
+  );
+
   try {
     const raw = await runAiTask(input);
-    return { ai: validateAiEnvelope(raw), fallbackUsed: false };
+    const validated = validateAiEnvelope(raw);
+    input.log?.info(
+      {
+        event: "ai_task_completed",
+        task: input.task,
+        correlationId: input.correlationId,
+        fallbackUsed: false,
+        durationMs: Date.now() - startedAt,
+        confidence: validated.confidence
+      },
+      "ai task completed"
+    );
+    return { ai: validated, fallbackUsed: false };
   } catch (error) {
     const reason = error instanceof Error && error.message.includes("timed out") ? "timeout" : "invalid_or_runner_error";
+    input.log?.warn(
+      {
+        event: "ai_task_fallback",
+        task: input.task,
+        correlationId: input.correlationId,
+        fallbackReason: reason,
+        durationMs: Date.now() - startedAt
+      },
+      "ai task fallback used"
+    );
+
     if (input.task === "summarize") {
       return { ai: buildSummaryFallback(input.content), fallbackUsed: true, fallbackReason: reason };
     }

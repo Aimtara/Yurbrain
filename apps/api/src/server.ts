@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
-import { registerObservability } from "./middleware/observability";
+import { registerObservability, buildErrorEnvelope } from "./middleware/observability";
 import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerConvertRoutes } from "./routes/convert";

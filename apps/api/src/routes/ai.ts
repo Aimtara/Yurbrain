@@ -19,6 +19,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
       { requestId: request.requestId, task: "summarize", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
       "ai_task_completed"
     );
+    const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
 
     return reply.code(201).send(AiArtifactResponseSchema.parse(result));
   });
@@ -30,13 +31,14 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
       { requestId: request.requestId, task: "classify", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
       "ai_task_completed"
     );
+    const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
 
     return reply.code(201).send(AiArtifactResponseSchema.parse(result));
   });
 
   app.post("/ai/query", async (request, reply) => {
     const payload = QueryItemRequestSchema.parse(request.body);
-    const result = await queryItemAssistant(state, payload);
+    const result = await queryItemAssistant(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     if (!result) {
       return reply.code(404).send({ message: "Thread not found" });
     }
