@@ -43,6 +43,11 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
 
     request.log.info({ event: "feed_candidates_gathered", candidateCount: candidates.length, userId, lens }, "feed candidates gathered");
     const ranked = rankFeedCards(candidates, { lens });
+    request.log.info(
+      { requestId: request.requestId, userId, lens, candidateCount: candidates.length, rankedCount: ranked.length },
+      "feed_ranked"
+    );
+    return ranked.slice(0, parseLimit(limit));
     const sliced = ranked.slice(0, parseLimit(limit));
     request.log.info({ event: "feed_rank_completed", returnedCount: sliced.length, userId, lens }, "feed rank completed");
     return sliced;

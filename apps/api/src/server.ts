@@ -13,18 +13,19 @@ import { createState } from "./state";
 
 const state = createState();
 const app = Fastify({ logger: true });
-
 registerObservability(app);
 
 app.setErrorHandler((error, request, reply) => {
   if (error instanceof ZodError) {
-    return reply.code(400).send(
-      buildErrorEnvelope(request, 400, "Validation failed", error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })))
-    );
+    return reply.code(400).send({
+      message: "Validation failed",
+      requestId: request.requestId,
+      issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }))
+    });
   }
 
-  app.log.error({ error, correlationId: (request as { correlationId?: string }).correlationId }, "unhandled error");
-  return reply.code(500).send(buildErrorEnvelope(request, 500, "Internal server error"));
+  app.log.error({ err: error, requestId: request.requestId }, "unhandled_error");
+  return reply.code(500).send({ message: "Internal server error", requestId: request.requestId });
 });
 
 registerBrainItemRoutes(app, state);

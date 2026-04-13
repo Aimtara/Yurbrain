@@ -8,6 +8,9 @@
     "start": "tsx src/index.ts",
     "test": "echo \"No package-specific tests for @yurbrain/ai yet\""
   },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
   "devDependencies": {
     "tsx": "^4.19.2"
   }
