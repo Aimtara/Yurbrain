@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
+import { registerObservability, buildErrorEnvelope } from "./middleware/observability";
 import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerConvertRoutes } from "./routes/convert";
@@ -13,16 +14,17 @@ import { createState } from "./state";
 const state = createState();
 const app = Fastify({ logger: true });
 
-app.setErrorHandler((error, _request, reply) => {
+registerObservability(app);
+
+app.setErrorHandler((error, request, reply) => {
   if (error instanceof ZodError) {
-    return reply.code(400).send({
-      message: "Validation failed",
-      issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }))
-    });
+    return reply.code(400).send(
+      buildErrorEnvelope(request, 400, "Validation failed", error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })))
+    );
   }
 
-  app.log.error(error);
-  return reply.code(500).send({ message: "Internal server error" });
+  app.log.error({ error, correlationId: (request as { correlationId?: string }).correlationId }, "unhandled error");
+  return reply.code(500).send(buildErrorEnvelope(request, 500, "Internal server error"));
 });
 
 registerBrainItemRoutes(app, state);

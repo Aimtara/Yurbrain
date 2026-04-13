@@ -1,20 +1,52 @@
 import { endpoints } from "../api/endpoints";
 import { apiClient } from "../api/client";
 
+export type NormalizedMutationError = {
+  code: "NETWORK" | "VALIDATION" | "NOT_FOUND" | "SERVER" | "UNKNOWN";
+  message: string;
+};
+
+function normalizeMutationError(error: unknown): NormalizedMutationError {
+  const message = error instanceof Error ? error.message : "Unknown error";
+  const statusMatch = message.match(/(\d{3})$/);
+  const statusCode = statusMatch ? Number(statusMatch[1]) : undefined;
+
+  if (!statusCode) {
+    return { code: "NETWORK", message: "Could not reach server. Check your connection and retry." };
+  }
+  if (statusCode === 400) return { code: "VALIDATION", message: "Please review your input and try again." };
+  if (statusCode === 404) return { code: "NOT_FOUND", message: "The requested resource no longer exists." };
+  if (statusCode >= 500) return { code: "SERVER", message: "Server error. Please retry in a moment." };
+  return { code: "UNKNOWN", message: `Request failed (${statusCode}).` };
+}
+
+async function withNormalizedErrors<T>(request: () => Promise<T>): Promise<T> {
+  try {
+    return await request();
+  } catch (error) {
+    const normalized = normalizeMutationError(error);
+    throw Object.assign(new Error(normalized.message), { normalized });
+  }
+}
+
 function postJson<T>(url: string, payload: unknown) {
-  return apiClient<T>(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  return withNormalizedErrors(() =>
+    apiClient<T>(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+  );
 }
 
 function patchJson<T>(url: string, payload: unknown) {
-  return apiClient<T>(url, {
-    method: "PATCH",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload)
-  });
+  return withNormalizedErrors(() =>
+    apiClient<T>(url, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+  );
 }
 
 export async function createBrainItem<T>(payload: unknown) {

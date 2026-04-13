@@ -9,11 +9,22 @@ type FeedCardDto = { id: string; title: string };
 export default function App() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Brain");
   const [focusPreview, setFocusPreview] = useState("Loading feed...");
+  const [feedFailed, setFeedFailed] = useState(false);
+
+  async function loadFocusPreview() {
+    try {
+      const cards = await getFeed<FeedCardDto[]>();
+      setFocusPreview(cards[0]?.title ?? "No cards yet");
+      setFeedFailed(false);
+    } catch {
+      setFocusPreview("No cards yet");
+      setFeedFailed(true);
+      setActiveTab("Brain");
+    }
+  }
 
   useEffect(() => {
-    getFeed<FeedCardDto[]>()
-      .then((cards) => setFocusPreview(cards[0]?.title ?? "No cards yet"))
-      .catch(() => setFocusPreview("No cards yet"));
+    loadFocusPreview();
   }, []);
 
   const tabButtons = useMemo(
@@ -33,6 +44,14 @@ export default function App() {
         <View>{tabButtons}</View>
         <Text>{activeTab}</Text>
         <Text>Focus preview: {focusPreview}</Text>
+        {feedFailed ? (
+          <View>
+            <Text>Feed unavailable. You are in Brain tab so capture still works.</Text>
+            <TouchableOpacity onPress={loadFocusPreview} accessibilityRole="button">
+              <Text>Retry feed</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         <Text>Clean/focus mode is enabled by default.</Text>
         <TextInput placeholder="CaptureComposer" />
       </View>

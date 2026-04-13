@@ -23,6 +23,8 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       limit?: string;
     };
 
+    request.log.info({ event: "feed_request_started", userId, lens, includeSnoozed, limit }, "feed request started");
+
     if (state.feedCards.size === 0 && userId) {
       const generated = Array.from(state.brainItems.values())
         .filter((item) => item.userId === userId)
@@ -39,8 +41,11 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       includeSnoozed: includeSnoozed === "true"
     });
 
+    request.log.info({ event: "feed_candidates_gathered", candidateCount: candidates.length, userId, lens }, "feed candidates gathered");
     const ranked = rankFeedCards(candidates, { lens });
-    return ranked.slice(0, parseLimit(limit));
+    const sliced = ranked.slice(0, parseLimit(limit));
+    request.log.info({ event: "feed_rank_completed", returnedCount: sliced.length, userId, lens }, "feed rank completed");
+    return sliced;
   });
 
   app.post("/ai/feed/generate-card", async (request, reply) => {
@@ -65,7 +70,10 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
   app.post("/feed/:id/dismiss", async (request, reply) => {
     const { id } = request.params as { id: string };
     const card = state.feedCards.get(id);
-    if (!card) return reply.code(404).send({ message: "Feed card not found" });
+    if (!card) {
+      request.log.warn({ event: "feed_card_missing", action: "dismiss", cardId: id }, "feed dismiss missing card");
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
     card.dismissed = true;
     return reply.send({ ok: true });
   });
@@ -74,7 +82,10 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
     const { id } = request.params as { id: string };
     const { minutes = 60 } = request.body as { minutes?: number };
     const card = state.feedCards.get(id);
-    if (!card) return reply.code(404).send({ message: "Feed card not found" });
+    if (!card) {
+      request.log.warn({ event: "feed_card_missing", action: "snooze", cardId: id }, "feed snooze missing card");
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
 
     const snoozeMinutes = Math.max(5, Math.min(minutes, 60 * 24 * 7));
     card.snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
@@ -84,10 +95,14 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
   app.post("/feed/:id/refresh", async (request, reply) => {
     const { id } = request.params as { id: string };
     const card = state.feedCards.get(id);
-    if (!card) return reply.code(404).send({ message: "Feed card not found" });
+    if (!card) {
+      request.log.warn({ event: "feed_card_missing", action: "refresh", cardId: id }, "feed refresh missing card");
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
 
     card.refreshCount = (card.refreshCount ?? 0) + 1;
     card.lastRefreshedAt = new Date().toISOString();
+    request.log.info({ event: "feed_card_refreshed", cardId: id, refreshCount: card.refreshCount }, "feed card refreshed");
     return reply.send({ ok: true, refreshCount: card.refreshCount });
   });
 }

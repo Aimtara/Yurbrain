@@ -1,6 +1,6 @@
 # Yurbrain Monorepo Starter
 
-This monorepo contains the implemented MVP through **Sprint 5**.
+This monorepo contains the implemented MVP through **Sprint 6**.
 
 Included:
 - frozen architecture docs
@@ -20,7 +20,7 @@ Included:
 - Run API tests: `pnpm --filter api test`
 - Run contracts tests: `pnpm --filter @yurbrain/contracts test`
 
-## Implemented surfaces (Sprints 1–5)
+## Implemented surfaces (Sprints 1–6)
 
 - Brain item CRUD (`/brain-items`)
 - Threads/messages (`/threads`, `/messages`)
@@ -28,6 +28,24 @@ Included:
 - AI summarize/classify/item-query (`/ai/summarize`, `/ai/classify`, `/ai/query`)
 - Task conversion + CRUD (`/ai/convert`, `/tasks`, `/tasks/manual-convert`)
 - Session lifecycle (`/tasks/:id/start`, `/sessions/:id/pause`, `/sessions/:id/finish`)
+- Observability middleware (`x-correlation-id`, structured error envelopes, request timing logs)
+
+## Sprint 6 QA + observability hardening runbook
+
+1. **Start API and exercise critical routes**
+   - `pnpm --filter api dev`
+   - Validate correlation IDs by calling `/feed` with and without `x-correlation-id`.
+2. **Run reliability tests**
+   - `pnpm --filter api test`
+   - Confirm `apps/api/src/__tests__/sprint6` passes.
+3. **Run full loop smoke test**
+   - `node --test e2e/full-loop.spec.ts`
+   - Covers capture → feed resurface → query → convert → act flow.
+4. **Check fallback behavior manually**
+   - Web: if feed request fails, retry prompt appears.
+   - Mobile: feed failure reroutes to Brain tab with retry CTA.
+5. **Log review checklist**
+   - Ensure logs include `event`, `correlationId`, route metadata, and AI fallback signals.
 
 ## Known current limitation
 
