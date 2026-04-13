@@ -16,9 +16,10 @@ export type BrainItemScreenProps = {
   classification?: string;
   onQuickAction: (action: QuickAction) => void;
   onAddComment: (comment: string) => void;
+  onConvertCommentToTask?: (comment: string) => void;
 };
 
-export function BrainItemScreen({ item, comments, summary, classification, onQuickAction, onAddComment }: BrainItemScreenProps) {
+export function BrainItemScreen({ item, comments, summary, classification, onQuickAction, onAddComment, onConvertCommentToTask }: BrainItemScreenProps) {
   const commentPreview = useMemo(() => comments.slice(0, 3), [comments]);
 
   return (
@@ -65,6 +66,10 @@ export function BrainItemScreen({ item, comments, summary, classification, onQui
             const normalized = value.trim();
             if (!normalized) return;
             onAddComment(normalized);
+          }}
+          onConfirmConvertToTask={(value) => {
+            if (!onConvertCommentToTask) return;
+            onConvertCommentToTask(value);
           }}
         />
       </div>

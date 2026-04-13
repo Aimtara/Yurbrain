@@ -1,4 +1,4 @@
-# API Notes (Sprint 3)
+# API Notes (Sprint 5)
 
 ## Threads
 
@@ -17,9 +17,20 @@
 - `POST /ai/feed/generate-card` stores a placeholder/generated feed card for deterministic retrieval.
 - `POST /feed/:id/dismiss` marks a feed card as dismissed.
 
-## Manual task conversion
+## Task conversion and task loop
 
-- `POST /tasks/manual-convert` creates a deterministic `todo` task from a user-provided item/comment content payload.
+- `POST /tasks/manual-convert` creates a deterministic `todo` task from item/comment content.
+- `POST /ai/convert` returns one of: `create_task`, `mini_plan`, `not_recommended`.
+- `POST /tasks` creates a task.
+- `GET /tasks/:id` fetches a task.
+- `PATCH /tasks/:id` updates title/status.
+- `GET /tasks?userId=<uuid>&status=<todo|in_progress|done>` lists tasks with optional filters.
+
+## Session lifecycle
+
+- `POST /tasks/:id/start` starts a session for a task and moves task status to `in_progress`.
+- `POST /sessions/:id/pause` pauses a running/paused session.
+- `POST /sessions/:id/finish` finishes the session and marks the task as `done`.
 
 ## AI endpoints (validation + fallback)
 
@@ -27,16 +38,6 @@
 - `POST /ai/classify` validates model envelope, persists a `classification` artifact, and falls back deterministically on timeout/invalid output.
 - `POST /ai/query` validates model envelope, appends both the user question and assistant reply to a thread, and falls back deterministically on timeout/invalid output.
 - AI responses include `fallbackUsed` and optional `fallbackReason` (`timeout` or `invalid_or_runner_error`).
-
-Example summarize body:
-
-```json
-{
-  "itemId": "22222222-2222-2222-2222-222222222222",
-  "rawContent": "Meeting notes...",
-  "timeoutMs": 500
-}
-```
 
 ## Validation and error mapping
 

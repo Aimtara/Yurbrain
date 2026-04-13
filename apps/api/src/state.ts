@@ -1,6 +1,5 @@
 import { BrainItemSchema, EventTypeSchema } from "../../../packages/contracts/src";
 import type { StoredFeedCard } from "./services/feed/static-feed";
-import type { ManualConvertTask } from "./services/tasks/manual-convert";
 
 type BrainItem = ReturnType<typeof BrainItemSchema.parse>;
 
@@ -37,13 +36,33 @@ export type ArtifactRecord = {
   createdAt: string;
 };
 
+export type TaskRecord = {
+  id: string;
+  userId: string;
+  sourceItemId: string | null;
+  sourceMessageId: string | null;
+  title: string;
+  status: "todo" | "in_progress" | "done";
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SessionRecord = {
+  id: string;
+  taskId: string;
+  state: "running" | "paused" | "finished";
+  startedAt: string;
+  endedAt: string | null;
+};
+
 export type AppState = {
   brainItems: Map<string, BrainItem>;
   events: EventRecord[];
   threads: Map<string, ThreadRecord>;
   messages: Map<string, MessageRecord[]>;
   feedCards: Map<string, StoredFeedCard>;
-  tasks: Map<string, ManualConvertTask>;
+  tasks: Map<string, TaskRecord>;
+  sessions: Map<string, SessionRecord>;
   artifacts: Map<string, ArtifactRecord>;
 };
 
@@ -54,7 +73,8 @@ export function createState(): AppState {
     threads: new Map<string, ThreadRecord>(),
     messages: new Map<string, MessageRecord[]>(),
     feedCards: new Map<string, StoredFeedCard>(),
-    tasks: new Map<string, ManualConvertTask>(),
+    tasks: new Map<string, TaskRecord>(),
+    sessions: new Map<string, SessionRecord>(),
     artifacts: new Map<string, ArtifactRecord>()
   };
 }

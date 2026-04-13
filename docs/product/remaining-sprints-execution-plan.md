@@ -17,7 +17,7 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 - PR-1 (Sprint 2): ✅ Completed
 - PR-2 (Sprint 3): ✅ Completed
 - PR-3 (Sprint 4): ✅ Completed (April 13, 2026)
-- PR-4 (Sprint 5): ⏳ Not started
+- PR-4 (Sprint 5): ✅ Completed (April 13, 2026)
 - PR-5 (Sprint 6): ⏳ Not started
 
 ---
@@ -124,19 +124,19 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 - Comment→task conversion in UI requires explicit user confirmation.
 
 ### File-by-file checklist
-- [ ] `apps/api/src/routes/convert.ts` *(new)* — `POST /ai/convert` endpoint.
-- [ ] `apps/api/src/routes/tasks.ts` — full CRUD completion.
-- [ ] `apps/api/src/routes/sessions.ts` *(new)* — start/pause/finish routes.
-- [ ] `apps/api/src/services/tasks/convert.ts` *(new)* — decision and linkage policy.
-- [ ] `apps/api/src/services/sessions/lifecycle.ts` *(new)* — session state machine.
-- [ ] `packages/contracts/src/api/api-contracts.ts` — conversion/task/session DTOs.
-- [ ] `packages/client/src/hooks/useMutations.ts` — convert + task + session mutations.
-- [ ] `packages/ui/src/components/tasks/TaskDetailCard.tsx` — task update + start controls.
-- [ ] `packages/ui/src/components/tasks/ActiveSessionScreen.tsx` — pause/finish flow.
-- [ ] `packages/ui/src/components/feed/CommentComposer.tsx` — explicit confirmation modal for comment→task.
-- [ ] `packages/db/src/schema.ts` — finalize task/session source-link fields.
-- [ ] `packages/db/migrations/0003_sprint5.sql` *(new)* — additive task/session migration.
-- [ ] `apps/api/src/__tests__/sprint5/*.test.ts` *(new)* — convert outcomes + session lifecycle tests.
+- [x] `apps/api/src/routes/convert.ts` *(new)* — `POST /ai/convert` endpoint.
+- [x] `apps/api/src/routes/tasks.ts` — full CRUD completion.
+- [x] `apps/api/src/routes/sessions.ts` *(new)* — start/pause/finish routes.
+- [x] `apps/api/src/services/tasks/convert.ts` *(new)* — decision and linkage policy.
+- [x] `apps/api/src/services/sessions/lifecycle.ts` *(new)* — session state machine.
+- [x] `packages/contracts/src/api/api-contracts.ts` — conversion/task/session DTOs.
+- [x] `packages/client/src/hooks/useMutations.ts` — convert + task + session mutations.
+- [x] `packages/ui/src/components/tasks/TaskDetailCard.tsx` — task update + start controls.
+- [x] `packages/ui/src/components/tasks/ActiveSessionScreen.tsx` — pause/finish flow.
+- [x] `packages/ui/src/components/feed/CommentComposer.tsx` — explicit confirmation modal for comment→task.
+- [x] `packages/db/src/schema.ts` — finalize task/session source-link fields.
+- [x] `packages/db/migrations/0003_sprint5.sql` *(new)* — additive task/session migration.
+- [x] `apps/api/src/__tests__/sprint5/*.test.ts` *(new)* — convert outcomes + session lifecycle tests.
 
 ---
 
