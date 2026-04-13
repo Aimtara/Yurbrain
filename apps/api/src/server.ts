@@ -95,7 +95,11 @@ app.patch("/brain-items/:id", async (request, reply) => {
   return reply.send(updated);
 });
 
-app.get("/events", async () => events);
+app.get("/events", async (_request, reply) => {
+  return reply.code(403).send({
+    message: "The /events endpoint is disabled until authentication and per-user event filtering are implemented"
+  });
+});
 
 const start = async () => {
   try {
