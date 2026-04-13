@@ -8,3 +8,27 @@ export async function createBrainItem<T>(payload: unknown) {
     body: JSON.stringify(payload)
   });
 }
+
+export async function createThread<T>(payload: unknown) {
+  return apiClient<T>(endpoints.threads, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function sendMessage<T>(payload: unknown) {
+  return apiClient<T>(endpoints.messages, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function manualConvertTask<T>(payload: unknown) {
+  return apiClient<T>(endpoints.manualConvertTask, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}

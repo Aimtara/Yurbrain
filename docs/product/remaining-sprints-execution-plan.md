@@ -22,42 +22,42 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 ### File-by-file checklist
 
 #### API (apps/api)
-- [ ] `apps/api/src/server.ts` — register Sprint 2 route groups and shared error mapping.
-- [ ] `apps/api/src/index.ts` — ensure startup path includes Sprint 2 routers/services.
-- [ ] `apps/api/src/routes/brain-items.ts` *(new)* — CRUD completion + list filters.
-- [ ] `apps/api/src/routes/threads.ts` *(new)* — create/get/by-target routes.
-- [ ] `apps/api/src/routes/messages.ts` *(new)* — create + list-by-thread routes.
-- [ ] `apps/api/src/routes/feed.ts` *(new)* — `GET /feed` static-from-storage endpoint.
-- [ ] `apps/api/src/routes/tasks.ts` *(new)* — temporary deterministic create-from-item/comment path.
-- [ ] `apps/api/src/services/feed/static-feed.ts` *(new)* — deterministic card retrieval/order.
-- [ ] `apps/api/src/services/tasks/manual-convert.ts` *(new)* — deterministic conversion rules.
-- [ ] `apps/api/src/__tests__/sprint2/*.test.ts` *(new)* — route + service behavior tests.
+- [x] `apps/api/src/server.ts` — register Sprint 2 route groups and shared error mapping.
+- [x] `apps/api/src/index.ts` — ensure startup path includes Sprint 2 routers/services.
+- [x] `apps/api/src/routes/brain-items.ts` *(new)* — CRUD completion + list filters.
+- [x] `apps/api/src/routes/threads.ts` *(new)* — create/get/by-target routes.
+- [x] `apps/api/src/routes/messages.ts` *(new)* — create + list-by-thread routes.
+- [x] `apps/api/src/routes/feed.ts` *(new)* — `GET /feed` static-from-storage endpoint.
+- [x] `apps/api/src/routes/tasks.ts` *(new)* — temporary deterministic create-from-item/comment path.
+- [x] `apps/api/src/services/feed/static-feed.ts` *(new)* — deterministic card retrieval/order.
+- [x] `apps/api/src/services/tasks/manual-convert.ts` *(new)* — deterministic conversion rules.
+- [x] `apps/api/src/__tests__/sprint2/*.test.ts` *(new)* — route + service behavior tests.
 
 #### Database (packages/db)
-- [ ] `packages/db/src/schema.ts` — confirm Sprint 2 columns/indexes needed for thread/message/feed/task linkage.
-- [ ] `packages/db/migrations/0001_sprint2.sql` *(new)* — additive schema updates only.
-- [ ] `packages/db/src/index.ts` — export any added table/type handles.
+- [x] `packages/db/src/schema.ts` — confirm Sprint 2 columns/indexes needed for thread/message/feed/task linkage.
+- [x] `packages/db/migrations/0001_sprint2.sql` *(new)* — additive schema updates only.
+- [x] `packages/db/src/index.ts` — export any added table/type handles.
 
 #### Client (packages/client)
-- [ ] `packages/client/src/api/endpoints.ts` — add thread/message/feed/manual-convert endpoints.
-- [ ] `packages/client/src/hooks/useYurbrainApi.ts` — expose typed calls for Sprint 2 APIs.
-- [ ] `packages/client/src/hooks/useBrainItem.ts` — wire detail actions to live thread/message/task APIs.
-- [ ] `packages/client/src/hooks/useFeed.ts` — switch from mock/static to API-backed deterministic feed.
-- [ ] `packages/client/src/hooks/useMutations.ts` — add create-thread/send-message/manual-convert mutations.
+- [x] `packages/client/src/api/endpoints.ts` — add thread/message/feed/manual-convert endpoints.
+- [x] `packages/client/src/hooks/useYurbrainApi.ts` — expose typed calls for Sprint 2 APIs.
+- [x] `packages/client/src/hooks/useBrainItem.ts` — wire detail actions to live thread/message/task APIs.
+- [x] `packages/client/src/hooks/useFeed.ts` — switch from mock/static to API-backed deterministic feed.
+- [x] `packages/client/src/hooks/useMutations.ts` — add create-thread/send-message/manual-convert mutations.
 
 #### UI (packages/ui + apps/mobile + apps/web)
-- [ ] `packages/ui/src/components/brain/BrainItemScreen.tsx` — integrate raw content, quick actions, comment preview with live data.
-- [ ] `packages/ui/src/components/brain/ItemChatPanel.tsx` — show thread messages + composer send path.
-- [ ] `packages/ui/src/components/feed/CommentComposer.tsx` — post to message/create-task deterministic handlers.
-- [ ] `packages/ui/src/components/feed/FeedCard.tsx` — bind card actions to stored-card feed model.
-- [ ] `apps/mobile/src/App.tsx` — connect tabs/screens to real Sprint 2 data hooks.
-- [ ] `apps/web/app/page.tsx` — verify web shell path for deterministic feed loop smoke coverage.
+- [x] `packages/ui/src/components/brain/BrainItemScreen.tsx` — integrate raw content, quick actions, comment preview with live data.
+- [x] `packages/ui/src/components/brain/ItemChatPanel.tsx` — show thread messages + composer send path.
+- [x] `packages/ui/src/components/feed/CommentComposer.tsx` — post to message/create-task deterministic handlers.
+- [x] `packages/ui/src/components/feed/FeedCard.tsx` — bind card actions to stored-card feed model.
+- [x] `apps/mobile/src/App.tsx` — connect tabs/screens to real Sprint 2 data hooks.
+- [x] `apps/web/app/page.tsx` — verify web shell path for deterministic feed loop smoke coverage.
 
 #### Contracts/tests/docs
-- [ ] `packages/contracts/src/api/api-contracts.ts` — add/lock DTOs required by Sprint 2 endpoints.
+- [x] `packages/contracts/src/api/api-contracts.ts` — add/lock DTOs required by Sprint 2 endpoints.
 - [ ] `packages/contracts/src/domain/domain.ts` — only additive fields if strictly required.
-- [ ] `docs/api/README.md` — document Sprint 2 endpoints and request/response examples.
-- [ ] `README.md` — update runbook for new routes and deterministic flow.
+- [x] `docs/api/README.md` — document Sprint 2 endpoints and request/response examples.
+- [x] `README.md` — update runbook for new routes and deterministic flow.
 
 ---
 
