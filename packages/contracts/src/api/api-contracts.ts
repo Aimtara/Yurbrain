@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { BrainItemSchema, BrainItemTypeSchema } from "../domain/domain";
+import {
+  BrainItemSchema,
+  BrainItemTypeSchema,
+  FeedCardSchema,
+  ItemThreadSchema,
+  ThreadMessageSchema
+} from "../domain/domain";
 
 export const CreateBrainItemRequestSchema = z
   .object({
@@ -19,10 +25,17 @@ export const UpdateBrainItemRequestSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: "At least one field must be provided" });
 
+export const CreateThreadRequestSchema = ItemThreadSchema.pick({ targetItemId: true, kind: true });
+export const CreateMessageRequestSchema = ThreadMessageSchema.pick({ threadId: true, role: true, content: true });
+export const GenerateFeedCardRequestSchema = FeedCardSchema.pick({ userId: true, title: true, body: true }).partial({ title: true, body: true });
+
 export const BrainItemResponseSchema = BrainItemSchema;
 export const BrainItemListResponseSchema = z.array(BrainItemSchema);
 
 export type CreateBrainItemRequest = z.infer<typeof CreateBrainItemRequestSchema>;
 export type UpdateBrainItemRequest = z.infer<typeof UpdateBrainItemRequestSchema>;
+export type CreateThreadRequest = z.infer<typeof CreateThreadRequestSchema>;
+export type CreateMessageRequest = z.infer<typeof CreateMessageRequestSchema>;
+export type GenerateFeedCardRequest = z.infer<typeof GenerateFeedCardRequestSchema>;
 export type BrainItemResponse = z.infer<typeof BrainItemResponseSchema>;
 export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;
