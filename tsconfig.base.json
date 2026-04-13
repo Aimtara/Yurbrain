@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@yurbrain/contracts/*": [
+        "packages/contracts/src/*"
+      ],
+      "@yurbrain/ui/*": [
+        "packages/ui/src/*"
+      ],
+      "@yurbrain/client/*": [
+        "packages/client/src/*"
+      ]
+    }
+  }
+}
