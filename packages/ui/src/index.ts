@@ -9,3 +9,5 @@ export * from "./components/brain/BrainItemDetail";
 export * from "./components/brain/ItemChatPanel";
 export * from "./components/tasks/TaskDetailCard";
 export * from "./components/tasks/ActiveSessionScreen";
+
+export * from "./components/brain/BrainItemScreen";
