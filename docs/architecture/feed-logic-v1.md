@@ -8,7 +8,7 @@ It is not:
 - a timeline
 - an engagement stream
 
-Card types:
+## Card types
 - item
 - digest
 - cluster
@@ -16,7 +16,7 @@ Card types:
 - open_loop
 - resume
 
-Lenses:
+## Lenses
 - all
 - keep_in_mind
 - open_loops
@@ -24,7 +24,45 @@ Lenses:
 - in_progress
 - recently_commented
 
-Core rules:
+## Implemented Sprint 4 behavior
+
+### 1) Candidate selection (`gatherFeedCandidates`)
+- starts from stored feed cards
+- removes dismissed cards
+- filters by `userId` when provided
+- excludes snoozed cards unless `includeSnoozed=true`
+- filters by lens (`all` means no lens filter)
+- sorts deterministically by `createdAt` descending, then `id` ascending for ties
+
+### 2) Card generation (`generateCardFromItem`)
+- when a user requests `/feed` and there are no cards yet, cards are generated from that user's brain items
+- generated cards are deterministic:
+  - `cardType = item`
+  - `lens` is selected by title-length modulo lens list
+  - `body` uses normalized `rawContent` with length cap
+
+### 3) Ranking (`rankFeedCards`)
+- scores cards with deterministic signals:
+  - recency score (newer cards score higher)
+  - lens boost when card lens matches active lens
+  - small refresh boost (`refreshCount`)
+  - diversity penalty based on card-type frequency
+- ties resolve deterministically using `createdAt`, then `id`
+
+### 4) API behavior (`GET /feed`)
+- supports query params:
+  - `userId`
+  - `lens`
+  - `limit` (clamped to `1..50`, default `20`)
+  - `includeSnoozed` (default `false`)
+- applies candidate selection, then ranking, then limit
+
+### 5) Card interaction state
+- `POST /feed/:id/dismiss` marks card as dismissed
+- `POST /feed/:id/snooze` sets `snoozedUntil`
+- `POST /feed/:id/refresh` increments `refreshCount` and sets `lastRefreshedAt`
+
+## Core rules
 - selective, not exhaustive
 - reversible
 - why-shown always available

@@ -12,6 +12,16 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 
 ---
 
+## Execution tracker
+
+- PR-1 (Sprint 2): ✅ Completed
+- PR-2 (Sprint 3): ✅ Completed
+- PR-3 (Sprint 4): ✅ Completed (April 13, 2026)
+- PR-4 (Sprint 5): ⏳ Not started
+- PR-5 (Sprint 6): ⏳ Not started
+
+---
+
 ## PR-1 — Sprint 2 complete: deterministic loop end-to-end
 
 **Definition of done**
@@ -55,7 +65,7 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 
 #### Contracts/tests/docs
 - [x] `packages/contracts/src/api/api-contracts.ts` — add/lock DTOs required by Sprint 2 endpoints.
-- [ ] `packages/contracts/src/domain/domain.ts` — only additive fields if strictly required.
+- [x] `packages/contracts/src/domain/domain.ts` — only additive fields if strictly required (no additional fields required for Sprint 2).
 - [x] `docs/api/README.md` — document Sprint 2 endpoints and request/response examples.
 - [x] `README.md` — update runbook for new routes and deterministic flow.
 
@@ -68,20 +78,20 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 - Summarize/classify/query endpoints persist artifacts and chat replies safely.
 
 ### File-by-file checklist
-- [ ] `packages/ai/src/runner.ts` *(new)* — provider-agnostic runner with timeout budget.
-- [ ] `packages/ai/src/validate.ts` *(new)* — response envelope/schema validation.
-- [ ] `packages/ai/src/fallbacks.ts` *(new)* — deterministic fallback builders.
-- [ ] `packages/ai/src/index.ts` — export runner/validation/fallback APIs.
-- [ ] `apps/api/src/routes/ai.ts` *(new)* — summarize/classify/query endpoints.
-- [ ] `apps/api/src/services/ai/summarize.ts` *(new)* — artifact generation + persistence.
-- [ ] `apps/api/src/services/ai/classify.ts` *(new)* — advisory classification handling.
-- [ ] `apps/api/src/services/ai/item-query.ts` *(new)* — assistant reply + thread persistence.
-- [ ] `packages/client/src/hooks/useMutations.ts` — add summarize/classify/query mutations.
-- [ ] `packages/ui/src/components/brain/BrainItemDetail.tsx` — summarize/classify triggers and state.
-- [ ] `packages/ui/src/components/brain/ItemChatPanel.tsx` — AI query mode wired with fallback states.
-- [ ] `packages/contracts/src/api/api-contracts.ts` — AI endpoint DTOs/envelopes.
-- [ ] `docs/architecture/ai-contracts-v1.md` — reflect final implemented envelope + fallback policy.
-- [ ] `apps/api/src/__tests__/sprint3/*.test.ts` *(new)* — timeout/invalid-output/fallback coverage.
+- [x] `packages/ai/src/runner.ts` *(new)* — provider-agnostic runner with timeout budget.
+- [x] `packages/ai/src/validate.ts` *(new)* — response envelope/schema validation.
+- [x] `packages/ai/src/fallbacks.ts` *(new)* — deterministic fallback builders.
+- [x] `packages/ai/src/index.ts` — export runner/validation/fallback APIs.
+- [x] `apps/api/src/routes/ai.ts` *(new)* — summarize/classify/query endpoints.
+- [x] `apps/api/src/services/ai/summarize.ts` *(new)* — artifact generation + persistence.
+- [x] `apps/api/src/services/ai/classify.ts` *(new)* — advisory classification handling.
+- [x] `apps/api/src/services/ai/item-query.ts` *(new)* — assistant reply + thread persistence.
+- [x] `packages/client/src/hooks/useMutations.ts` — add summarize/classify/query mutations.
+- [x] `packages/ui/src/components/brain/BrainItemDetail.tsx` — summarize/classify triggers and state.
+- [x] `packages/ui/src/components/brain/ItemChatPanel.tsx` — AI query mode wired with fallback states.
+- [x] `packages/contracts/src/api/api-contracts.ts` — AI endpoint DTOs/envelopes.
+- [x] `docs/architecture/ai-contracts-v1.md` — reflect final implemented envelope + fallback policy.
+- [x] `apps/api/src/__tests__/sprint3/*.test.ts` *(new)* — timeout/invalid-output/fallback coverage.
 
 ---
 
@@ -92,17 +102,17 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 - `GET /feed` supports lens, limit, and snoozed exclusions.
 
 ### File-by-file checklist
-- [ ] `apps/api/src/services/feed/candidates.ts` *(new)* — deterministic candidate gatherer.
-- [ ] `apps/api/src/services/feed/generate-card.ts` *(new)* — AI-backed + deterministic fallback card generation.
-- [ ] `apps/api/src/services/feed/rank.ts` *(new)* — ranking + diversity weights.
-- [ ] `apps/api/src/routes/feed.ts` — extend with lens/limit/snoozed behavior.
-- [ ] `packages/db/src/schema.ts` — add snooze/dismiss/refresh metadata as needed.
-- [ ] `packages/db/migrations/0002_sprint4.sql` *(new)* — additive feed metadata migration.
-- [ ] `packages/client/src/hooks/useFeed.ts` — add lens + pagination/limit + refresh hooks.
-- [ ] `packages/ui/src/components/feed/FeedLensBar.tsx` — full lens state to API query binding.
-- [ ] `packages/ui/src/components/feed/FeedCard.tsx` — dismiss/snooze/refresh interactions.
-- [ ] `docs/architecture/feed-logic-v1.md` — update with implemented selector/ranker behavior.
-- [ ] `apps/api/src/__tests__/sprint4/*.test.ts` *(new)* — ranking and diversity determinism tests.
+- [x] `apps/api/src/services/feed/candidates.ts` *(new)* — deterministic candidate gatherer.
+- [x] `apps/api/src/services/feed/generate-card.ts` *(new)* — AI-backed + deterministic fallback card generation.
+- [x] `apps/api/src/services/feed/rank.ts` *(new)* — ranking + diversity weights.
+- [x] `apps/api/src/routes/feed.ts` — extend with lens/limit/snoozed behavior.
+- [x] `packages/db/src/schema.ts` — add snooze/dismiss/refresh metadata as needed.
+- [x] `packages/db/migrations/0002_sprint4.sql` *(new)* — additive feed metadata migration.
+- [x] `packages/client/src/hooks/useFeed.ts` — add lens + pagination/limit + refresh hooks.
+- [x] `packages/ui/src/components/feed/FeedLensBar.tsx` — full lens state to API query binding.
+- [x] `packages/ui/src/components/feed/FeedCard.tsx` — dismiss/snooze/refresh interactions.
+- [x] `docs/architecture/feed-logic-v1.md` — update with implemented selector/ranker behavior.
+- [x] `apps/api/src/__tests__/sprint4/*.test.ts` *(new)* — ranking and diversity determinism tests.
 
 ---
 
