@@ -2,16 +2,21 @@
   "name": "web",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "start": "vite preview"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "next": "15.3.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "@yurbrain/ui": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^6.0.11"
+    "typescript": "^5.8.3",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2"
   }
 }

@@ -9,6 +9,7 @@
   "dependencies": {
     "expo": "^54.0.0",
     "react": "^19.0.0",
-    "react-native": "^0.81.0"
+    "react-native": "^0.81.0",
+    "@yurbrain/ui": "workspace:*"
   }
 }

@@ -13,6 +13,12 @@ import {
 export const brainItemTypeEnum = pgEnum("brain_item_type", ["note", "link", "idea", "quote", "file"]);
 export const brainItemStatusEnum = pgEnum("brain_item_status", ["active", "archived"]);
 export const eventTypeEnum = pgEnum("event_type", ["brain_item_created", "brain_item_updated"]);
+export const artifactTypeEnum = pgEnum("artifact_type", ["summary", "classification", "relation", "feed_card"]);
+export const threadKindEnum = pgEnum("thread_kind", ["item_comment", "item_chat"]);
+export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
+export const feedCardTypeEnum = pgEnum("feed_card_type", ["item", "digest", "cluster", "opportunity", "open_loop", "resume"]);
+export const taskStatusEnum = pgEnum("task_status", ["todo", "in_progress", "done"]);
+export const sessionStateEnum = pgEnum("session_state", ["running", "paused", "finished"]);
 
 export const brainItems = pgTable(
   "brain_items",
@@ -30,6 +36,63 @@ export const brainItems = pgTable(
     userCreatedIdx: index("brain_items_user_created_idx").on(t.userId, t.createdAt)
   })
 );
+
+export const itemArtifacts = pgTable("item_artifacts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  itemId: uuid("item_id").notNull(),
+  type: artifactTypeEnum("type").notNull(),
+  payload: jsonb("payload").notNull(),
+  confidence: text("confidence").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const itemThreads = pgTable("item_threads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  targetItemId: uuid("target_item_id").notNull(),
+  kind: threadKindEnum("kind").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const threadMessages = pgTable(
+  "thread_messages",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    threadId: uuid("thread_id").notNull(),
+    role: messageRoleEnum("role").notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => ({ threadCreatedIdx: index("thread_messages_thread_created_idx").on(t.threadId, t.createdAt) })
+);
+
+export const feedCards = pgTable("feed_cards", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull(),
+  cardType: feedCardTypeEnum("card_type").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  dismissed: boolean("dismissed").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const tasks = pgTable("tasks", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull(),
+  sourceItemId: uuid("source_item_id"),
+  title: text("title").notNull(),
+  status: taskStatusEnum("status").default("todo").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const sessions = pgTable("sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  taskId: uuid("task_id").notNull(),
+  state: sessionStateEnum("state").default("running").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  endedAt: timestamp("ended_at", { withTimezone: true })
+});
 
 export const events = pgTable(
   "events",
