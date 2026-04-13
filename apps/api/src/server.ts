@@ -64,9 +64,14 @@ app.get("/brain-items/:id", async (request, reply) => {
   return reply.send(item);
 });
 
-app.get("/brain-items", async (request) => {
+app.get("/brain-items", async (request, reply) => {
   const { userId } = request.query as { userId?: string };
-  const list = Array.from(brainItems.values()).filter((item) => (userId ? item.userId === userId : true));
+
+  if (!userId) {
+    return reply.code(400).send({ message: "userId query parameter is required" });
+  }
+
+  const list = Array.from(brainItems.values()).filter((item) => item.userId === userId);
   return list;
 });
 
