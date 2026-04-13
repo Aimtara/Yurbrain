@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getFeed } from "@yurbrain/client";
+import { classifyBrainItem, createThread, getFeed, queryBrainItemThread, summarizeBrainItem } from "@yurbrain/client";
 import { BrainItemScreen, CaptureComposer, FeedCard, FeedLensBar, ItemChatPanel } from "@yurbrain/ui";
 
 type FeedCardDto = { id: string; title: string; body: string };
@@ -11,14 +11,71 @@ export default function Page() {
   const [draft, setDraft] = useState("");
   const [comments, setComments] = useState<string[]>([]);
   const [chatMessages, setChatMessages] = useState<string[]>(["Welcome to the thread."]);
+  const [summary, setSummary] = useState("");
+  const [classification, setClassification] = useState("");
+  const [chatFallbackNotice, setChatFallbackNotice] = useState("");
   const [lastAction, setLastAction] = useState("none");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
+  const [threadId, setThreadId] = useState("");
 
   useEffect(() => {
     getFeed<FeedCardDto[]>()
       .then((cards) => setFeedCards(cards))
       .catch(() => setFeedCards([{ id: "fallback", title: "No feed yet", body: "Generate cards from the API." }]));
   }, []);
+
+  async function runQuickAction(action: "summarize" | "classify" | "convert_to_task") {
+    setLastAction(action);
+    if (action === "convert_to_task") {
+      return;
+    }
+
+    const payload = {
+      itemId: "22222222-2222-2222-2222-222222222222",
+      rawContent:
+        "Investigate onboarding drop-off and synthesize options for reducing first-session friction this week."
+    };
+
+    try {
+      if (action === "summarize") {
+        const response = await summarizeBrainItem<{ ai: { content: string } }>(payload);
+        setSummary(response.ai.content);
+      } else {
+        const response = await classifyBrainItem<{ ai: { content: string } }>(payload);
+        setClassification(response.ai.content);
+      }
+    } catch {
+      setLastAction(`${action}_failed`);
+    }
+  }
+
+  async function runAiQuery(question: string) {
+    try {
+      let activeThreadId = threadId;
+      if (!activeThreadId) {
+        const created = await createThread<{ id: string }>({
+          targetItemId: "22222222-2222-2222-2222-222222222222",
+          kind: "item_chat"
+        });
+        activeThreadId = created.id;
+        setThreadId(created.id);
+      }
+
+      const response = await queryBrainItemThread<{
+        userMessage: { content: string };
+        message: { content: string };
+        fallbackUsed: boolean;
+      }>({
+        threadId: activeThreadId,
+        question
+      });
+      setChatMessages((current) => [...current, response.userMessage.content, response.message.content]);
+      setChatFallbackNotice(response.fallbackUsed ? "AI fallback used for this response." : "");
+    } catch {
+      setChatFallbackNotice("AI query unavailable; defaulting to local echo.");
+      setChatMessages((current) => [...current, `You: ${question}`, "Assistant: Local fallback response."]);
+    }
+  }
 
   return (
     <main>
@@ -45,10 +102,12 @@ export default function Page() {
             "Investigate onboarding drop-off and synthesize options for reducing first-session friction this week."
         }}
         comments={comments}
-        onQuickAction={(action) => setLastAction(action)}
+        summary={summary}
+        classification={classification}
+        onQuickAction={runQuickAction}
         onAddComment={(comment) => setComments((current) => [comment, ...current])}
       />
-      <ItemChatPanel onSend={(message) => setChatMessages((current) => [...current, message])} messages={chatMessages} />
+      <ItemChatPanel onSend={runAiQuery} messages={chatMessages} mode="ai_query" fallbackNotice={chatFallbackNotice} />
       <p>Last quick action: {lastAction}</p>
     </main>
   );

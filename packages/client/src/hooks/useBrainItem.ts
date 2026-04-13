@@ -12,3 +12,27 @@ export async function listThreadsByTarget<T>(targetItemId: string) {
 export async function listThreadMessages<T>(threadId: string) {
   return apiClient<T>(`${endpoints.threads}/${threadId}/messages`);
 }
+
+export async function summarizeBrainItem<T>(payload: { itemId: string; rawContent: string; timeoutMs?: number }) {
+  return apiClient<T>(endpoints.aiSummarize, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function classifyBrainItem<T>(payload: { itemId: string; rawContent: string; timeoutMs?: number }) {
+  return apiClient<T>(endpoints.aiClassify, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function queryBrainItemThread<T>(payload: { threadId: string; question: string; timeoutMs?: number }) {
+  return apiClient<T>(endpoints.aiQuery, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}

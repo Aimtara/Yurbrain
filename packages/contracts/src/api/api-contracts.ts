@@ -3,6 +3,7 @@ import {
   BrainItemSchema,
   BrainItemTypeSchema,
   FeedCardSchema,
+  ItemArtifactSchema,
   ItemThreadSchema,
   TaskSchema,
   ThreadMessageSchema
@@ -37,6 +38,55 @@ export const ManualConvertTaskRequestSchema = z
   })
   .strict();
 
+export const AiEnvelopeSchema = z
+  .object({
+    content: z.string().min(1),
+    confidence: z.number().min(0).max(1),
+    metadata: z.record(z.string(), z.unknown()).default({})
+  })
+  .strict();
+
+export const SummarizeItemRequestSchema = z
+  .object({
+    itemId: z.string().uuid(),
+    rawContent: z.string().min(1),
+    timeoutMs: z.number().int().min(100).max(10_000).optional()
+  })
+  .strict();
+
+export const ClassifyItemRequestSchema = z
+  .object({
+    itemId: z.string().uuid(),
+    rawContent: z.string().min(1),
+    timeoutMs: z.number().int().min(100).max(10_000).optional()
+  })
+  .strict();
+
+export const QueryItemRequestSchema = z
+  .object({
+    threadId: z.string().uuid(),
+    question: z.string().min(1),
+    timeoutMs: z.number().int().min(100).max(10_000).optional()
+  })
+  .strict();
+
+export const AiArtifactResponseSchema = ItemArtifactSchema.extend({
+  ai: AiEnvelopeSchema,
+  fallbackUsed: z.boolean(),
+  fallbackReason: z.enum(["timeout", "invalid_or_runner_error"]).optional()
+}).strict();
+
+export const QueryItemResponseSchema = z
+  .object({
+    threadId: z.string().uuid(),
+    userMessage: ThreadMessageSchema,
+    message: ThreadMessageSchema,
+    ai: AiEnvelopeSchema,
+    fallbackUsed: z.boolean(),
+    fallbackReason: z.enum(["timeout", "invalid_or_runner_error"]).optional()
+  })
+  .strict();
+
 export const BrainItemResponseSchema = BrainItemSchema;
 export const BrainItemListResponseSchema = z.array(BrainItemSchema);
 export const ManualConvertTaskResponseSchema = TaskSchema;
@@ -47,6 +97,11 @@ export type CreateThreadRequest = z.infer<typeof CreateThreadRequestSchema>;
 export type CreateMessageRequest = z.infer<typeof CreateMessageRequestSchema>;
 export type GenerateFeedCardRequest = z.infer<typeof GenerateFeedCardRequestSchema>;
 export type ManualConvertTaskRequest = z.infer<typeof ManualConvertTaskRequestSchema>;
+export type SummarizeItemRequest = z.infer<typeof SummarizeItemRequestSchema>;
+export type ClassifyItemRequest = z.infer<typeof ClassifyItemRequestSchema>;
+export type QueryItemRequest = z.infer<typeof QueryItemRequestSchema>;
 export type BrainItemResponse = z.infer<typeof BrainItemResponseSchema>;
 export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;
 export type ManualConvertTaskResponse = z.infer<typeof ManualConvertTaskResponseSchema>;
+export type AiArtifactResponse = z.infer<typeof AiArtifactResponseSchema>;
+export type QueryItemResponse = z.infer<typeof QueryItemResponseSchema>;
