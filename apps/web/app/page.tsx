@@ -26,14 +26,19 @@ export default function Page() {
   const [chatFallbackNotice, setChatFallbackNotice] = useState("");
   const [lastAction, setLastAction] = useState("none");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
+  const [feedError, setFeedError] = useState("");
   const [threadId, setThreadId] = useState("");
+  const [lastQuestion, setLastQuestion] = useState("");
+  const [chatError, setChatError] = useState("");
 
   async function loadFeed(lens: FeedLens) {
     try {
       const cards = await getFeed<FeedCardDto[]>({ userId, lens, limit: 10 });
       setFeedCards(cards);
+      setFeedError("");
     } catch {
-      setFeedCards([{ id: "fallback", title: "No feed yet", body: "Generate cards from the API." }]);
+      setFeedError("Feed is unavailable right now. You can retry.");
+      setFeedCards([]);
     }
   }
 
@@ -67,6 +72,9 @@ export default function Page() {
   }
 
   async function runAiQuery(question: string) {
+    setLastQuestion(question);
+    setChatError("");
+
     try {
       let activeThreadId = threadId;
       if (!activeThreadId) {
@@ -89,6 +97,7 @@ export default function Page() {
       setChatMessages((current) => [...current, response.userMessage.content, response.message.content]);
       setChatFallbackNotice(response.fallbackUsed ? "AI fallback used for this response." : "");
     } catch {
+      setChatError("Could not reach AI query. You can retry your last message.");
       setChatFallbackNotice("AI query unavailable; defaulting to local echo.");
       setChatMessages((current) => [...current, `You: ${question}`, "Assistant: Local fallback response."]);
     }
@@ -102,6 +111,14 @@ export default function Page() {
         activeLens={activeLens}
         onChange={setActiveLens}
       />
+
+      {feedError ? (
+        <div>
+          <p>{feedError}</p>
+          <button onClick={() => loadFeed(activeLens)}>Retry feed</button>
+        </div>
+      ) : null}
+      {!feedError && feedCards.length === 0 ? <p>No cards for this lens yet.</p> : null}
       {feedCards.map((card) => (
         <FeedCard
           key={card.id}
@@ -140,7 +157,14 @@ export default function Page() {
         onQuickAction={runQuickAction}
         onAddComment={(comment) => setComments((current) => [comment, ...current])}
       />
-      <ItemChatPanel onSend={runAiQuery} messages={chatMessages} mode="ai_query" fallbackNotice={chatFallbackNotice} />
+      <ItemChatPanel
+        onSend={runAiQuery}
+        messages={chatMessages}
+        mode="ai_query"
+        fallbackNotice={chatFallbackNotice}
+        errorMessage={chatError}
+        onRetry={lastQuestion ? () => runAiQuery(lastQuestion) : undefined}
+      />
       <p>Last quick action: {lastAction}</p>
     </main>
   );
