@@ -66,25 +66,41 @@ export const threadMessages = pgTable(
   (t) => ({ threadCreatedIdx: index("thread_messages_thread_created_idx").on(t.threadId, t.createdAt) })
 );
 
-export const feedCards = pgTable("feed_cards", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").notNull(),
-  cardType: feedCardTypeEnum("card_type").notNull(),
-  title: text("title").notNull(),
-  body: text("body").notNull(),
-  dismissed: boolean("dismissed").default(false).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
-});
+export const feedCards = pgTable(
+  "feed_cards",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    cardType: feedCardTypeEnum("card_type").notNull(),
+    lens: text("lens").default("all").notNull(),
+    itemId: uuid("item_id"),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    dismissed: boolean("dismissed").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => ({
+    userCreatedIdx: index("feed_cards_user_created_idx").on(t.userId, t.createdAt)
+  })
+);
 
-export const tasks = pgTable("tasks", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").notNull(),
-  sourceItemId: uuid("source_item_id"),
-  title: text("title").notNull(),
-  status: taskStatusEnum("status").default("todo").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
-});
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    sourceItemId: uuid("source_item_id"),
+    sourceMessageId: uuid("source_message_id"),
+    title: text("title").notNull(),
+    status: taskStatusEnum("status").default("todo").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => ({
+    userCreatedIdx: index("tasks_user_created_idx").on(t.userId, t.createdAt),
+    sourceItemIdx: index("tasks_source_item_idx").on(t.sourceItemId)
+  })
+);
 
 export const sessions = pgTable("sessions", {
   id: uuid("id").defaultRandom().primaryKey(),
