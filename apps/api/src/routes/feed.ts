@@ -40,6 +40,10 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
     });
 
     const ranked = rankFeedCards(candidates, { lens });
+    request.log.info(
+      { requestId: request.requestId, userId, lens, candidateCount: candidates.length, rankedCount: ranked.length },
+      "feed_ranked"
+    );
     return ranked.slice(0, parseLimit(limit));
   });
 

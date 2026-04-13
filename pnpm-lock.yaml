@@ -30,6 +30,9 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
 
   apps/mobile:
     dependencies:
@@ -77,7 +80,15 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/ai: {}
+  packages/ai:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
 
   packages/client: {}
 
