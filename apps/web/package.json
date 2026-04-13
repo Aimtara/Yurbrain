@@ -11,7 +11,8 @@
     "next": "15.3.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "@yurbrain/ui": "workspace:*"
+    "@yurbrain/ui": "workspace:*",
+    "@yurbrain/client": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.3",

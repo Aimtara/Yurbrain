@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -77,6 +78,9 @@ export const feedCards = pgTable(
     title: text("title").notNull(),
     body: text("body").notNull(),
     dismissed: boolean("dismissed").default(false).notNull(),
+    snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+    refreshCount: integer("refresh_count").default(0).notNull(),
+    lastRefreshedAt: timestamp("last_refreshed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
   },
   (t) => ({

@@ -7,11 +7,20 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
+      "@yurbrain/contracts": [
+        "packages/contracts/src/index.ts"
+      ],
       "@yurbrain/contracts/*": [
         "packages/contracts/src/*"
       ],
+      "@yurbrain/ui": [
+        "packages/ui/src/index.ts"
+      ],
       "@yurbrain/ui/*": [
         "packages/ui/src/*"
+      ],
+      "@yurbrain/client": [
+        "packages/client/src/index.ts"
       ],
       "@yurbrain/client/*": [
         "packages/client/src/*"

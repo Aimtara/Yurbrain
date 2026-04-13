@@ -36,3 +36,15 @@ export async function classifyItem<T>(payload: unknown) {
 export async function queryItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiQuery, payload);
 }
+
+export async function dismissFeedCard<T>(id: string) {
+  return postJson<T>(`/feed/${id}/dismiss`, {});
+}
+
+export async function snoozeFeedCard<T>(id: string, minutes = 60) {
+  return postJson<T>(`/feed/${id}/snooze`, { minutes });
+}
+
+export async function refreshFeedCard<T>(id: string) {
+  return postJson<T>(`/feed/${id}/refresh`, {});
+}
