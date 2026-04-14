@@ -715,7 +715,8 @@ export default function Page() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
-      <FocusFeedScreen
+      {activeSurface === "feed" ? (
+        <FocusFeedScreen
         title="Focus Feed"
         subtitle="Recognition first. Continue one thought at a time."
         reentryMessage={reentryMessage}
@@ -741,64 +742,65 @@ export default function Page() {
           founderMode ? <FounderSummarySurface stats={founderStats} suggestedFocus={suggestedFocus} summary={founderSummaryText} /> : undefined
         }
         feedContent={visibleFeedModels.map((model) => (
-          <FeedCard
-            key={model.card.id}
-            variant={model.variant}
-            badge={activeLens.replaceAll("_", " ")}
-            title={model.card.title}
-            body={model.card.body}
-            whyShown={model.card.whyShown}
-            lastTouched={model.continuity.lastTouched}
-            continuityNote={model.continuity.changedSince}
-            nextStep={model.continuity.nextStep}
-            onOpen={
-              model.card.itemId
-                ? () => openItemFromModel(model)
-                : model.card.taskId
-                  ? () => openTaskFromCard(model.card.taskId ?? "")
+            <FeedCard
+              key={model.card.id}
+              variant={model.variant}
+              badge={activeLens.replaceAll("_", " ")}
+              title={model.card.title}
+              body={model.card.body}
+              whyShown={model.card.whyShown}
+              lastTouched={model.continuity.lastTouched}
+              continuityNote={model.continuity.changedSince}
+              nextStep={model.continuity.nextStep}
+              onOpen={
+                model.card.itemId
+                  ? () => openItemFromModel(model)
+                  : model.card.taskId
+                    ? () => openTaskFromCard(model.card.taskId ?? "")
+                    : undefined
+              }
+              onComment={
+                model.card.itemId
+                  ? (comment) =>
+                      void (async () => {
+                        await createComment(model.card.itemId ?? "", comment);
+                        setLastAction("Added continuation note from feed.");
+                      })()
                   : undefined
-            }
-            onComment={
-              model.card.itemId
-                ? (comment) =>
-                    void (async () => {
-                      await createComment(model.card.itemId ?? "", comment);
-                      setLastAction("Added continuation note from feed.");
-                    })()
-                : undefined
-            }
-            onConvertToTask={
-              model.card.itemId
-                ? () =>
-                    void (async () => {
-                      await runConvert({ itemId: model.card.itemId ?? "", content: model.card.body });
-                      setActiveSurface("session");
-                    })()
-                : undefined
-            }
-            onDismiss={() =>
-              void (async () => {
-                await dismissFeedCard<{ ok: boolean }>(model.card.id);
-                await loadFeed(activeLens);
-              })()
-            }
-            onSnooze={(minutes) =>
-              void (async () => {
-                await snoozeFeedCard<{ ok: boolean }>(model.card.id, minutes);
-                await loadFeed(activeLens);
-              })()
-            }
-            onRefresh={() =>
-              void (async () => {
-                await refreshFeedCard<{ ok: boolean }>(model.card.id);
-                await loadFeed(activeLens);
-              })()
-            }
-          />
-        ))}
-      />
+              }
+              onConvertToTask={
+                model.card.itemId
+                  ? () =>
+                      void (async () => {
+                        await runConvert({ itemId: model.card.itemId ?? "", content: model.card.body });
+                        setActiveSurface("session");
+                      })()
+                  : undefined
+              }
+              onDismiss={() =>
+                void (async () => {
+                  await dismissFeedCard<{ ok: boolean }>(model.card.id);
+                  await loadFeed(activeLens);
+                })()
+              }
+              onSnooze={(minutes) =>
+                void (async () => {
+                  await snoozeFeedCard<{ ok: boolean }>(model.card.id, minutes);
+                  await loadFeed(activeLens);
+                })()
+              }
+              onRefresh={() =>
+                void (async () => {
+                  await refreshFeedCard<{ ok: boolean }>(model.card.id);
+                  await loadFeed(activeLens);
+                })()
+              }
+            />
+          ))}
+        />
+      ) : null}
 
-      {conversionNotice || taskError || tasksLoading ? (
+      {activeSurface === "feed" && (conversionNotice || taskError || tasksLoading) ? (
         <section
           style={{
             margin: "0 auto",
