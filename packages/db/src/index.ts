@@ -258,6 +258,21 @@ async function applyMigrations(client: PGlite, migrationsPath: string) {
   }
 }
 
+export async function resetDatabase(options: CreateRepositoryOptions = {}): Promise<void> {
+  const databasePath = options.databasePath ?? process.env.YURBRAIN_DB_PATH ?? DEFAULT_DATABASE_PATH;
+  const migrationsPath = options.migrationsPath ?? DEFAULT_MIGRATIONS_PATH;
+  const parentDir = path.dirname(databasePath);
+  await mkdir(parentDir, { recursive: true });
+
+  const client = new PGlite({ dataDir: databasePath });
+  await client.exec("DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;");
+  await client.close();
+
+  const migrationClient = new PGlite({ dataDir: databasePath });
+  await applyMigrations(migrationClient, migrationsPath);
+  await migrationClient.close();
+}
+
 async function initializeContext(options: CreateRepositoryOptions): Promise<RepositoryContext> {
   const databasePath = options.databasePath ?? process.env.YURBRAIN_DB_PATH ?? DEFAULT_DATABASE_PATH;
   const migrationsPath = options.migrationsPath ?? DEFAULT_MIGRATIONS_PATH;
