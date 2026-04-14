@@ -2,122 +2,103 @@
 
 _Last audited: April 14, 2026 (UTC)._
 
-This document reflects observed behavior in the repository after reading code and running core commands.
+This document is factual current state after code inspection plus command verification.
 
-## Audit evidence (executed commands)
+## Verified command evidence
 
-Passing:
+Passing in this audit:
 - `pnpm install`
-- `pnpm --filter api test`
+- `pnpm reset`
+- `pnpm seed`
 - `pnpm --filter @yurbrain/contracts test`
-- `pnpm test`
+- `pnpm --filter api test`
+- `pnpm test:e2e`
 - `pnpm lint`
 - `pnpm build`
-- `pnpm test:e2e`
+- `pnpm test`
 
-Failing by design/environment:
-- `node --test e2e/full-loop.spec.ts` (Node test runner does not resolve this TypeScript path directly).
-- `pnpm --filter @yurbrain/db db:migrate` without reachable Postgres and `DATABASE_URL`.
+Not used for runtime truth:
+- `pnpm --filter @yurbrain/db db:migrate` (Drizzle CLI workflow; local runtime uses startup SQL migrations in `@yurbrain/db` repository initialization).
 
-## Classification legend
+## What is fully implemented
 
-- **Real**: implemented and directly supported by code + runnable command path.
-- **Partial**: implemented with known limitation (prototype constraints, missing persistence, placeholder tests).
-- **Fake/Stale**: doc/script claim not true in current runtime.
+### Core loop backend persistence (real)
+- No critical runtime flow uses in-memory `Map`/singleton state for brain items, feed, threads/messages, tasks, sessions, and AI artifacts.
+- API routes are DB-backed through `packages/db` repository:
+  - Brain: `POST/GET/PATCH /brain-items`, `GET /brain-items/:id/artifacts`
+  - Threads/messages: `POST /threads`, `GET /threads/:id`, `GET /threads/by-target`, `POST /messages`, `GET /threads/:id/messages`
+  - Feed: `GET /feed`, `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh`
+  - Tasks/sessions: `POST/GET/PATCH /tasks`, `GET /tasks`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish`, `GET /sessions`
+  - AI: `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query`, `POST /ai/convert`, `POST /ai/feed/generate-card`
+- Persistence across restart is covered by test (`apps/api/src/__tests__/sprint7/persistence.test.ts`).
 
-## Monorepo and scripts
+### One coherent client loop (web, real)
+- Web app (`apps/web/app/page.tsx`) supports:
+  - capture brain item
+  - fetch resurfaced feed cards
+  - open item detail
+  - add comments and ask AI
+  - convert to task
+  - start/finish sessions
+  - refresh/reload continuity from DB-backed APIs
+- Item AI summary/classification continuity now uses persisted artifacts from API (`GET /brain-items/:id/artifacts`) rather than local-only cache.
+- Task session continuity now uses persisted sessions from API (`GET /sessions?taskId=...`) rather than local-only session snapshots.
 
-### Real
-- Workspace wiring is active via `pnpm-workspace.yaml` and Turbo (`apps/*`, `packages/*`).
-- Root scripts:
-  - `bootstrap`, `reset`, `seed`, `reseed`
-  - `dev`, `dev:api`, `dev:web`, `dev:mobile`, `dev:all`
-  - `test`, `test:e2e`, `lint`, `build`
-- `test:e2e` now points to the verified TypeScript-capable command:
-  - `pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts`
+### Feed semantics and contract (real)
+- Feed ranking is deterministic with diversity/recency/actionability penalties/boosts.
+- Snooze, dismiss, refresh state is persisted and honored by `GET /feed`.
+- Feed contract now includes explicit action/state semantics used by UI:
+  - `taskId`
+  - `availableActions`
+  - `stateFlags`
+  - plus existing `whyShown` and timestamps.
 
-### Partial
-- `pnpm lint` only runs where `lint` is defined (currently `apps/api`).
-- `pnpm build` effectively runs only `apps/web` because other packages do not define `build`.
+### Seed/reset/run reliability (real)
+- Root reset/seed flow works: `pnpm reset && pnpm seed`.
+- Seed now creates a realistic MVP dataset for single-user QA:
+  - 12 brain items
+  - 8 feed cards
+  - 3 threads with message history
+  - 4 tasks
+  - 3 sessions (including finished sessions)
+  - persisted AI artifact history on at least one item.
 
-### Fake/Stale
-- Historical command `node --test e2e/full-loop.spec.ts` is not a valid e2e path for this repo.
+## What is partially implemented
 
-## apps/api
+- Web and mobile are still prototype surfaces (hardcoded demo user id, minimal styling, limited UX polish).
+- Mobile is not the primary full-loop surface; web is the validated end-to-end surface.
+- AI outputs are deterministic runner + fallback behavior (useful for MVP continuity, not production intelligence).
+- Monorepo lint/build coverage is uneven:
+  - `pnpm lint` effectively validates packages that define lint scripts (mainly API).
+  - `pnpm build` is effectively centered on web.
 
-### Real
-- Fastify routes are registered for:
-  - `brain-items`, `threads/messages`, `feed`, `tasks/sessions`, `ai`, `convert`.
-- Zod validation and structured error envelope are active.
-- Correlation/request header handling and request-completion logs are active.
-- Sprint test suites in `apps/api/src/__tests__` pass.
+## What is placeholder or mocked
 
-### Partial
-- `/events` exists but intentionally returns `403`.
-- Feed behavior is deterministic prototype logic, not durable ranked storage.
+- AI execution remains a deterministic runner abstraction with fallback envelopes; no external production model integration required for MVP loop completion.
+- `/ai/feed/generate-card` still supports placeholder defaults when title/body are omitted.
 
-### Stubbed/Mocked
-- AI provider is deterministic with timeout/invalid-output fallback behavior.
-- `/ai/feed/generate-card` returns placeholder-style content when title/body are omitted.
+## What is not wired through persistence
 
-## apps/web
+- No critical core loop runtime path is currently blocked on in-memory state.
+- Non-critical UI preferences (selected tab/lens/item/task convenience) still use browser local storage for UX continuity.
 
-### Real
-- Next.js app builds and runs.
-- Uses shared `@yurbrain/client` and `@yurbrain/ui`.
-- Includes retry/error UI paths for feed and AI-query failures.
+## Known technical debt
 
-### Partial
-- Hardcoded demo IDs and prototype UX.
-- Relative API calls require matching local host/proxy setup.
+- API route docs in `docs/architecture/api-routes-v1.md` still describe older AI path shapes (`/ai/brain-items/:id/...`) that do not match current runtime (`/ai/summarize`, `/ai/classify`, `/ai/query`).
+- Repository uses app-local import path from API to `packages/db/src` instead of published package build boundaries.
+- Database schema keeps `confidence` as text in artifacts for compatibility with current migrations.
+- `/events` endpoint intentionally returns `403` until auth/per-user filtering is implemented.
 
-## apps/mobile
+## Missing pieces relative to full product direction (not MVP blockers)
 
-### Real
-- Expo app starts and renders tab shell + capture + feed preview fallback behavior.
+- Auth/multi-user access control and user identity flows.
+- Production deployment persistence hardening and operational migrations runbook for non-local environments.
+- Richer client UX and mobile parity for full-loop interaction.
 
-### Partial
-- Prototype-level flow, no package test script.
-- Feed preview is best-effort and falls back to local messaging on failures.
+## Next milestone
 
-## packages
-
-### `@yurbrain/contracts`
-- **Real**: schemas are used by API routes; tests pass.
-
-### `@yurbrain/db`
-- **Real**: Drizzle schema + migrations (`0000`-`0003`) exist.
-- **Real**: API runtime state is backed by local PGlite storage.
-- **Partial**: `db:migrate` script uses Drizzle CLI assumptions and may require explicit connection/env setup.
-
-### `@yurbrain/client`
-- **Real**: typed endpoint wrappers and hooks.
-- **Partial**: base URL strategy is minimal (`fetch(path)`).
-- **Partial**: test script is placeholder echo.
-
-### `@yurbrain/ui`
-- **Real**: shared components/tokens/hooks are consumed by apps.
-- **Partial**: test script is placeholder echo.
-
-### `@yurbrain/ai`
-- **Real**: runner/validate/fallback helpers back API AI services.
-- **Partial**: package test script is placeholder echo.
-
-## Documentation reality check (real vs fake)
-
-### Real
-- `docs/product/current-state.md` and `docs/dev/runbook.md` are the current operational truth docs.
-
-### Fake/Stale or historical
-- `docs/architecture/api-routes-v1.md` lists `/ai/brain-items/:id/...` routes that are not current runtime paths.
-  - Real paths in code are `/ai/summarize`, `/ai/classify`, `/ai/query`.
-- `docs/product/agent-task-pack.md` and `docs/product/engineering-docs-set.md` include historical ticket/route phrasing for older path shapes.
-- `docs/product/monorepo-integration-and-sprint-starter.md` is a bootstrap plan, not a current-state runbook.
-
-## Bottom line
-
-1. Core API loop is real and tested.
-2. Persistence is now local DB-backed, but production persistence hardening is still incomplete.
-3. DB schema/migrations are real and integrated with local runtime persistence.
-4. Web/mobile are working prototypes, not production-ready clients.
-5. The e2e command path is now standardized via `pnpm test:e2e`.
+Stabilize MVP for repeatable local demo + QA:
+1. keep web loop as primary validated path,
+2. align stale architecture docs with real routes/contracts,
+3. tighten package boundaries and script coverage (lint/build/test parity),
+4. prepare auth boundary without changing current object model.

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   BrainItemTypeSchema,
+  FeedActionSchema,
   FeedLensSchema,
   FeedCardTypeSchema,
   MessageRoleSchema,
@@ -22,4 +23,9 @@ test("MessageRole and TaskStatus enums stay strict", () => {
   assert.equal(MessageRoleSchema.parse("assistant"), "assistant");
   assert.equal(TaskStatusSchema.parse("in_progress"), "in_progress");
   assert.throws(() => MessageRoleSchema.parse("bot"));
+});
+
+test("Feed actions stay within contract", () => {
+  assert.equal(FeedActionSchema.parse("convert_to_task"), "convert_to_task");
+  assert.throws(() => FeedActionSchema.parse("pin_to_home"));
 });

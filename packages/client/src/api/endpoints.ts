@@ -4,6 +4,7 @@ export const endpoints = {
   threads: "/threads",
   messages: "/messages",
   tasks: "/tasks",
+  sessions: "/sessions",
   manualConvertTask: "/tasks/manual-convert",
   aiSummarize: "/ai/summarize",
   aiClassify: "/ai/classify",

@@ -13,6 +13,11 @@ export async function listThreadMessages<T>(threadId: string) {
   return apiClient<T>(`${endpoints.threads}/${threadId}/messages`);
 }
 
+export async function listBrainItemArtifacts<T>(itemId: string, type?: "summary" | "classification" | "relation" | "feed_card") {
+  const query = type ? `?type=${encodeURIComponent(type)}` : "";
+  return apiClient<T>(`${endpoints.brainItems}/${itemId}/artifacts${query}`);
+}
+
 export async function summarizeBrainItem<T>(payload: { itemId: string; rawContent: string; timeoutMs?: number }) {
   return apiClient<T>(endpoints.aiSummarize, {
     method: "POST",

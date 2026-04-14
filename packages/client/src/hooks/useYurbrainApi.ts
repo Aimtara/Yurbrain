@@ -111,6 +111,8 @@ export function useYurbrainApi() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
-      })
+      }),
+    listBrainItemArtifacts: <T>(itemId: string, type?: "summary" | "classification" | "relation" | "feed_card") =>
+      apiClient<T>(`${endpoints.brainItems}/${itemId}/artifacts${type ? `?type=${encodeURIComponent(type)}` : ""}`)
   };
 }

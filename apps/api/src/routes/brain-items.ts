@@ -6,7 +6,9 @@ import {
   BrainItemStatusSchema,
   BrainItemTypeSchema,
   CreateBrainItemRequestSchema,
+  ItemArtifactListResponseSchema,
   EventTypeSchema,
+  ListItemArtifactsQuerySchema,
   UpdateBrainItemRequestSchema
 } from "../../../../packages/contracts/src";
 import type { AppState } from "../state";
@@ -57,6 +59,17 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
     }
 
     return state.repo.listBrainItemsByUser(userId);
+  });
+
+  app.get("/brain-items/:id/artifacts", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const item = await state.repo.getBrainItemById(id);
+    if (!item) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    const query = ListItemArtifactsQuerySchema.parse(request.query ?? {});
+    const artifacts = await state.repo.listArtifactsByItem(id, query.type ? { type: query.type } : undefined);
+    return reply.send(ItemArtifactListResponseSchema.parse(artifacts));
   });
 
   app.patch("/brain-items/:id", async (request, reply) => {

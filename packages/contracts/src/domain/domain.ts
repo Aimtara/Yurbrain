@@ -7,6 +7,17 @@ export const ThreadKindSchema = z.enum(["item_comment", "item_chat"]);
 export const MessageRoleSchema = z.enum(["user", "assistant", "system"]);
 export const FeedCardTypeSchema = z.enum(["item", "digest", "cluster", "opportunity", "open_loop", "resume"]);
 export const FeedLensSchema = z.enum(["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]);
+export const FeedActionSchema = z.enum([
+  "open_item",
+  "open_task",
+  "comment",
+  "ask_ai",
+  "convert_to_task",
+  "start_session",
+  "dismiss",
+  "snooze",
+  "refresh"
+]);
 export const TaskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export const SessionStateSchema = z.enum(["running", "paused", "finished"]);
 export const EventTypeSchema = z.enum(["brain_item_created", "brain_item_updated"]);
@@ -68,12 +79,23 @@ export const FeedCardSchema = z
     cardType: FeedCardTypeSchema,
     lens: FeedLensSchema,
     itemId: z.string().uuid().nullable(),
+    taskId: z.string().uuid().nullable(),
     title: z.string().min(1),
     body: z.string().min(1),
     dismissed: z.boolean(),
     snoozedUntil: z.string().datetime().nullable(),
     refreshCount: z.number().int().min(0),
     lastRefreshedAt: z.string().datetime().nullable(),
+    availableActions: z.array(FeedActionSchema).min(1),
+    stateFlags: z
+      .object({
+        dismissed: z.boolean(),
+        snoozed: z.boolean(),
+        actionable: z.boolean(),
+        hasSourceItem: z.boolean(),
+        hasSourceTask: z.boolean()
+      })
+      .strict(),
     whyShown: FeedWhyShownSchema,
     createdAt: z.string().datetime()
   })

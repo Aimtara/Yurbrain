@@ -29,10 +29,19 @@ test("GET /feed applies lens + limit deterministically", async () => {
 
   const resp = await app.inject({ method: "GET", url: `/feed?userId=${userId}&limit=2` });
   assert.equal(resp.statusCode, 200);
-  const body = resp.json<Array<{ id: string; whyShown: { summary: string; reasons: string[] } }>>();
+  const body = resp.json<
+    Array<{
+      id: string;
+      whyShown: { summary: string; reasons: string[] };
+      availableActions: string[];
+      stateFlags: { dismissed: boolean; snoozed: boolean };
+    }>
+  >();
   assert.equal(body.length, 2);
   assert.ok(body.every((card) => card.whyShown.summary.length > 0));
   assert.ok(body.every((card) => card.whyShown.reasons.length >= 1));
+  assert.ok(body.every((card) => card.availableActions.includes("dismiss")));
+  assert.ok(body.every((card) => typeof card.stateFlags.snoozed === "boolean"));
 
   const respAgain = await app.inject({ method: "GET", url: `/feed?userId=${userId}&limit=2` });
   assert.equal(respAgain.statusCode, 200);
