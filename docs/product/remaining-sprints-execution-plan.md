@@ -12,13 +12,31 @@ This plan assumes Sprint 1 foundations are in place and the next execution start
 
 ---
 
-## Execution tracker
+## Execution tracker (engineering scope)
 
-- PR-1 (Sprint 2): ✅ Completed
-- PR-2 (Sprint 3): ✅ Completed
-- PR-3 (Sprint 4): ✅ Completed (April 13, 2026)
-- PR-4 (Sprint 5): ✅ Completed (April 13, 2026)
-- PR-5 (Sprint 6): ✅ Completed (April 13, 2026)
+- PR-1 (Sprint 2): ✅ Engineering scope completed
+- PR-2 (Sprint 3): ✅ Engineering scope completed
+- PR-3 (Sprint 4): ✅ Engineering scope completed (April 13, 2026)
+- PR-4 (Sprint 5): ✅ Engineering scope completed (April 13, 2026)
+- PR-5 (Sprint 6): ✅ Engineering scope completed (April 13, 2026)
+
+## Reality check on product maturity
+
+Despite engineering checklist completion through Sprint 6, product maturity is still **prototype-stage** in critical areas:
+
+- Runtime persistence is not yet wired into live API state (in-memory runtime remains).
+- Frontend/product polish is partial, with mobile experience lagging behind web.
+- End-to-end resilience and production operations are not yet complete.
+
+See `docs/product/current-state.md` for the authoritative implementation status and `docs/product/ai-agent-execution-guide.md` for the ordered future-work execution plan.
+
+### Items still to address before calling the MVP complete
+
+- [ ] Runtime persistence integrated in API services/repositories
+- [ ] Seed/reset data workflow in repo
+- [ ] One persistent end-to-end user loop verified
+- [ ] Mobile-targeted UX pass for core loop
+- [ ] Local runbook updated and validated
 
 ---
 

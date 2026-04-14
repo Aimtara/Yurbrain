@@ -16,16 +16,23 @@ const app = Fastify({ logger: true });
 registerObservability(app);
 
 app.setErrorHandler((error, request, reply) => {
+  const requestIdHeader = (request.headers["x-request-id"] as string | undefined)?.trim() || request.requestId;
+  reply.header("x-request-id", requestIdHeader);
+
   if (error instanceof ZodError) {
+    const issues = error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
+    const envelope = buildErrorEnvelope(request, 400, "Validation failed", issues);
     return reply.code(400).send({
+      ...envelope,
       message: "Validation failed",
-      requestId: request.requestId,
-      issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }))
+      requestId: requestIdHeader,
+      issues
     });
   }
 
   app.log.error({ err: error, requestId: request.requestId }, "unhandled_error");
-  return reply.code(500).send({ message: "Internal server error", requestId: request.requestId });
+  const envelope = buildErrorEnvelope(request, 500, "Internal server error");
+  return reply.code(500).send({ ...envelope, message: "Internal server error", requestId: requestIdHeader });
 });
 
 registerBrainItemRoutes(app, state);

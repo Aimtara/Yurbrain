@@ -14,24 +14,22 @@ import type { AppState } from "../state";
 export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
   app.post("/ai/summarize", async (request, reply) => {
     const payload = SummarizeItemRequestSchema.parse(request.body);
-    const result = await summarizeItem(state, payload);
+    const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     request.log.info(
       { requestId: request.requestId, task: "summarize", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
       "ai_task_completed"
     );
-    const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
 
     return reply.code(201).send(AiArtifactResponseSchema.parse(result));
   });
 
   app.post("/ai/classify", async (request, reply) => {
     const payload = ClassifyItemRequestSchema.parse(request.body);
-    const result = await classifyItem(state, payload);
+    const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     request.log.info(
       { requestId: request.requestId, task: "classify", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
       "ai_task_completed"
     );
-    const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
 
     return reply.code(201).send(AiArtifactResponseSchema.parse(result));
   });
