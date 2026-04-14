@@ -4,6 +4,21 @@ _Last verified: April 14, 2026 (UTC)._
 
 This runbook lists only commands verified in the current repository state.
 
+## Operator checklist (daily copy/paste)
+
+```bash
+# from repo root
+pnpm install
+pnpm --filter api test
+pnpm --filter @yurbrain/contracts test
+pnpm test
+pnpm lint
+pnpm build
+pnpm test:e2e
+```
+
+If any command fails, stop and reconcile `docs/product/current-state.md` before proceeding.
+
 ## 1) Prerequisites
 
 - Node.js 22.x (verified with Node `v22.22.2` in this audit run).
