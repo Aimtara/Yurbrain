@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("thread -> message -> list and manual convert flow", async () => {
   const threadResp = await app.inject({
     method: "POST",

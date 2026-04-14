@@ -10,8 +10,8 @@ export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}
   const typeCounts = countCardTypes(cards);
 
   return [...cards].sort((a, b) => {
-    const scoreA = scoreCard(a, typeCounts.get(a.cardType) ?? 0, options.lens, now);
-    const scoreB = scoreCard(b, typeCounts.get(b.cardType) ?? 0, options.lens, now);
+    const scoreA = scoreCard(a, typeCounts[a.cardType] ?? 0, options.lens, now);
+    const scoreB = scoreCard(b, typeCounts[b.cardType] ?? 0, options.lens, now);
 
     if (scoreA === scoreB) {
       if (a.createdAt === b.createdAt) return a.id.localeCompare(b.id);
@@ -32,10 +32,10 @@ function scoreCard(card: StoredFeedCard, totalTypeCount: number, lens: StoredFee
   return recencyScore + lensBoost + refreshBoost - diversityPenalty;
 }
 
-function countCardTypes(cards: StoredFeedCard[]): Map<StoredFeedCard["cardType"], number> {
-  const counts = new Map<StoredFeedCard["cardType"], number>();
+function countCardTypes(cards: StoredFeedCard[]): Partial<Record<StoredFeedCard["cardType"], number>> {
+  const counts: Partial<Record<StoredFeedCard["cardType"], number>> = {};
   for (const card of cards) {
-    counts.set(card.cardType, (counts.get(card.cardType) ?? 0) + 1);
+    counts[card.cardType] = (counts[card.cardType] ?? 0) + 1;
   }
   return counts;
 }

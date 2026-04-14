@@ -17,7 +17,7 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
     const payload = ManualConvertTaskRequestSchema.parse(request.body);
     const task = createTaskFromManualContent(payload);
 
-    state.tasks.set(task.id, task);
+    await state.repo.createTask(task);
     return reply.code(201).send(TaskResponseSchema.parse(task));
   });
 
@@ -36,13 +36,13 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
       updatedAt: now
     };
 
-    state.tasks.set(task.id, task);
+    await state.repo.createTask(task);
     return reply.code(201).send(TaskResponseSchema.parse(task));
   });
 
   app.get("/tasks/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const task = state.tasks.get(id);
+    const task = await state.repo.getTaskById(id);
     if (!task) {
       return reply.code(404).send({ message: "Task not found" });
     }
@@ -52,7 +52,7 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
 
   app.patch("/tasks/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const existing = state.tasks.get(id);
+    const existing = await state.repo.getTaskById(id);
     if (!existing) {
       return reply.code(404).send({ message: "Task not found" });
     }
@@ -64,17 +64,19 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
       updatedAt: new Date().toISOString()
     };
 
-    state.tasks.set(id, updated);
+    await state.repo.updateTask(id, {
+      title: updated.title,
+      status: updated.status,
+      sourceItemId: updated.sourceItemId,
+      sourceMessageId: updated.sourceMessageId,
+      updatedAt: updated.updatedAt
+    });
     return reply.code(200).send(TaskResponseSchema.parse(updated));
   });
 
   app.get("/tasks", async (request, reply) => {
     const query = ListTasksQuerySchema.parse(request.query ?? {});
-    const filtered = Array.from(state.tasks.values()).filter((task) => {
-      if (query.userId && task.userId !== query.userId) return false;
-      if (query.status && task.status !== query.status) return false;
-      return true;
-    });
+    const filtered = await state.repo.listTasks(query);
 
     return reply.code(200).send(TaskListResponseSchema.parse(filtered));
   });

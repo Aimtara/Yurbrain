@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("/ai/summarize returns validated output", async () => {
   const resp = await app.inject({
     method: "POST",

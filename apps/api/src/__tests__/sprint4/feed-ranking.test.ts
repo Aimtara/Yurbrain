@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("GET /feed applies lens + limit deterministically", async () => {
   const userId = "11111111-1111-1111-1111-111111111111";
 

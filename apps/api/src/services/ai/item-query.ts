@@ -9,7 +9,7 @@ export async function queryItemAssistant(
   log?: FastifyBaseLogger,
   correlationId?: string
 ) {
-  const thread = state.threads.get(input.threadId);
+  const thread = await state.repo.getThreadById(input.threadId);
   if (!thread) {
     log?.warn({ event: "query_thread_not_found", threadId: input.threadId, correlationId }, "thread missing for query");
     return null;
@@ -37,7 +37,8 @@ export async function queryItemAssistant(
     createdAt: new Date().toISOString()
   };
 
-  state.messages.set(input.threadId, [...(state.messages.get(input.threadId) ?? []), userMessage, assistantMessage]);
+  await state.repo.createMessage(userMessage);
+  await state.repo.createMessage(assistantMessage);
   log?.info({ event: "query_messages_persisted", threadId: input.threadId, fallbackUsed, correlationId }, "query response persisted");
 
   return {

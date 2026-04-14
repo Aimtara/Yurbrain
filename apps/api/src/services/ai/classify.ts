@@ -24,7 +24,7 @@ export async function classifyItem(
     metadata: ai.metadata
   });
 
-  state.artifacts.set(artifact.id, artifact);
+  await state.repo.createArtifact(artifact);
   log?.info({ event: "classification_artifact_persisted", artifactId: artifact.id, itemId: input.itemId, correlationId }, "classification persisted");
   return { ...artifact, ai, fallbackUsed, fallbackReason };
 }

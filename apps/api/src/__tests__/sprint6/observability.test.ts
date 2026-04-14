@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("observability: echoes x-request-id and includes it in validation errors", async () => {
   const requestId = "req-test-observability-1";
   const response = await app.inject({

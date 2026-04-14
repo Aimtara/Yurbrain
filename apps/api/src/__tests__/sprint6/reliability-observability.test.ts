@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("observability injects correlation id and preserves provided header", async () => {
   const generated = await app.inject({ method: "GET", url: "/feed" });
   assert.equal(generated.statusCode, 200);
