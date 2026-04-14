@@ -21,9 +21,12 @@ Included:
 
 ## Current local runbook
 
-- Start API: `pnpm --filter api dev`
-- Start mobile app: `pnpm --filter mobile start`
-- Start web app: `pnpm --filter web dev`
+- Bootstrap from scratch: `pnpm bootstrap`
+- Reset DB: `pnpm reset`
+- Seed DB with usable test data: `pnpm seed`
+- Start API: `pnpm dev` (alias of `pnpm dev:api`)
+- Start mobile app: `pnpm dev:mobile`
+- Start web app: `pnpm dev:web`
 - Run API tests: `pnpm --filter api test`
 - Run contracts tests: `pnpm --filter @yurbrain/contracts test`
 
@@ -56,4 +59,4 @@ Included:
 
 ## Known current limitation
 
-- API runtime state is still in-memory for MVP behavior and tests. The `packages/db` schema/migrations are present, but runtime DB persistence wiring is planned for later hardening.
+- Core persistence is DB-backed, but UX/workflow behavior is still prototype-level and not production-hardened.

@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "./schema";
+import { getDefaultDatabasePath, getDefaultMigrationsPath } from "./paths";
 
 export * from "./schema";
 
@@ -133,9 +134,6 @@ export type CreateRepositoryOptions = {
   migrationsPath?: string;
 };
 
-const DEFAULT_DATABASE_PATH = path.resolve(process.cwd(), ".yurbrain-data", "db");
-const DEFAULT_MIGRATIONS_PATH = path.resolve(process.cwd(), "packages/db/migrations");
-
 function toIso(value: string | Date | null | undefined): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
@@ -259,8 +257,8 @@ async function applyMigrations(client: PGlite, migrationsPath: string) {
 }
 
 export async function resetDatabase(options: CreateRepositoryOptions = {}): Promise<void> {
-  const databasePath = options.databasePath ?? process.env.YURBRAIN_DB_PATH ?? DEFAULT_DATABASE_PATH;
-  const migrationsPath = options.migrationsPath ?? DEFAULT_MIGRATIONS_PATH;
+  const databasePath = options.databasePath ?? process.env.YURBRAIN_DB_PATH ?? getDefaultDatabasePath();
+  const migrationsPath = options.migrationsPath ?? getDefaultMigrationsPath();
   const parentDir = path.dirname(databasePath);
   await mkdir(parentDir, { recursive: true });
 
@@ -274,8 +272,8 @@ export async function resetDatabase(options: CreateRepositoryOptions = {}): Prom
 }
 
 async function initializeContext(options: CreateRepositoryOptions): Promise<RepositoryContext> {
-  const databasePath = options.databasePath ?? process.env.YURBRAIN_DB_PATH ?? DEFAULT_DATABASE_PATH;
-  const migrationsPath = options.migrationsPath ?? DEFAULT_MIGRATIONS_PATH;
+  const databasePath = options.databasePath ?? process.env.YURBRAIN_DB_PATH ?? getDefaultDatabasePath();
+  const migrationsPath = options.migrationsPath ?? getDefaultMigrationsPath();
   const parentDir = path.dirname(databasePath);
   await mkdir(parentDir, { recursive: true });
 
