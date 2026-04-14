@@ -170,3 +170,11 @@ pnpm lint
 pnpm build
 pnpm test:e2e
 ```
+
+## 9) Optional reliability improvement for cloud agents
+
+If agents repeatedly spend time reinstalling dependencies, run a dedicated environment setup agent at [cursor.com/onboard](https://cursor.com/onboard) with this prompt:
+
+```text
+Preinstall Yurbrain monorepo dependencies in the cloud image (pnpm workspace install), ensure pnpm v10.18.3 is available, and cache workspace node_modules so agents can run pnpm reset, pnpm seed, and pnpm --filter api test without reinstalling dependencies.
+```
