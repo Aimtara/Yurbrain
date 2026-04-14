@@ -109,7 +109,6 @@ function scoreContinuity(card: StoredFeedCard, now: Date): number {
   if (hoursSinceRefresh <= 72) return 3;
   return 0;
 }
-
 function applyDiversityPenalty(
   base: BaseScore,
   selectedTypeCounts: Partial<Record<StoredFeedCard["cardType"], number>>,
@@ -157,7 +156,6 @@ function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["len
   if (score.continuityBoost > 0) {
     reasons.push("Keeps continuity with something you recently revisited.");
   }
-
   if (requestedLens === "all" && score.typeDiversityPenalty === 0) {
     reasons.push("Adds variety to keep this feed from feeling repetitive.");
   }
