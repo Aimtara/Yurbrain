@@ -10,6 +10,7 @@ type BaseScore = {
   recencyScore: number;
   lensMatchBoost: number;
   actionabilityBoost: number;
+  continuityBoost: number;
   refreshPenalty: number;
   stalePenalty: number;
   baseScore: number;
@@ -77,21 +78,37 @@ function scoreCard(card: StoredFeedCard, requestedLens: StoredFeedCard["lens"], 
   const recencyScore = Math.max(0, 72 - ageHours);
   const lensMatchBoost = requestedLens !== "all" && card.lens === requestedLens ? 24 : 0;
   const actionabilityBoost = ACTIONABLE_CARD_TYPES.has(card.cardType) ? 8 : 0;
+  const continuityBoost = scoreContinuity(card, now);
   const refreshPenalty = Math.min((card.refreshCount ?? 0) * 4, 16);
   const stalePenalty = ageHours > 72 ? Math.min(12, Math.floor((ageHours - 72) / 24) * 2 + 2) : 0;
-  const baseScore = recencyScore + lensMatchBoost + actionabilityBoost - refreshPenalty - stalePenalty;
+  const baseScore = recencyScore + lensMatchBoost + actionabilityBoost + continuityBoost - refreshPenalty - stalePenalty;
 
   return {
     card,
     recencyScore,
     lensMatchBoost,
     actionabilityBoost,
+    continuityBoost,
     refreshPenalty,
     stalePenalty,
     baseScore
   };
 }
 
+function scoreContinuity(card: StoredFeedCard, now: Date): number {
+  if (!card.lastRefreshedAt) return 0;
+
+  const refreshedAtMs = new Date(card.lastRefreshedAt).getTime();
+  if (!Number.isFinite(refreshedAtMs)) return 0;
+
+  const hoursSinceRefresh = Math.max(0, (now.getTime() - refreshedAtMs) / 3_600_000);
+  const refreshCount = card.refreshCount ?? 0;
+  if (refreshCount > 2) return 0;
+
+  if (hoursSinceRefresh <= 24) return 6;
+  if (hoursSinceRefresh <= 72) return 3;
+  return 0;
+}
 function applyDiversityPenalty(
   base: BaseScore,
   selectedTypeCounts: Partial<Record<StoredFeedCard["cardType"], number>>,
@@ -136,6 +153,9 @@ function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["len
     reasons.push("Action-oriented card to maintain momentum.");
   }
 
+  if (score.continuityBoost > 0) {
+    reasons.push("Keeps continuity with something you recently revisited.");
+  }
   if (requestedLens === "all" && score.typeDiversityPenalty === 0) {
     reasons.push("Adds variety to keep this feed from feeling repetitive.");
   }

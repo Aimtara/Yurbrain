@@ -163,3 +163,47 @@ test("ranking lowers noisy over-refreshed cards", async () => {
   const cards = feedResp.json<Array<{ id: string }>>();
   assert.equal(cards[0]?.id, calmCard.id);
 });
+
+test("ranking preserves continuity for recently revisited cards without adding noise", async () => {
+  const userId = "66666666-6666-4666-8666-666666666666";
+  const earlierResp = await app.inject({
+    method: "POST",
+    url: "/ai/feed/generate-card",
+    payload: {
+      userId,
+      title: "Earlier card",
+      body: "Should stay visible when recently revisited"
+    }
+  });
+  assert.equal(earlierResp.statusCode, 201);
+  const earlierCard = earlierResp.json<{ id: string }>();
+
+  const laterResp = await app.inject({
+    method: "POST",
+    url: "/ai/feed/generate-card",
+    payload: {
+      userId,
+      title: "Later card",
+      body: "New but not revisited yet"
+    }
+  });
+  assert.equal(laterResp.statusCode, 201);
+  const laterCard = laterResp.json<{ id: string }>();
+
+  const refreshResp = await app.inject({
+    method: "POST",
+    url: `/feed/${earlierCard.id}/refresh`
+  });
+  assert.equal(refreshResp.statusCode, 200);
+
+  const feedResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&limit=2`
+  });
+  assert.equal(feedResp.statusCode, 200);
+  const cards = feedResp.json<Array<{ id: string; whyShown: { reasons: string[] } }>>();
+
+  assert.equal(cards[0]?.id, earlierCard.id);
+  assert.ok(cards[0]?.whyShown.reasons.some((reason) => reason.toLowerCase().includes("continuity")));
+  assert.equal(cards.some((card) => card.id === laterCard.id), true);
+});
