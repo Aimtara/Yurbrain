@@ -1,12 +1,9 @@
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
+import { getDefaultDatabasePath } from "../paths";
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const packageRoot = path.resolve(scriptDir, "../..");
-const defaultDataDir = path.resolve(packageRoot, ".yurbrain-data", "db");
-const dataDir = process.env.YURBRAIN_DB_PATH ?? defaultDataDir;
+const dataDir = process.env.YURBRAIN_DB_PATH ?? getDefaultDatabasePath();
 const parentDir = path.dirname(dataDir);
 
 async function main() {

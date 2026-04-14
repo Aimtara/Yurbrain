@@ -9,6 +9,8 @@ This runbook lists only commands verified in the current repository state.
 ```bash
 # from repo root
 pnpm install
+pnpm reset
+pnpm seed
 pnpm --filter api test
 pnpm --filter @yurbrain/contracts test
 pnpm test
@@ -37,21 +39,27 @@ Expected: succeeds. You may see a warning about ignored build scripts (`esbuild`
 
 ### API
 ```bash
-pnpm --filter api dev
+pnpm dev
 ```
 - Runs Fastify via `ts-node-dev` on port `3001` by default.
 
 ### Web
 ```bash
-pnpm --filter web dev
+pnpm dev:web
 ```
 - Runs Next.js dev server.
 
 ### Mobile
 ```bash
-pnpm --filter mobile start
+pnpm dev:mobile
 ```
 - Runs Expo dev server.
+
+### Optional: run all dev processes together
+```bash
+pnpm dev:all
+```
+- Runs API + web + mobile dev commands in parallel via Turbo.
 
 ## 4) Quality and test commands
 
@@ -110,7 +118,7 @@ That direct Node command fails in this repo setup.
 ```bash
 pnpm --filter @yurbrain/db db:migrate
 ```
-- Applies SQL migrations against local persistent PGlite storage by default.
+- Applies SQL migrations using Drizzle CLI.
 - Optional override paths:
   - `YURBRAIN_DB_PATH` for DB data directory
   - `YURBRAIN_MIGRATIONS_PATH` for migration directory
@@ -122,17 +130,24 @@ pnpm --filter @yurbrain/db db:generate
 
 ### Reset DB
 ```bash
-pnpm --filter @yurbrain/db db:reset
+pnpm reset
 ```
-- Clears and recreates the local DB data directory.
+- Clears and recreates the local runtime DB data directory.
+- Default path: `<repo>/.yurbrain-data/runtime`
 
 ### Seed DB
 ```bash
-pnpm --filter @yurbrain/db db:seed
+pnpm seed
 ```
-- Inserts deterministic baseline records (brain item, thread/message, feed card, task/session, artifact).
+- Inserts a usable multi-entity dataset (brain items, events, threads/messages, feed cards, tasks/sessions, artifacts).
 - Optional override:
   - `YURBRAIN_SEED_USER_ID` for seeded user id.
+
+### Reset + seed
+```bash
+pnpm reseed
+```
+- Reliable baseline setup for local demos and end-to-end manual checks.
 
 ## 7) Reality checks
 
@@ -146,10 +161,20 @@ pnpm --filter @yurbrain/db db:seed
 
 ```bash
 pnpm install
+pnpm reset
+pnpm seed
 pnpm --filter api test
 pnpm --filter @yurbrain/contracts test
 pnpm test
 pnpm lint
 pnpm build
 pnpm test:e2e
+```
+
+## 9) Optional reliability improvement for cloud agents
+
+If agents repeatedly spend time reinstalling dependencies, run a dedicated environment setup agent at [cursor.com/onboard](https://cursor.com/onboard) with this prompt:
+
+```text
+Preinstall Yurbrain monorepo dependencies in the cloud image (pnpm workspace install), ensure pnpm v10.18.3 is available, and cache workspace node_modules so agents can run pnpm reset, pnpm seed, and pnpm --filter api test without reinstalling dependencies.
 ```

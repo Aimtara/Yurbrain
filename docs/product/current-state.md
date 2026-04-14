@@ -30,7 +30,8 @@ Failing by design/environment:
 ### Real
 - Workspace wiring is active via `pnpm-workspace.yaml` and Turbo (`apps/*`, `packages/*`).
 - Root scripts:
-  - `dev:api`, `dev:web`, `dev:mobile`
+  - `bootstrap`, `reset`, `seed`, `reseed`
+  - `dev`, `dev:api`, `dev:web`, `dev:mobile`, `dev:all`
   - `test`, `test:e2e`, `lint`, `build`
 - `test:e2e` now points to the verified TypeScript-capable command:
   - `pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts`
@@ -52,7 +53,6 @@ Failing by design/environment:
 - Sprint test suites in `apps/api/src/__tests__` pass.
 
 ### Partial
-- Runtime state is in-memory (`createState()`), resets on process restart.
 - `/events` exists but intentionally returns `403`.
 - Feed behavior is deterministic prototype logic, not durable ranked storage.
 
@@ -87,8 +87,8 @@ Failing by design/environment:
 
 ### `@yurbrain/db`
 - **Real**: Drizzle schema + migrations (`0000`-`0003`) exist.
-- **Partial**: not wired into API runtime persistence.
-- **Partial**: migration command depends on external Postgres.
+- **Real**: API runtime state is backed by local PGlite storage.
+- **Partial**: `db:migrate` script uses Drizzle CLI assumptions and may require explicit connection/env setup.
 
 ### `@yurbrain/client`
 - **Real**: typed endpoint wrappers and hooks.
@@ -117,7 +117,7 @@ Failing by design/environment:
 ## Bottom line
 
 1. Core API loop is real and tested.
-2. Persistence remains in-memory (largest functional limitation).
-3. DB schema/migrations are real but not runtime-integrated yet.
+2. Persistence is now local DB-backed, but production persistence hardening is still incomplete.
+3. DB schema/migrations are real and integrated with local runtime persistence.
 4. Web/mobile are working prototypes, not production-ready clients.
 5. The e2e command path is now standardized via `pnpm test:e2e`.
