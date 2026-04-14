@@ -16,7 +16,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
     const payload = SummarizeItemRequestSchema.parse(request.body);
     const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     request.log.info(
-      { requestId: request.requestId, task: "summarize", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
+      { requestId: request.id, task: "summarize", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
       "ai_task_completed"
     );
 
@@ -27,7 +27,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
     const payload = ClassifyItemRequestSchema.parse(request.body);
     const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     request.log.info(
-      { requestId: request.requestId, task: "classify", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
+      { requestId: request.id, task: "classify", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
       "ai_task_completed"
     );
 
@@ -41,7 +41,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
       return reply.code(404).send({ message: "Thread not found" });
     }
     request.log.info(
-      { requestId: request.requestId, task: "query", threadId: payload.threadId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
+      { requestId: request.id, task: "query", threadId: payload.threadId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
       "ai_task_completed"
     );
 

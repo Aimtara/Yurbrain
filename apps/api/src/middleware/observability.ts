@@ -16,7 +16,7 @@ export function registerObservability(app: FastifyInstance) {
     const correlationId = incoming?.trim() || randomUUID();
     request.correlationId = correlationId;
     request[REQUEST_START_SYMBOL] = Date.now();
-    reply.header("x-request-id", incomingRequestId || request.requestId);
+    reply.header("x-request-id", incomingRequestId || request.id);
     reply.header(CORRELATION_HEADER, correlationId);
   });
 

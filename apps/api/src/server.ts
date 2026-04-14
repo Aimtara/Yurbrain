@@ -16,7 +16,7 @@ const app = Fastify({ logger: true });
 registerObservability(app);
 
 app.setErrorHandler((error, request, reply) => {
-  const requestIdHeader = (request.headers["x-request-id"] as string | undefined)?.trim() || request.requestId;
+  const requestIdHeader = (request.headers["x-request-id"] as string | undefined)?.trim() || request.id;
   reply.header("x-request-id", requestIdHeader);
 
   if (error instanceof ZodError) {
@@ -30,7 +30,7 @@ app.setErrorHandler((error, request, reply) => {
     });
   }
 
-  app.log.error({ err: error, requestId: request.requestId }, "unhandled_error");
+  app.log.error({ err: error, requestId: request.id }, "unhandled_error");
   const envelope = buildErrorEnvelope(request, 500, "Internal server error");
   return reply.code(500).send({ ...envelope, message: "Internal server error", requestId: requestIdHeader });
 });
