@@ -1,6 +1,13 @@
 # Yurbrain Monorepo Starter
 
-This monorepo contains the implemented MVP through **Sprint 6**.
+This monorepo contains a **Sprint 6 engineering prototype** of the Yurbrain MVP loop.
+
+
+> Status note (April 14, 2026): route/service and test implementation breadth is strong, but runtime persistence and product-grade UX are still in progress. See `docs/product/current-state.md` for the authoritative status.
+
+For remaining gaps and an explicit checklist of unresolved items, see `docs/product/current-state.md`.
+
+For implementation sequencing, use `docs/product/ai-agent-execution-guide.md`.
 
 Included:
 - frozen architecture docs

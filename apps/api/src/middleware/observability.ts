@@ -11,10 +11,12 @@ type ObservabilityRequest = FastifyRequest & {
 
 export function registerObservability(app: FastifyInstance) {
   app.addHook("onRequest", async (request: ObservabilityRequest, reply: FastifyReply) => {
+    const incomingRequestId = (request.headers["x-request-id"] as string | undefined)?.trim();
     const incoming = request.headers[CORRELATION_HEADER] as string | undefined;
     const correlationId = incoming?.trim() || randomUUID();
     request.correlationId = correlationId;
     request[REQUEST_START_SYMBOL] = Date.now();
+    reply.header("x-request-id", incomingRequestId || request.requestId);
     reply.header(CORRELATION_HEADER, correlationId);
   });
 
@@ -35,7 +37,12 @@ export function registerObservability(app: FastifyInstance) {
   });
 }
 
-export function buildErrorEnvelope(request: ObservabilityRequest, statusCode: number, message: string, details?: unknown) {
+export function buildErrorEnvelope(
+  request: FastifyRequest & { correlationId?: string },
+  statusCode: number,
+  message: string,
+  details?: unknown
+) {
   return {
     error: {
       message,
