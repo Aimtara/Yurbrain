@@ -1,20 +1,29 @@
 export const tokens = {
   colors: {
-    bg: "#0f1115",
-    panel: "#181c24",
-    text: "#f3f5f9",
-    muted: "#9aa4b2",
-    accent: "#7dd3fc"
+    bg: "#f8fafc",
+    panel: "#ffffff",
+    text: "#0f172a",
+    muted: "#475569",
+    accent: "#1d4ed8",
+    accentSoft: "#dbeafe",
+    accentSurface: "#eff6ff",
+    warning: "#b45309",
+    warningSoft: "#fef3c7",
+    success: "#0f766e",
+    successSoft: "#ccfbf1",
+    border: "#e2e8f0"
   },
   space: {
     xs: 4,
     sm: 8,
     md: 16,
-    lg: 24
+    lg: 24,
+    xl: 32
   },
   radius: {
-    sm: 8,
-    md: 12
+    sm: 12,
+    md: 20,
+    lg: 24
   }
 } as const;
 

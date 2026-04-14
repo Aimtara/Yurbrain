@@ -5,9 +5,14 @@ export * from "./components/capture/CaptureComposer";
 export * from "./components/feed/FeedLensBar";
 export * from "./components/feed/CommentComposer";
 export * from "./components/feed/FeedCard";
+export * from "./components/feed/FocusFeedScreen";
 export * from "./components/brain/BrainItemDetail";
 export * from "./components/brain/ItemChatPanel";
+export * from "./components/brain/ItemDetailScreen";
 export * from "./components/tasks/TaskDetailCard";
 export * from "./components/tasks/ActiveSessionScreen";
+export * from "./components/founder/FounderModeToggle";
+export * from "./components/founder/ExecutionLensBar";
+export * from "./components/founder/FounderSummarySurface";
 
 export * from "./components/brain/BrainItemScreen";
