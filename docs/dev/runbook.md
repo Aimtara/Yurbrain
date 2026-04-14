@@ -2,13 +2,13 @@
 
 _Last verified: April 14, 2026 (UTC)._
 
-This runbook documents what works locally in the current repository state.
+This runbook lists only commands verified in the current repository state.
 
 ## 1) Prerequisites
 
-- Node.js 20.x (verified with Node 20.19.6).
+- Node.js 22.x (verified with Node `v22.22.2` in this audit run).
 - pnpm 10.x (repo uses `pnpm@10.18.3`).
-- Optional: local Postgres only if you want to run DB migrations.
+- Optional: local Postgres only if running DB migrations.
 
 ## 2) Install
 
@@ -16,7 +16,7 @@ This runbook documents what works locally in the current repository state.
 pnpm install
 ```
 
-Observed result: succeeds; warning about ignored build scripts (`esbuild`, `sharp`) may appear.
+Expected: succeeds. You may see a warning about ignored build scripts (`esbuild`, `sharp`).
 
 ## 3) Start apps (separate terminals)
 
@@ -38,48 +38,56 @@ pnpm --filter mobile start
 ```
 - Runs Expo dev server.
 
-## 4) Quality/test commands
+## 4) Quality and test commands
 
-### Package-level tests
+### API and contracts tests
 ```bash
 pnpm --filter api test
 pnpm --filter @yurbrain/contracts test
 ```
-- Both pass in current state.
 
 ### Monorepo test sweep
 ```bash
 pnpm test
 ```
-- Passes.
-- Note: some package test scripts are placeholder echo commands (`@yurbrain/ai`, `@yurbrain/client`, `@yurbrain/ui`).
+- Runs Turbo `test` tasks.
+- Note: some package `test` scripts are placeholder echoes (`@yurbrain/ai`, `@yurbrain/client`, `@yurbrain/ui`).
 
 ### Lint
 ```bash
 pnpm lint
 ```
-- Passes after current fixes in this audit pass.
-- Current lint scope effectively depends on which packages define a `lint` script.
+- Runs Turbo `lint` tasks.
+- Current practical lint coverage is limited to packages that define `lint` (currently `apps/api`).
 
 ### Build
 ```bash
 pnpm build
 ```
-- Passes; currently active build workload is `apps/web`.
+- Runs Turbo `build` tasks.
+- Current practical build workload is `apps/web`.
 
 ## 5) E2E smoke test
 
-### Command that currently fails
-```bash
-node --test e2e/full-loop.spec.ts
-```
-- Fails because Node test runner does not natively execute `.ts` files here.
+Use the root alias:
 
-### Working TypeScript-capable command
+```bash
+pnpm test:e2e
+```
+
+Equivalent underlying command:
+
 ```bash
 pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts
 ```
-- Passes.
+
+Avoid using:
+
+```bash
+node --test e2e/full-loop.spec.ts
+```
+
+That direct Node command fails in this repo setup.
 
 ## 6) Database commands
 
@@ -87,20 +95,21 @@ pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts
 ```bash
 pnpm --filter @yurbrain/db db:migrate
 ```
-- Requires a reachable Postgres configured via `DATABASE_URL`.
-- In a default environment without DB, this fails.
+- Requires reachable Postgres via `DATABASE_URL`.
+- Fails in default environments without DB connectivity.
 
-### Generation
+### Migration generation
 ```bash
 pnpm --filter @yurbrain/db db:generate
 ```
-- Available, but not required for routine local app/test runs unless schema changes are made.
 
-## 7) Persistence and reset reality check
+## 7) Reality checks
 
 - API runtime state is in-memory and resets on API restart.
-- There is no repo-standard seed/reset script yet.
-- Tests are mostly integration-style via `app.inject` and do not require a running external DB.
+- There is no first-class seed/reset script at root or in `@yurbrain/db`.
+- `/events` is intentionally disabled (`403`).
+- AI routes include deterministic fallback behavior for timeout/invalid model output.
+- Client requests use relative paths (`fetch(path)`), so local API routing/proxy setup controls runtime connectivity.
 
 ## 8) Fast sanity loop
 
@@ -111,11 +120,5 @@ pnpm --filter @yurbrain/contracts test
 pnpm test
 pnpm lint
 pnpm build
-pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts
+pnpm test:e2e
 ```
-
-## 9) Known operational caveats
-
-- `/events` endpoint is intentionally disabled (`403`).
-- AI routes can return deterministic fallback responses when AI runner output is invalid/times out.
-- Client packages call relative API paths; local proxy/base-url setup still determines runtime connectivity in web/mobile dev.

@@ -13,9 +13,11 @@
 
 ## Feed
 
-- `GET /feed?userId=<uuid>` returns deterministic, non-dismissed stored feed cards in reverse-created order.
+- `GET /feed?userId=<uuid>` returns deterministic, non-dismissed stored feed cards ranked by feed logic (not a simple reverse-created listing).
 - `POST /ai/feed/generate-card` stores a placeholder/generated feed card for deterministic retrieval.
 - `POST /feed/:id/dismiss` marks a feed card as dismissed.
+- `POST /feed/:id/snooze` snoozes a feed card until a future timestamp.
+- `POST /feed/:id/refresh` increments refresh metadata and returns the new count.
 
 ## Task conversion and task loop
 
