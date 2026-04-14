@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../apps/api/src/server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("full loop: capture -> feed -> comment/query -> convert -> act", async () => {
   const userId = "77777777-7777-7777-7777-777777777777";
 

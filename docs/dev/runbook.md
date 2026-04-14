@@ -1,6 +1,6 @@
 # Yurbrain Local Runbook (Current State)
 
-_Last verified: April 14, 2026 (UTC)._
+_Last verified: April 14, 2026 (UTC), after persistence hardening pass._
 
 This runbook lists only commands verified in the current repository state.
 
@@ -105,10 +105,10 @@ Use the root alias:
 pnpm test:e2e
 ```
 
-Equivalent underlying command:
+Equivalent underlying command (set `NODE_ENV=test` to prevent stray server listeners):
 
 ```bash
-pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts
+NODE_ENV=test pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts
 ```
 
 Avoid using:
@@ -125,7 +125,8 @@ That direct Node command fails in this repo setup.
 ```bash
 pnpm --filter @yurbrain/db db:migrate
 ```
-- Applies SQL migrations using Drizzle CLI.
+- Runtime path note: app/API startup and scripts use `@yurbrain/db` repository migrations (including `0004_sprint8.sql`) automatically against PGlite.
+- Drizzle CLI migrate remains available for manual workflows.
 - Optional override paths:
   - `YURBRAIN_DB_PATH` for DB data directory
   - `YURBRAIN_MIGRATIONS_PATH` for migration directory
@@ -146,7 +147,13 @@ pnpm reset
 ```bash
 pnpm seed
 ```
-- Inserts a usable multi-entity dataset (brain items, events, threads/messages, feed cards, tasks/sessions, artifacts).
+- Inserts a realistic single-user MVP dataset for manual QA:
+  - 12 brain items
+  - 8 feed cards
+  - 3 threads with message history
+  - 4 tasks
+  - 3 sessions (running + finished history)
+  - persisted AI artifact history (summary + classification)
 - Optional override:
   - `YURBRAIN_SEED_USER_ID` for seeded user id.
 
@@ -163,6 +170,10 @@ pnpm reseed
 - `/events` is intentionally disabled (`403`).
 - AI routes include deterministic fallback behavior for timeout/invalid model output.
 - Client requests use relative paths (`fetch(path)`), so local API routing/proxy setup controls runtime connectivity.
+- Item detail continuity is persisted via `GET /brain-items/:id/artifacts` (no local-storage dependency for AI artifact history).
+- Task/session continuity is persisted via `GET /sessions?taskId=...` and `GET /sessions?userId=...`.
+- Feed contract now includes source linkage/action semantics:
+  - `taskId`, `availableActions`, `stateFlags`, `whyShown`
 
 ## 8) Fast sanity loop
 
