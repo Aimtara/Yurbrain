@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("brain-item CRUD + validation error mapping", async () => {
   const invalidCreate = await app.inject({
     method: "POST",

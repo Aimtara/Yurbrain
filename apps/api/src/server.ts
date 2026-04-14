@@ -11,43 +11,60 @@ import { registerTaskRoutes } from "./routes/tasks";
 import { registerThreadRoutes } from "./routes/threads";
 import { createState } from "./state";
 
-const state = createState();
-const app = Fastify({ logger: true });
-registerObservability(app);
+type ServerOptions = {
+  databasePath?: string;
+  migrationsPath?: string;
+};
 
-app.setErrorHandler((error, request, reply) => {
-  const requestIdHeader = (request.headers["x-request-id"] as string | undefined)?.trim() || request.id;
-  reply.header("x-request-id", requestIdHeader);
+export function createServer(options: ServerOptions = {}) {
+  const isTestEnvironment = process.env.NODE_ENV === "test";
+  const state = createState(options);
+  const app = Fastify({ logger: !isTestEnvironment });
+  registerObservability(app);
 
-  if (error instanceof ZodError) {
-    const issues = error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
-    const envelope = buildErrorEnvelope(request, 400, "Validation failed", issues);
-    return reply.code(400).send({
-      ...envelope,
-      message: "Validation failed",
-      requestId: requestIdHeader,
-      issues
-    });
-  }
+  app.setErrorHandler((error, request, reply) => {
+    const requestIdHeader = (request.headers["x-request-id"] as string | undefined)?.trim() || request.id;
+    reply.header("x-request-id", requestIdHeader);
 
-  app.log.error({ err: error, requestId: request.id }, "unhandled_error");
-  const envelope = buildErrorEnvelope(request, 500, "Internal server error");
-  return reply.code(500).send({ ...envelope, message: "Internal server error", requestId: requestIdHeader });
-});
+    if (error instanceof ZodError) {
+      const issues = error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
+      const envelope = buildErrorEnvelope(request, 400, "Validation failed", issues);
+      return reply.code(400).send({
+        ...envelope,
+        message: "Validation failed",
+        requestId: requestIdHeader,
+        issues
+      });
+    }
 
-registerBrainItemRoutes(app, state);
-registerThreadRoutes(app, state);
-registerMessageRoutes(app, state);
-registerFeedRoutes(app, state);
-registerTaskRoutes(app, state);
-registerSessionRoutes(app, state);
-registerAiRoutes(app, state);
-registerConvertRoutes(app, state);
-
-app.get("/events", async (_request, reply) => {
-  return reply.code(403).send({
-    message: "The /events endpoint is disabled until authentication and per-user event filtering are implemented"
+    app.log.error({ err: error, requestId: request.id }, "unhandled_error");
+    const envelope = buildErrorEnvelope(request, 500, "Internal server error");
+    return reply.code(500).send({ ...envelope, message: "Internal server error", requestId: requestIdHeader });
   });
-});
+
+  registerBrainItemRoutes(app, state);
+  registerThreadRoutes(app, state);
+  registerMessageRoutes(app, state);
+  registerFeedRoutes(app, state);
+  registerTaskRoutes(app, state);
+  registerSessionRoutes(app, state);
+  registerAiRoutes(app, state);
+  registerConvertRoutes(app, state);
+
+  app.get("/events", async (_request, reply) => {
+    return reply.code(403).send({
+      message: "The /events endpoint is disabled until authentication and per-user event filtering are implemented"
+    });
+  });
+
+  app.addHook("onClose", async () => {
+    await state.repo.close();
+  });
+
+  return { app, state };
+}
+
+const server = createServer();
+const { app, state } = server;
 
 export { app, state };

@@ -9,7 +9,7 @@ export async function registerConvertRoutes(app: FastifyInstance, state: AppStat
     const decision = convertToTaskDecision(payload);
 
     if (decision.outcome === "create_task") {
-      state.tasks.set(decision.task.id, decision.task);
+      await state.repo.createTask(decision.task);
     }
 
     return reply.code(201).send(AiConvertResponseSchema.parse(decision));

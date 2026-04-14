@@ -9,21 +9,20 @@ export async function registerThreadRoutes(app: FastifyInstance, state: AppState
     const now = new Date().toISOString();
     const thread = { id: randomUUID(), targetItemId, kind, createdAt: now, updatedAt: now };
 
-    state.threads.set(thread.id, thread);
-    state.messages.set(thread.id, []);
+    await state.repo.createThread(thread);
 
     return reply.code(201).send(thread);
   });
 
   app.get("/threads/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const thread = state.threads.get(id);
+    const thread = await state.repo.getThreadById(id);
     if (!thread) return reply.code(404).send({ message: "Thread not found" });
     return reply.send(thread);
   });
 
   app.get("/threads/by-target", async (request) => {
     const { targetItemId } = request.query as { targetItemId?: string };
-    return Array.from(state.threads.values()).filter((thread) => !targetItemId || thread.targetItemId === targetItemId);
+    return state.repo.listThreads(targetItemId);
   });
 }

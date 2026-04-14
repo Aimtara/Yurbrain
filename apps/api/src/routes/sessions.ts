@@ -6,7 +6,7 @@ import type { AppState } from "../state";
 export async function registerSessionRoutes(app: FastifyInstance, state: AppState) {
   app.post("/tasks/:id/start", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const session = startTaskSession(state, id);
+    const session = await startTaskSession(state, id);
 
     if (!session) {
       return reply.code(404).send({ message: "Task not found" });
@@ -17,7 +17,7 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
 
   app.post("/sessions/:id/pause", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const session = pauseSession(state, id);
+    const session = await pauseSession(state, id);
 
     if (!session) {
       return reply.code(404).send({ message: "Session not found or already finished" });
@@ -28,7 +28,7 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
 
   app.post("/sessions/:id/finish", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const session = finishSession(state, id);
+    const session = await finishSession(state, id);
 
     if (!session) {
       return reply.code(404).send({ message: "Session not found or already finished" });

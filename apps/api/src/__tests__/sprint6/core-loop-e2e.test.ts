@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", async () => {
   const userId = "99999999-9999-4999-8999-999999999999";
 

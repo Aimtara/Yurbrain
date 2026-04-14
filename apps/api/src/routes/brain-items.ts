@@ -27,8 +27,8 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
       updatedAt: now
     });
 
-    state.brainItems.set(item.id, item);
-    state.events.push({
+    await state.repo.createBrainItem(item);
+    await state.repo.appendEvent({
       id: randomUUID(),
       userId: item.userId,
       eventType: EventTypeSchema.parse("brain_item_created"),
@@ -41,7 +41,7 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
 
   app.get("/brain-items/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const item = state.brainItems.get(id);
+    const item = await state.repo.getBrainItemById(id);
     if (!item) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
@@ -56,12 +56,12 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
       return reply.code(400).send({ message: "userId query parameter is required" });
     }
 
-    return Array.from(state.brainItems.values()).filter((item) => item.userId === userId);
+    return state.repo.listBrainItemsByUser(userId);
   });
 
   app.patch("/brain-items/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const existing = state.brainItems.get(id);
+    const existing = await state.repo.getBrainItemById(id);
 
     if (!existing) {
       return reply.code(404).send({ message: "Brain item not found" });
@@ -74,8 +74,14 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
       updatedAt: new Date().toISOString()
     });
 
-    state.brainItems.set(id, updated);
-    state.events.push({
+    await state.repo.updateBrainItem(id, {
+      type: updated.type,
+      title: updated.title,
+      rawContent: updated.rawContent,
+      status: updated.status,
+      updatedAt: updated.updatedAt
+    });
+    await state.repo.appendEvent({
       id: randomUUID(),
       userId: updated.userId,
       eventType: EventTypeSchema.parse("brain_item_updated"),

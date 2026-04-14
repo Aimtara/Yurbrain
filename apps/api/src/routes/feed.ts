@@ -25,17 +25,18 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
 
     request.log.info({ event: "feed_request_started", userId, lens, includeSnoozed, limit }, "feed request started");
 
-    if (state.feedCards.size === 0 && userId) {
-      const generated = Array.from(state.brainItems.values())
-        .filter((item) => item.userId === userId)
-        .map((item) => generateCardFromItem(item));
-
-      for (const card of generated) {
-        state.feedCards.set(card.id, card);
+    if (userId) {
+      const existingCards = await state.repo.listFeedCardsByUser(userId);
+      if (existingCards.length === 0) {
+        const generated = (await state.repo.listBrainItemsByUser(userId)).map((item) => generateCardFromItem(item));
+        for (const card of generated) {
+          await state.repo.createFeedCard(card);
+        }
       }
     }
 
-    const candidates = gatherFeedCandidates(state.feedCards.values(), {
+    const cards = userId ? await state.repo.listFeedCardsByUser(userId) : [];
+    const candidates = gatherFeedCandidates(cards, {
       userId,
       lens,
       includeSnoozed: includeSnoozed === "true"
@@ -47,7 +48,6 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       { requestId: request.id, userId, lens, candidateCount: candidates.length, rankedCount: ranked.length },
       "feed_ranked"
     );
-    return ranked.slice(0, parseLimit(limit));
     const sliced = ranked.slice(0, parseLimit(limit));
     request.log.info({ event: "feed_rank_completed", returnedCount: sliced.length, userId, lens }, "feed rank completed");
     return sliced;
@@ -68,46 +68,47 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       createdAt: new Date().toISOString()
     };
 
-    state.feedCards.set(card.id, card);
+    await state.repo.createFeedCard(card);
     return reply.code(201).send(card);
   });
 
   app.post("/feed/:id/dismiss", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const card = state.feedCards.get(id);
+    const card = await state.repo.getFeedCardById(id);
     if (!card) {
       request.log.warn({ event: "feed_card_missing", action: "dismiss", cardId: id }, "feed dismiss missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
-    card.dismissed = true;
+    await state.repo.updateFeedCard(id, { dismissed: true });
     return reply.send({ ok: true });
   });
 
   app.post("/feed/:id/snooze", async (request, reply) => {
     const { id } = request.params as { id: string };
     const { minutes = 60 } = request.body as { minutes?: number };
-    const card = state.feedCards.get(id);
+    const card = await state.repo.getFeedCardById(id);
     if (!card) {
       request.log.warn({ event: "feed_card_missing", action: "snooze", cardId: id }, "feed snooze missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
 
     const snoozeMinutes = Math.max(5, Math.min(minutes, 60 * 24 * 7));
-    card.snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
-    return reply.send({ ok: true, snoozedUntil: card.snoozedUntil });
+    const snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
+    await state.repo.updateFeedCard(id, { snoozedUntil });
+    return reply.send({ ok: true, snoozedUntil });
   });
 
   app.post("/feed/:id/refresh", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const card = state.feedCards.get(id);
+    const card = await state.repo.getFeedCardById(id);
     if (!card) {
       request.log.warn({ event: "feed_card_missing", action: "refresh", cardId: id }, "feed refresh missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
 
-    card.refreshCount = (card.refreshCount ?? 0) + 1;
-    card.lastRefreshedAt = new Date().toISOString();
-    request.log.info({ event: "feed_card_refreshed", cardId: id, refreshCount: card.refreshCount }, "feed card refreshed");
-    return reply.send({ ok: true, refreshCount: card.refreshCount });
+    const refreshCount = (card.refreshCount ?? 0) + 1;
+    await state.repo.updateFeedCard(id, { refreshCount, lastRefreshedAt: new Date().toISOString() });
+    request.log.info({ event: "feed_card_refreshed", cardId: id, refreshCount }, "feed card refreshed");
+    return reply.send({ ok: true, refreshCount });
   });
 }

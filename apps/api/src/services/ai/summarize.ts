@@ -24,7 +24,7 @@ export async function summarizeItem(
     metadata: ai.metadata
   });
 
-  state.artifacts.set(artifact.id, artifact);
+  await state.repo.createArtifact(artifact);
   log?.info({ event: "summary_artifact_persisted", artifactId: artifact.id, itemId: input.itemId, correlationId }, "summary persisted");
   return { ...artifact, ai, fallbackUsed, fallbackReason };
 }

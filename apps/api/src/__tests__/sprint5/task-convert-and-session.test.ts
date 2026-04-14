@@ -3,6 +3,10 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+test.after(async () => {
+  await app.close();
+});
+
 test("POST /ai/convert returns not_recommended for very short content", async () => {
   const response = await app.inject({
     method: "POST",

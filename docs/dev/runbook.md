@@ -110,18 +110,34 @@ That direct Node command fails in this repo setup.
 ```bash
 pnpm --filter @yurbrain/db db:migrate
 ```
-- Requires reachable Postgres via `DATABASE_URL`.
-- Fails in default environments without DB connectivity.
+- Applies SQL migrations against local persistent PGlite storage by default.
+- Optional override paths:
+  - `YURBRAIN_DB_PATH` for DB data directory
+  - `YURBRAIN_MIGRATIONS_PATH` for migration directory
 
 ### Migration generation
 ```bash
 pnpm --filter @yurbrain/db db:generate
 ```
 
+### Reset DB
+```bash
+pnpm --filter @yurbrain/db db:reset
+```
+- Clears and recreates the local DB data directory.
+
+### Seed DB
+```bash
+pnpm --filter @yurbrain/db db:seed
+```
+- Inserts deterministic baseline records (brain item, thread/message, feed card, task/session, artifact).
+- Optional override:
+  - `YURBRAIN_SEED_USER_ID` for seeded user id.
+
 ## 7) Reality checks
 
-- API runtime state is in-memory and resets on API restart.
-- There is no first-class seed/reset script at root or in `@yurbrain/db`.
+- API runtime state is DB-backed and survives API restart when using the same DB path.
+- `@yurbrain/db` includes first-class `db:reset` and `db:seed` scripts.
 - `/events` is intentionally disabled (`403`).
 - AI routes include deterministic fallback behavior for timeout/invalid model output.
 - Client requests use relative paths (`fetch(path)`), so local API routing/proxy setup controls runtime connectivity.
