@@ -6,9 +6,15 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:mobile": "pnpm --filter mobile start",
+    "bootstrap": "pnpm install && pnpm reset && pnpm seed",
+    "dev": "pnpm dev:api",
+    "dev:all": "turbo run dev --parallel --filter=api --filter=web --filter=mobile",
+    "dev:mobile": "pnpm --filter mobile dev",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
+    "reset": "node tooling/scripts/reset-dev-db.mjs",
+    "seed": "node tooling/scripts/seed-dev-db.mjs",
+    "reseed": "pnpm reset && pnpm seed",
     "test:e2e": "pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts",
     "lint": "turbo lint",
     "test": "turbo test",
