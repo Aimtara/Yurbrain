@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   apiClient,
+  classifyBrainItem,
   convertToTask,
   createBrainItem,
-  classifyBrainItem,
   createThread,
   dismissFeedCard,
   endpoints,
@@ -16,24 +16,31 @@ import {
   listThreadMessages,
   listThreadsByTarget,
   pauseSession,
-  sendMessage,
-  startTaskSession,
-  updateTask,
   queryBrainItemThread,
   refreshFeedCard,
+  sendMessage,
   snoozeFeedCard,
-  summarizeBrainItem
+  startTaskSession,
+  summarizeBrainItem,
+  updateTask
 } from "@yurbrain/client";
 import {
   ActiveSessionScreen,
-  BrainItemScreen,
   CaptureComposer,
+  ExecutionLensBar,
   FeedCard,
-  FeedLensBar,
+  FocusFeedScreen,
+  FounderModeToggle,
+  FounderSummarySurface,
   ItemChatPanel,
+  ItemDetailScreen,
   TaskDetailCard,
+  type ExecutionLens,
+  type FeedCardVariant,
   type FeedLens
 } from "@yurbrain/ui";
+
+type Surface = "feed" | "item" | "session";
 
 type FeedCardDto = {
   id: string;
@@ -46,12 +53,14 @@ type FeedCardDto = {
     reasons: string[];
   };
 };
+
 type ItemArtifactDto = {
   id: string;
   type: "summary" | "classification" | "relation" | "feed_card";
   payload: Record<string, unknown>;
   createdAt: string;
 };
+
 type BrainItemDto = {
   id: string;
   userId: string;
@@ -62,6 +71,7 @@ type BrainItemDto = {
   createdAt: string;
   updatedAt: string;
 };
+
 type ThreadDto = {
   id: string;
   targetItemId: string;
@@ -69,6 +79,7 @@ type ThreadDto = {
   createdAt: string;
   updatedAt: string;
 };
+
 type MessageDto = {
   id: string;
   threadId: string;
@@ -76,6 +87,7 @@ type MessageDto = {
   content: string;
   createdAt: string;
 };
+
 type TaskDto = {
   id: string;
   userId: string;
@@ -86,6 +98,7 @@ type TaskDto = {
   createdAt: string;
   updatedAt: string;
 };
+
 type SessionDto = {
   id: string;
   taskId: string;
@@ -93,6 +106,7 @@ type SessionDto = {
   startedAt: string;
   endedAt: string | null;
 };
+
 type ConvertResponse =
   | {
       outcome: "create_task";
@@ -111,11 +125,27 @@ type ConvertResponse =
       reason: string;
     };
 
+type ContinuityContext = {
+  whyShown?: string;
+  changedSince?: string;
+  nextStep?: string;
+  lastTouched?: string;
+};
+
+type FeedCardModel = {
+  card: FeedCardDto;
+  variant: FeedCardVariant;
+  continuity: ContinuityContext;
+};
+
 const userId = "11111111-1111-1111-1111-111111111111";
 const storageKeys = {
   activeLens: "yurbrain.activeLens",
   selectedItemId: "yurbrain.selectedItemId",
-  selectedTaskId: "yurbrain.selectedTaskId"
+  selectedTaskId: "yurbrain.selectedTaskId",
+  founderMode: "yurbrain.founderMode",
+  executionLens: "yurbrain.executionLens",
+  activeSurface: "yurbrain.activeSurface"
 } as const;
 
 function deriveArtifactText(payload: Record<string, unknown>): string {
@@ -132,28 +162,74 @@ function deriveArtifactText(payload: Record<string, unknown>): string {
 }
 
 function selectActiveSession(sessions: SessionDto[]): SessionDto | null {
-  if (sessions.length === 0) {
-    return null;
-  }
+  if (sessions.length === 0) return null;
   const live = sessions.find((session) => session.state !== "finished");
   return live ?? sessions[0] ?? null;
+}
+
+function formatRelative(isoValue?: string): string | undefined {
+  if (!isoValue) return undefined;
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) return undefined;
+  const deltaMs = Date.now() - date.getTime();
+  const minutes = Math.round(deltaMs / 60000);
+  if (minutes < 60) return `${Math.max(minutes, 1)}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
+function inferVariant(card: FeedCardDto, relatedTask?: TaskDto): FeedCardVariant {
+  if (relatedTask?.status === "done") return "done";
+  if (relatedTask?.status === "in_progress") return "execution";
+  const summary = card.whyShown.summary.toLowerCase();
+  if (summary.includes("blocked") || summary.includes("stale") || summary.includes("waiting")) return "blocked";
+  if (summary.includes("resume") || summary.includes("revisit") || summary.includes("return")) return "resume";
+  if (summary.includes("in progress") || summary.includes("next step") || summary.includes("continue")) return "execution";
+  return "default";
+}
+
+function inferNextStep(card: FeedCardDto, variant: FeedCardVariant): string {
+  const reasonWithStep = card.whyShown.reasons.find((reason) => /next|step|follow|continue|resume/i.test(reason));
+  if (reasonWithStep) return reasonWithStep;
+  if (variant === "blocked") return "Leave one short note on what is blocking this, then snooze.";
+  if (variant === "done") return "Close the loop with a reflection note and return to feed.";
+  return "Open and add one continuation note.";
+}
+
+function inferContinuityNote(card: FeedCardDto): string | undefined {
+  return card.whyShown.reasons.find((reason) => !/next|step|follow|continue|resume/i.test(reason));
+}
+
+function matchesExecutionLens(variant: FeedCardVariant, lens: ExecutionLens): boolean {
+  if (lens === "all") return true;
+  if (lens === "ready_to_move") return variant === "execution" || variant === "resume";
+  if (lens === "needs_unblock") return variant === "blocked";
+  return variant === "execution" || variant === "done";
 }
 
 export default function Page() {
   const [hydrated, setHydrated] = useState(false);
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
+  const [executionLens, setExecutionLens] = useState<ExecutionLens>("all");
+  const [founderMode, setFounderMode] = useState(false);
+  const [activeSurface, setActiveSurface] = useState<Surface>("feed");
+
   const [captureDraft, setCaptureDraft] = useState("");
   const [items, setItems] = useState<BrainItemDto[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
+  const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [selectedContinuity, setSelectedContinuity] = useState<ContinuityContext | null>(null);
+
   const [commentThreadId, setCommentThreadId] = useState("");
   const [chatThreadId, setChatThreadId] = useState("");
   const [commentMessages, setCommentMessages] = useState<MessageDto[]>([]);
   const [chatMessages, setChatMessages] = useState<MessageDto[]>([]);
-  const [artifactHistoryByItem, setArtifactHistoryByItem] = useState<
-    Record<string, { summary: string[]; classification: string[] }>
-  >({});
+
+  const [artifactHistoryByItem, setArtifactHistoryByItem] = useState<Record<string, { summary: string[]; classification: string[] }>>({});
   const [tasks, setTasks] = useState<TaskDto[]>([]);
-  const [selectedTaskId, setSelectedTaskId] = useState("");
   const [activeSession, setActiveSession] = useState<SessionDto | null>(null);
 
   const [captureLoading, setCaptureLoading] = useState(false);
@@ -161,32 +237,103 @@ export default function Page() {
   const [itemContextLoading, setItemContextLoading] = useState(false);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
-  const [chatFallbackNotice, setChatFallbackNotice] = useState("");
-  const [lastAction, setLastAction] = useState("");
-  const [conversionNotice, setConversionNotice] = useState("");
-  const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
   const [feedError, setFeedError] = useState("");
-  const [lastQuestion, setLastQuestion] = useState("");
   const [chatError, setChatError] = useState("");
   const [taskError, setTaskError] = useState("");
+  const [chatFallbackNotice, setChatFallbackNotice] = useState("");
+  const [conversionNotice, setConversionNotice] = useState("");
+  const [lastAction, setLastAction] = useState("");
+  const [lastQuestion, setLastQuestion] = useState("");
+  const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
   const selectedArtifacts = useMemo(() => {
-    if (!selectedItem) {
-      return { summary: [], classification: [] };
-    }
+    if (!selectedItem) return { summary: [], classification: [] };
     return artifactHistoryByItem[selectedItem.id] ?? { summary: [], classification: [] };
   }, [artifactHistoryByItem, selectedItem]);
-  const chatLines = useMemo(
-    () =>
-      chatMessages.map((message) => {
-        if (message.role === "assistant") return `AI: ${message.content}`;
-        if (message.role === "system") return `System: ${message.content}`;
-        return `You: ${message.content}`;
-      }),
-    [chatMessages]
+
+  const taskById = useMemo(() => {
+    const map = new Map<string, TaskDto>();
+    tasks.forEach((task) => map.set(task.id, task));
+    return map;
+  }, [tasks]);
+
+  const itemById = useMemo(() => {
+    const map = new Map<string, BrainItemDto>();
+    items.forEach((item) => map.set(item.id, item));
+    return map;
+  }, [items]);
+
+  const feedModels = useMemo<FeedCardModel[]>(() => {
+    return feedCards.map((card) => {
+      const linkedTask = card.taskId ? taskById.get(card.taskId) : undefined;
+      const linkedItem = card.itemId ? itemById.get(card.itemId) : undefined;
+      const variant = inferVariant(card, linkedTask);
+      return {
+        card,
+        variant,
+        continuity: {
+          whyShown: card.whyShown.summary,
+          changedSince: inferContinuityNote(card),
+          nextStep: inferNextStep(card, variant),
+          lastTouched: formatRelative(linkedItem?.updatedAt ?? linkedTask?.updatedAt)
+        }
+      };
+    });
+  }, [feedCards, itemById, taskById]);
+
+  const visibleFeedModels = useMemo(() => {
+    if (!founderMode) return feedModels;
+    return feedModels.filter((model) => matchesExecutionLens(model.variant, executionLens));
+  }, [executionLens, feedModels, founderMode]);
+
+  const founderStats = useMemo(
+    () => [
+      { label: "Cards in focus", value: String(visibleFeedModels.length) },
+      {
+        label: "Ready to move",
+        value: String(feedModels.filter((model) => model.variant === "execution" || model.variant === "resume").length)
+      },
+      { label: "Needs unblock", value: String(feedModels.filter((model) => model.variant === "blocked").length) }
+    ],
+    [feedModels, visibleFeedModels.length]
   );
+
+  const suggestedFocus = useMemo(() => {
+    const candidate =
+      visibleFeedModels.find((model) => model.card.itemId && (model.variant === "execution" || model.variant === "resume")) ??
+      visibleFeedModels.find((model) => model.card.itemId);
+    if (!candidate || !candidate.card.itemId) return null;
+    return {
+      title: candidate.card.title,
+      reason: candidate.continuity.whyShown ?? "Worth revisiting now.",
+      nextStep: candidate.continuity.nextStep ?? "Open and leave one continuation note.",
+      onOpen: () => {
+        setSelectedItemId(candidate.card.itemId ?? "");
+        setSelectedContinuity(candidate.continuity);
+        setActiveSurface("item");
+      }
+    };
+  }, [visibleFeedModels]);
+
+  const founderSummaryText = useMemo(() => {
+    if (feedModels.length === 0) {
+      return "Capture a few thoughts first. Founder mode will summarize execution signals once your feed has continuity history.";
+    }
+    const blocked = feedModels.filter((model) => model.variant === "blocked").length;
+    const execution = feedModels.filter((model) => model.variant === "execution" || model.variant === "resume").length;
+    if (blocked > execution) {
+      return "Most items are waiting on unblock signals. Favor one tiny unblock note before starting another session.";
+    }
+    return "Momentum is healthy. Pick one ready item, do a tiny session, then return to the feed.";
+  }, [feedModels]);
+
+  const reentryMessage = useMemo(() => {
+    if (selectedItem) return `Last continuity touchpoint: ${selectedItem.title}.`;
+    if (lastAction) return `Last action: ${lastAction}.`;
+    return "Everything starts here. Open a card, continue, and return.";
+  }, [lastAction, selectedItem]);
 
   useEffect(() => {
     const storedLens = window.localStorage.getItem(storageKeys.activeLens);
@@ -201,9 +348,20 @@ export default function Page() {
       setActiveLens(storedLens);
     }
 
+    const storedExecutionLens = window.localStorage.getItem(storageKeys.executionLens);
+    if (storedExecutionLens === "all" || storedExecutionLens === "ready_to_move" || storedExecutionLens === "needs_unblock" || storedExecutionLens === "momentum") {
+      setExecutionLens(storedExecutionLens);
+    }
+
+    const storedSurface = window.localStorage.getItem(storageKeys.activeSurface);
+    if (storedSurface === "feed" || storedSurface === "item" || storedSurface === "session") {
+      setActiveSurface(storedSurface);
+    }
+
+    const storedFounderMode = window.localStorage.getItem(storageKeys.founderMode);
+    setFounderMode(storedFounderMode === "1");
     setSelectedItemId(window.localStorage.getItem(storageKeys.selectedItemId) ?? "");
     setSelectedTaskId(window.localStorage.getItem(storageKeys.selectedTaskId) ?? "");
-
     setHydrated(true);
   }, []);
 
@@ -211,6 +369,21 @@ export default function Page() {
     if (!hydrated) return;
     window.localStorage.setItem(storageKeys.activeLens, activeLens);
   }, [activeLens, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.executionLens, executionLens);
+  }, [executionLens, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.activeSurface, activeSurface);
+  }, [activeSurface, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.founderMode, founderMode ? "1" : "0");
+  }, [founderMode, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -267,7 +440,7 @@ export default function Page() {
       setFeedCards(cards);
       setFeedError("");
     } catch {
-      setFeedError("Feed is unavailable right now. You can retry.");
+      setFeedError("Feed is unavailable right now. Retry in a moment.");
       setFeedCards([]);
     } finally {
       setFeedLoading(false);
@@ -277,7 +450,7 @@ export default function Page() {
   async function loadItems() {
     try {
       const response = await apiClient<BrainItemDto[]>(`${endpoints.brainItems}?userId=${encodeURIComponent(userId)}`);
-      const nextItems = [...response].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const nextItems = [...response].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       setItems(nextItems);
       setCaptureError("");
       if (nextItems.length === 0) {
@@ -288,7 +461,7 @@ export default function Page() {
         setSelectedItemId(nextItems[0].id);
       }
     } catch {
-      setCaptureError("Could not load your captured items.");
+      setCaptureError("Could not load captured items.");
     }
   }
 
@@ -307,7 +480,7 @@ export default function Page() {
         setSelectedTaskId(nextTasks[0].id);
       }
     } catch {
-      setTaskError("Could not load tasks.");
+      setTaskError("Could not load execution tasks.");
     } finally {
       setTasksLoading(false);
     }
@@ -318,18 +491,14 @@ export default function Page() {
       const sessions = await listSessions<SessionDto[]>({ taskId });
       setActiveSession(selectActiveSession(sessions));
     } catch {
-      setTaskError("Could not load task sessions.");
+      setTaskError("Could not load sessions for this task.");
       setActiveSession(null);
     }
   }
 
   function syncItemArtifacts(itemId: string, artifacts: ItemArtifactDto[]) {
-    const summary = artifacts
-      .filter((artifact) => artifact.type === "summary")
-      .map((artifact) => deriveArtifactText(artifact.payload));
-    const classification = artifacts
-      .filter((artifact) => artifact.type === "classification")
-      .map((artifact) => deriveArtifactText(artifact.payload));
+    const summary = artifacts.filter((artifact) => artifact.type === "summary").map((artifact) => deriveArtifactText(artifact.payload));
+    const classification = artifacts.filter((artifact) => artifact.type === "classification").map((artifact) => deriveArtifactText(artifact.payload));
     setArtifactHistoryByItem((current) => ({
       ...current,
       [itemId]: { summary, classification }
@@ -339,13 +508,9 @@ export default function Page() {
   async function loadSelectedItemContext(itemId: string) {
     setItemContextLoading(true);
     try {
-      const [threads, artifacts] = await Promise.all([
-        listThreadsByTarget<ThreadDto[]>(itemId),
-        listBrainItemArtifacts<ItemArtifactDto[]>(itemId)
-      ]);
+      const [threads, artifacts] = await Promise.all([listThreadsByTarget<ThreadDto[]>(itemId), listBrainItemArtifacts<ItemArtifactDto[]>(itemId)]);
       const commentThread = threads.find((thread) => thread.kind === "item_comment") ?? null;
       const chatThread = threads.find((thread) => thread.kind === "item_chat") ?? null;
-
       setCommentThreadId(commentThread?.id ?? "");
       setChatThreadId(chatThread?.id ?? "");
 
@@ -362,10 +527,11 @@ export default function Page() {
       } else {
         setChatMessages([]);
       }
+
       syncItemArtifacts(itemId, artifacts);
       setChatError("");
     } catch {
-      setChatError("Could not load comments/chat for this item.");
+      setChatError("Could not load continuity context for this item.");
       setCommentMessages([]);
       setChatMessages([]);
     } finally {
@@ -374,12 +540,8 @@ export default function Page() {
   }
 
   async function ensureThreadForItem(itemId: string, kind: "item_comment" | "item_chat") {
-    if (kind === "item_comment" && itemId === selectedItemId && commentThreadId) {
-      return commentThreadId;
-    }
-    if (kind === "item_chat" && itemId === selectedItemId && chatThreadId) {
-      return chatThreadId;
-    }
+    if (kind === "item_comment" && itemId === selectedItemId && commentThreadId) return commentThreadId;
+    if (kind === "item_chat" && itemId === selectedItemId && chatThreadId) return chatThreadId;
 
     const threads = await listThreadsByTarget<ThreadDto[]>(itemId);
     const existing = threads.find((thread) => thread.kind === kind);
@@ -402,13 +564,8 @@ export default function Page() {
   async function createComment(itemId: string, content: string) {
     const normalized = content.trim();
     if (!normalized) return null;
-
-    const thread = await ensureThreadForItem(itemId, "item_comment");
-    const created = await sendMessage<MessageDto>({
-      threadId: thread,
-      role: "user",
-      content: normalized
-    });
+    const threadId = await ensureThreadForItem(itemId, "item_comment");
+    const created = await sendMessage<MessageDto>({ threadId, role: "user", content: normalized });
     if (itemId === selectedItemId) {
       setCommentMessages((current) => [...current, created]);
     }
@@ -420,19 +577,15 @@ export default function Page() {
     if (!normalized) return;
     setCaptureLoading(true);
     setCaptureError("");
-
     const normalizedTitle = normalized.replace(/\s+/g, " ").slice(0, 80);
-    const title = normalizedTitle.length === 0 ? "Captured note" : normalizedTitle;
+    const title = normalizedTitle.length > 0 ? normalizedTitle : "Captured note";
+
     try {
-      const created = await createBrainItem<BrainItemDto>({
-        userId,
-        type: "note",
-        title,
-        rawContent: normalized
-      });
+      const created = await createBrainItem<BrainItemDto>({ userId, type: "note", title, rawContent: normalized });
       setCaptureDraft("");
       setItems((current) => [created, ...current.filter((item) => item.id !== created.id)]);
       setSelectedItemId(created.id);
+      setLastAction("Captured a new note.");
       await Promise.all([loadFeed(activeLens), loadTasks()]);
     } catch {
       setCaptureError("Capture failed. Retry.");
@@ -451,59 +604,46 @@ export default function Page() {
         sourceMessageId: input.sourceMessageId ?? null,
         content: input.content
       });
-
       if (result.outcome === "create_task") {
         setTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
         setSelectedTaskId(result.task.id);
-        setConversionNotice(`Task created: ${result.task.title}`);
+        setConversionNotice(`Planned: ${result.task.title}`);
       } else if (result.outcome === "mini_plan") {
-        setConversionNotice(`AI suggested a mini plan (${result.steps.length} steps) instead of a task.`);
+        setConversionNotice(`AI suggested a mini plan (${result.steps.length} steps) to keep execution lightweight.`);
       } else {
-        setConversionNotice(`Task conversion skipped: ${result.reason}`);
+        setConversionNotice(`Conversion skipped: ${result.reason}`);
       }
       await loadTasks();
     } catch {
-      setTaskError("Could not convert to task.");
+      setTaskError("Could not convert into execution step.");
     }
   }
 
   async function runQuickAction(action: "summarize" | "classify" | "convert_to_task") {
     if (!selectedItem) return;
     setLastAction(action);
-    if (action === "convert_to_task" && selectedItem) {
+    if (action === "convert_to_task") {
       await runConvert({ itemId: selectedItem.id, content: selectedItem.rawContent });
       return;
     }
 
     try {
       if (action === "summarize") {
-        const response = await summarizeBrainItem<{ ai: { content: string } }>({
-          itemId: selectedItem.id,
-          rawContent: selectedItem.rawContent
-        });
+        const response = await summarizeBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
         setArtifactHistoryByItem((current) => {
           const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
           return {
             ...current,
-            [selectedItem.id]: {
-              summary: [response.ai.content, ...existing.summary],
-              classification: existing.classification
-            }
+            [selectedItem.id]: { summary: [response.ai.content, ...existing.summary], classification: existing.classification }
           };
         });
       } else {
-        const response = await classifyBrainItem<{ ai: { content: string } }>({
-          itemId: selectedItem.id,
-          rawContent: selectedItem.rawContent
-        });
+        const response = await classifyBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
         setArtifactHistoryByItem((current) => {
           const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
           return {
             ...current,
-            [selectedItem.id]: {
-              summary: existing.summary,
-              classification: [response.ai.content, ...existing.classification]
-            }
+            [selectedItem.id]: { summary: existing.summary, classification: [response.ai.content, ...existing.classification] }
           };
         });
       }
@@ -516,32 +656,20 @@ export default function Page() {
     if (!selectedItem) return;
     setLastQuestion(question);
     setChatError("");
-
     try {
       const activeThreadId = await ensureThreadForItem(selectedItem.id, "item_chat");
-
-      const response = await queryBrainItemThread<{
-        userMessage: MessageDto;
-        message: MessageDto;
-        fallbackUsed: boolean;
-      }>({
+      const response = await queryBrainItemThread<{ userMessage: MessageDto; message: MessageDto; fallbackUsed: boolean }>({
         threadId: activeThreadId,
         question
       });
       setChatMessages((current) => [...current, response.userMessage, response.message]);
       setChatFallbackNotice(response.fallbackUsed ? "AI fallback used for this response." : "");
     } catch {
-      setChatError("Could not reach AI query. You can retry your last message.");
-      setChatFallbackNotice("AI query unavailable; defaulting to local echo.");
+      setChatError("Could not reach AI query. Retry your last question.");
+      setChatFallbackNotice("AI query unavailable; using local echo fallback.");
       setChatMessages((current) => [
         ...current,
-        {
-          id: `local-user-${Date.now()}`,
-          threadId: chatThreadId,
-          role: "user",
-          content: question,
-          createdAt: new Date().toISOString()
-        },
+        { id: `local-user-${Date.now()}`, threadId: chatThreadId, role: "user", content: question, createdAt: new Date().toISOString() },
         {
           id: `local-assistant-${Date.now()}`,
           threadId: chatThreadId,
@@ -553,105 +681,159 @@ export default function Page() {
     }
   }
 
+  function openItemFromModel(model: FeedCardModel) {
+    if (!model.card.itemId) return;
+    setSelectedItemId(model.card.itemId);
+    setSelectedContinuity(model.continuity);
+    setActiveSurface("item");
+  }
+
+  function openTaskFromCard(taskId: string) {
+    setSelectedTaskId(taskId);
+    setActiveSurface("session");
+  }
+
+  const timelineEntries = useMemo(
+    () =>
+      commentMessages.map((message) => ({
+        id: message.id,
+        label: message.content,
+        timestamp: formatRelative(message.createdAt)
+      })),
+    [commentMessages]
+  );
+
+  const chatLines = useMemo(
+    () =>
+      chatMessages.map((message) => {
+        if (message.role === "assistant") return `AI: ${message.content}`;
+        if (message.role === "system") return `System: ${message.content}`;
+        return `You: ${message.content}`;
+      }),
+    [chatMessages]
+  );
+
   return (
-    <main>
-      <h1>Yurbrain Core Loop</h1>
-      <p>capture → feed → item → comment/AI → task → session → persistence</p>
-
-      <section>
-        <h2>Capture</h2>
-        <CaptureComposer value={captureDraft} onChange={setCaptureDraft} onSubmit={captureItem} />
-        {captureLoading ? <p>Saving capture...</p> : null}
-        {captureError ? <p>{captureError}</p> : null}
-      </section>
-
-      <hr />
-
-      <section>
-        <h2>Feed</h2>
-      <FeedLensBar
-        lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
+    <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
+      {activeSurface === "feed" ? (
+        <FocusFeedScreen
+        title="Focus Feed"
+        subtitle="Recognition first. Continue one thought at a time."
+        reentryMessage={reentryMessage}
         activeLens={activeLens}
-        onChange={setActiveLens}
-      />
-      <button type="button" onClick={() => void loadFeed(activeLens)}>
-        Reload feed
-      </button>
-      {feedLoading ? <p>Loading feed...</p> : null}
-      {feedError ? (
-        <div>
-          <p>{feedError}</p>
-          <button onClick={() => void loadFeed(activeLens)}>Retry feed</button>
-        </div>
-      ) : null}
-      {!feedError && feedCards.length === 0 ? <p>No cards for this lens yet.</p> : null}
-      {feedCards.map((card) => (
-        <FeedCard
-          key={card.id}
-          title={card.title}
-          body={card.body}
-          whyShown={card.whyShown}
-          onComment={async (comment) => {
-            if (!card.itemId) return;
-            setSelectedItemId(card.itemId);
-            await createComment(card.itemId, comment);
-          }}
-          onConvertToTask={async () => {
-            if (!card.itemId) return;
-            await runConvert({ itemId: card.itemId, content: card.body });
-          }}
-          onDismiss={async () => {
-            await dismissFeedCard<{ ok: boolean }>(card.id);
-            await loadFeed(activeLens);
-          }}
-          onSnooze={async (minutes) => {
-            await snoozeFeedCard<{ ok: boolean }>(card.id, minutes);
-            await loadFeed(activeLens);
-          }}
-          onRefresh={async () => {
-            await refreshFeedCard<{ ok: boolean }>(card.id);
-            await loadFeed(activeLens);
-          }}
+        lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
+        onLensChange={setActiveLens}
+        loading={feedLoading}
+        errorMessage={feedError}
+        onRetry={() => void loadFeed(activeLens)}
+        onReload={() => void loadFeed(activeLens)}
+        hasCards={visibleFeedModels.length > 0}
+        founderToggle={<FounderModeToggle enabled={founderMode} onToggle={setFounderMode} />}
+        executionLens={founderMode ? <ExecutionLensBar activeLens={executionLens} onChange={setExecutionLens} /> : undefined}
+        captureComposer={
+          <div style={{ display: "grid", gap: "12px" }}>
+            <h2 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Capture</h2>
+            <CaptureComposer value={captureDraft} onChange={setCaptureDraft} onSubmit={captureItem} />
+            {captureLoading ? <p style={{ margin: 0 }}>Saving capture...</p> : null}
+            {captureError ? <p style={{ margin: 0 }}>{captureError}</p> : null}
+          </div>
+        }
+        founderSummary={
+          founderMode ? <FounderSummarySurface stats={founderStats} suggestedFocus={suggestedFocus} summary={founderSummaryText} /> : undefined
+        }
+        feedContent={visibleFeedModels.map((model) => (
+            <FeedCard
+              key={model.card.id}
+              variant={model.variant}
+              badge={activeLens.replaceAll("_", " ")}
+              title={model.card.title}
+              body={model.card.body}
+              whyShown={model.card.whyShown}
+              lastTouched={model.continuity.lastTouched}
+              continuityNote={model.continuity.changedSince}
+              nextStep={model.continuity.nextStep}
+              onOpen={
+                model.card.itemId
+                  ? () => openItemFromModel(model)
+                  : model.card.taskId
+                    ? () => openTaskFromCard(model.card.taskId ?? "")
+                    : undefined
+              }
+              onComment={
+                model.card.itemId
+                  ? (comment) =>
+                      void (async () => {
+                        await createComment(model.card.itemId ?? "", comment);
+                        setLastAction("Added continuation note from feed.");
+                      })()
+                  : undefined
+              }
+              onConvertToTask={
+                model.card.itemId
+                  ? () =>
+                      void (async () => {
+                        await runConvert({ itemId: model.card.itemId ?? "", content: model.card.body });
+                        setActiveSurface("session");
+                      })()
+                  : undefined
+              }
+              onDismiss={() =>
+                void (async () => {
+                  await dismissFeedCard<{ ok: boolean }>(model.card.id);
+                  await loadFeed(activeLens);
+                })()
+              }
+              onSnooze={(minutes) =>
+                void (async () => {
+                  await snoozeFeedCard<{ ok: boolean }>(model.card.id, minutes);
+                  await loadFeed(activeLens);
+                })()
+              }
+              onRefresh={() =>
+                void (async () => {
+                  await refreshFeedCard<{ ok: boolean }>(model.card.id);
+                  await loadFeed(activeLens);
+                })()
+              }
+            />
+          ))}
         />
-      ))}
-      {feedCards.map((card) =>
-        card.itemId ? (
-          <button key={`${card.id}-open`} type="button" onClick={() => setSelectedItemId(card.itemId ?? "")}>
-            Open item from card: {card.title}
-          </button>
-        ) : card.taskId ? (
-          <button key={`${card.id}-open-task`} type="button" onClick={() => setSelectedTaskId(card.taskId ?? "")}>
-            Open task from card: {card.title}
-          </button>
-        ) : null
-      )}
-      </section>
+      ) : null}
 
-      <hr />
+      {activeSurface === "feed" && (conversionNotice || taskError || tasksLoading) ? (
+        <section
+          style={{
+            margin: "0 auto",
+            maxWidth: "960px",
+            borderRadius: "20px",
+            border: "1px solid #e2e8f0",
+            background: "#ffffff",
+            padding: "16px",
+            display: "grid",
+            gap: "8px"
+          }}
+        >
+          {tasksLoading ? <p style={{ margin: 0 }}>Loading task context...</p> : null}
+          {conversionNotice ? <p style={{ margin: 0 }}>{conversionNotice}</p> : null}
+          {taskError ? <p style={{ margin: 0 }}>{taskError}</p> : null}
+        </section>
+      ) : null}
 
-      <section>
-        <h2>Items</h2>
-        {items.length === 0 ? <p>No captured items yet.</p> : null}
-        {items.map((item) => (
-          <button key={item.id} type="button" onClick={() => setSelectedItemId(item.id)}>
-            {item.title}
-          </button>
-        ))}
-      </section>
-
-      <hr />
-
-      <section>
-        <h2>Item</h2>
-        {!selectedItem ? <p>Select an item from feed or list.</p> : null}
-        {selectedItem ? (
-          <>
-            {itemContextLoading ? <p>Loading item context...</p> : null}
-            <BrainItemScreen
-              item={selectedItem}
-              comments={commentMessages.map((message) => message.content)}
+      {activeSurface === "item" ? (
+        <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px" }}>
+          {selectedItem ? (
+            <ItemDetailScreen
+              item={{ title: selectedItem.title, rawContent: selectedItem.rawContent }}
+              whyShown={selectedContinuity?.whyShown}
+              changedSince={selectedContinuity?.changedSince}
+              nextStep={selectedContinuity?.nextStep}
+              lastTouched={selectedContinuity?.lastTouched}
               summary={selectedArtifacts.summary[0]}
               classification={selectedArtifacts.classification[0]}
+              timeline={timelineEntries}
+              loading={itemContextLoading}
+              errorMessage={chatError}
+              onBackToFeed={() => setActiveSurface("feed")}
               onQuickAction={(action) => void runQuickAction(action)}
               onAddComment={(comment) => {
                 void createComment(selectedItem.id, comment);
@@ -661,87 +843,108 @@ export default function Page() {
                   const created = await createComment(selectedItem.id, comment);
                   if (!created) return;
                   await runConvert({ itemId: selectedItem.id, content: created.content, sourceMessageId: created.id });
+                  setActiveSurface("session");
                 })();
               }}
+              chatPanel={
+                <ItemChatPanel
+                  onSend={(question) => void runAiQuery(question)}
+                  messages={chatLines}
+                  mode="ai_query"
+                  fallbackNotice={chatFallbackNotice}
+                  errorMessage={chatError}
+                  onRetry={lastQuestion ? () => void runAiQuery(lastQuestion) : undefined}
+                />
+              }
+              artifactHistory={
+                <div style={{ borderRadius: "16px", border: "1px solid #e2e8f0", padding: "16px", background: "#f8fafc" }}>
+                  <h3 style={{ marginTop: 0 }}>AI continuity artifacts</h3>
+                  <p style={{ marginBottom: "6px" }}>Summary artifacts: {selectedArtifacts.summary.length}</p>
+                  <ul style={{ marginTop: 0 }}>
+                    {selectedArtifacts.summary.slice(0, 3).map((entry, index) => (
+                      <li key={`summary-${index}`}>{entry}</li>
+                    ))}
+                  </ul>
+                  <p style={{ marginBottom: "6px" }}>Classification artifacts: {selectedArtifacts.classification.length}</p>
+                  <ul style={{ marginTop: 0 }}>
+                    {selectedArtifacts.classification.slice(0, 3).map((entry, index) => (
+                      <li key={`classification-${index}`}>{entry}</li>
+                    ))}
+                  </ul>
+                </div>
+              }
             />
-            <ItemChatPanel
-              onSend={(question) => void runAiQuery(question)}
-              messages={chatLines}
-              mode="ai_query"
-              fallbackNotice={chatFallbackNotice}
-              errorMessage={chatError}
-              onRetry={lastQuestion ? () => void runAiQuery(lastQuestion) : undefined}
-            />
-            <div>
-              <h3>AI artifact history</h3>
-              <p>Summary artifacts: {selectedArtifacts.summary.length}</p>
-              <ul>
-                {selectedArtifacts.summary.slice(0, 3).map((entry, index) => (
-                  <li key={`summary-${index}`}>{entry}</li>
-                ))}
-              </ul>
-              <p>Classification artifacts: {selectedArtifacts.classification.length}</p>
-              <ul>
-                {selectedArtifacts.classification.slice(0, 3).map((entry, index) => (
-                  <li key={`classification-${index}`}>{entry}</li>
-                ))}
-              </ul>
+          ) : (
+            <div style={{ borderRadius: "20px", border: "1px dashed #cbd5e1", background: "#ffffff", padding: "20px" }}>
+              <p style={{ margin: 0 }}>Pick a feed card to restore continuity.</p>
             </div>
-            <p>Last quick action: {lastAction || "none"}</p>
-          </>
-        ) : null}
-      </section>
+          )}
+        </section>
+      ) : null}
 
-      <hr />
-
-      <section>
-        <h2>Task + Session</h2>
-        {tasksLoading ? <p>Loading tasks...</p> : null}
-        {taskError ? <p>{taskError}</p> : null}
-        {conversionNotice ? <p>{conversionNotice}</p> : null}
-        {tasks.length === 0 ? <p>No tasks yet.</p> : null}
-        {tasks.map((task) => (
-          <button key={task.id} type="button" onClick={() => setSelectedTaskId(task.id)}>
-            {task.title} ({task.status})
-          </button>
-        ))}
-        {selectedTask ? (
-          <>
-            <TaskDetailCard
-              title={selectedTask.title}
-              status={selectedTask.status}
-              onStart={async () => {
-                const session = await startTaskSession<SessionDto>(selectedTask.id);
-                setActiveSession(session);
-                await loadTasks();
-                await loadSessionsForTask(selectedTask.id);
-              }}
-              onMarkDone={async () => {
-                await updateTask<TaskDto>(selectedTask.id, { status: "done" });
-                await loadTasks();
-                await loadSessionsForTask(selectedTask.id);
-              }}
-            />
-            {activeSession && activeSession.taskId === selectedTask.id ? (
-              <ActiveSessionScreen
-                state={activeSession.state}
-                onPause={async () => {
+      {activeSurface === "session" ? (
+        <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
+          <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Execution session</h2>
+              <button type="button" onClick={() => setActiveSurface("feed")}>
+                Back to Focus Feed
+              </button>
+            </div>
+            {!selectedTask ? <p style={{ margin: 0 }}>Pick a task from a feed card to start a session.</p> : null}
+            {selectedTask ? (
+              <TaskDetailCard
+                title={selectedTask.title}
+                status={selectedTask.status}
+                onStart={() =>
+                  void (async () => {
+                    const session = await startTaskSession<SessionDto>(selectedTask.id);
+                    setActiveSession(session);
+                    await loadTasks();
+                    await loadSessionsForTask(selectedTask.id);
+                  })()
+                }
+                onMarkDone={() =>
+                  void (async () => {
+                    await updateTask<TaskDto>(selectedTask.id, { status: "done" });
+                    await loadTasks();
+                    await loadSessionsForTask(selectedTask.id);
+                    setLastAction("Marked task done.");
+                  })()
+                }
+              />
+            ) : null}
+          </div>
+          {selectedTask && activeSession && activeSession.taskId === selectedTask.id ? (
+            <ActiveSessionScreen
+              taskTitle={selectedTask.title}
+              state={activeSession.state}
+              onPause={() =>
+                void (async () => {
                   const updated = await pauseSession<SessionDto>(activeSession.id);
                   setActiveSession(updated);
                   await loadTasks();
                   await loadSessionsForTask(selectedTask.id);
-                }}
-                onFinish={async () => {
+                })()
+              }
+              onFinish={() =>
+                void (async () => {
                   const updated = await finishSession<SessionDto>(activeSession.id);
                   setActiveSession(updated);
                   await loadTasks();
                   await loadSessionsForTask(selectedTask.id);
-                }}
-              />
-            ) : null}
-          </>
-        ) : null}
-      </section>
+                  setLastAction("Finished a session.");
+                })()
+              }
+              onReturnToFeed={() => setActiveSurface("feed")}
+            />
+          ) : (
+            <div style={{ borderRadius: "20px", border: "1px dashed #94a3b8", background: "#ffffff", padding: "20px" }}>
+              <p style={{ margin: 0 }}>No active session yet. Start one from the task card when you are ready.</p>
+            </div>
+          )}
+        </section>
+      ) : null}
     </main>
   );
 }
