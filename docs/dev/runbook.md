@@ -33,6 +33,13 @@ pnpm install
 
 Expected: succeeds. You may see a warning about ignored build scripts (`esbuild`, `sharp`).
 
+### Cloud agent environment expectation
+
+For Cursor Cloud agent runs, dependencies should be preinstalled by the environment setup agent so contributors do not repeat `pnpm install` on every task.  
+Use [cursor.com/onboard](https://cursor.com/onboard) and apply this prompt:
+
+> Inspect this monorepo and update the cloud agent environment config so workspace dependencies are preinstalled at startup using pnpm. Ensure `pnpm --filter web build` and `pnpm --filter api test` run immediately without manual install.
+
 ## 3) Start apps (separate terminals)
 
 ### API
