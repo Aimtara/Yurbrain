@@ -17,12 +17,12 @@ Feed:
 - GET /feed
 - POST /feed/:id/dismiss
 - POST /feed/:id/snooze
+- POST /feed/:id/refresh
 
 AI:
-- POST /ai/brain-items/:id/summarize
-- POST /ai/brain-items/:id/classify
-- POST /ai/brain-items/:id/relate
-- POST /ai/brain-items/:id/query
+- POST /ai/summarize
+- POST /ai/classify
+- POST /ai/query
 - POST /ai/convert
 - POST /ai/feed/generate-card
 

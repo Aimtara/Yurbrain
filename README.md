@@ -46,7 +46,7 @@ Included:
    - `pnpm --filter api test`
    - Confirm `apps/api/src/__tests__/sprint6` passes.
 3. **Run full loop smoke test**
-   - `node --test e2e/full-loop.spec.ts`
+   - `pnpm test:e2e`
    - Covers capture → feed resurface → query → convert → act flow.
 4. **Check fallback behavior manually**
    - Web: if feed request fails, retry prompt appears.

@@ -9,6 +9,7 @@
     "dev:mobile": "pnpm --filter mobile start",
     "dev:web": "pnpm --filter web dev",
     "dev:api": "pnpm --filter api dev",
+    "test:e2e": "pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts",
     "lint": "turbo lint",
     "test": "turbo test",
     "build": "turbo build"
