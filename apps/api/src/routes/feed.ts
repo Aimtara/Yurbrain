@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { GenerateFeedCardRequestSchema } from "../../../../packages/contracts/src";
+import { FeedCardSchema, GenerateFeedCardRequestSchema } from "../../../../packages/contracts/src";
 import { gatherFeedCandidates } from "../services/feed/candidates";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import { rankFeedCards } from "../services/feed/rank";
-import type { StoredFeedCard } from "../services/feed/static-feed";
+import type { FeedWhyShown, StoredFeedCard } from "../services/feed/static-feed";
+import { toFeedCardResponse } from "../services/feed/static-feed";
 import type { AppState } from "../state";
 
 function parseLimit(value?: string): number {
@@ -13,6 +14,31 @@ function parseLimit(value?: string): number {
   if (Number.isNaN(parsed)) return 20;
   return Math.max(1, Math.min(parsed, 50));
 }
+
+function parseSnoozeMinutes(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(5, Math.min(Math.trunc(value), 60 * 24 * 7));
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isNaN(parsed)) {
+      return Math.max(5, Math.min(parsed, 60 * 24 * 7));
+    }
+  }
+  return 60;
+}
+
+function toFeedCardContract(card: StoredFeedCard, whyShown: FeedWhyShown) {
+  return FeedCardSchema.parse(toFeedCardResponse(card, whyShown));
+}
+
+const generatedCardWhyShown: FeedWhyShown = {
+  summary: "Generated from one of your saved items.",
+  reasons: [
+    "Generated from one of your saved items.",
+    "Kept concise so your feed stays focused."
+  ]
+};
 
 export async function registerFeedRoutes(app: FastifyInstance, state: AppState) {
   app.get("/feed", async (request) => {
@@ -48,7 +74,9 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       { requestId: request.id, userId, lens, candidateCount: candidates.length, rankedCount: ranked.length },
       "feed_ranked"
     );
-    const sliced = ranked.slice(0, parseLimit(limit));
+    const sliced = ranked
+      .slice(0, parseLimit(limit))
+      .map((rankedCard) => toFeedCardContract(rankedCard.card, rankedCard.whyShown));
     request.log.info({ event: "feed_rank_completed", returnedCount: sliced.length, userId, lens }, "feed rank completed");
     return sliced;
   });
@@ -65,11 +93,14 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       title: title ?? "Generated insight",
       body: body ?? "AI generated placeholder.",
       dismissed: false,
+      snoozedUntil: null,
+      refreshCount: 0,
+      lastRefreshedAt: null,
       createdAt: new Date().toISOString()
     };
 
-    await state.repo.createFeedCard(card);
-    return reply.code(201).send(card);
+    const persisted = await state.repo.createFeedCard(card);
+    return reply.code(201).send(toFeedCardContract(persisted, generatedCardWhyShown));
   });
 
   app.post("/feed/:id/dismiss", async (request, reply) => {
@@ -79,23 +110,27 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       request.log.warn({ event: "feed_card_missing", action: "dismiss", cardId: id }, "feed dismiss missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
-    await state.repo.updateFeedCard(id, { dismissed: true });
-    return reply.send({ ok: true });
+    await state.repo.updateFeedCard(id, { dismissed: true, snoozedUntil: null });
+    return reply.send({ ok: true, id, dismissed: true, snoozedUntil: null });
   });
 
   app.post("/feed/:id/snooze", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { minutes = 60 } = request.body as { minutes?: number };
+    const { minutes } = (request.body as { minutes?: unknown }) ?? {};
     const card = await state.repo.getFeedCardById(id);
     if (!card) {
       request.log.warn({ event: "feed_card_missing", action: "snooze", cardId: id }, "feed snooze missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
 
-    const snoozeMinutes = Math.max(5, Math.min(minutes, 60 * 24 * 7));
+    if (card.dismissed) {
+      return reply.code(409).send({ message: "Cannot snooze a dismissed card" });
+    }
+
+    const snoozeMinutes = parseSnoozeMinutes(minutes);
     const snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
     await state.repo.updateFeedCard(id, { snoozedUntil });
-    return reply.send({ ok: true, snoozedUntil });
+    return reply.send({ ok: true, id, snoozeMinutes, snoozedUntil });
   });
 
   app.post("/feed/:id/refresh", async (request, reply) => {

@@ -10,6 +10,12 @@ export const FeedLensSchema = z.enum(["all", "keep_in_mind", "open_loops", "lear
 export const TaskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export const SessionStateSchema = z.enum(["running", "paused", "finished"]);
 export const EventTypeSchema = z.enum(["brain_item_created", "brain_item_updated"]);
+export const FeedWhyShownSchema = z
+  .object({
+    summary: z.string().min(1).max(160),
+    reasons: z.array(z.string().min(1).max(160)).min(1).max(3)
+  })
+  .strict();
 
 export const BrainItemSchema = z
   .object({
@@ -64,6 +70,11 @@ export const FeedCardSchema = z
     itemId: z.string().uuid().nullable(),
     title: z.string().min(1),
     body: z.string().min(1),
+    dismissed: z.boolean(),
+    snoozedUntil: z.string().datetime().nullable(),
+    refreshCount: z.number().int().min(0),
+    lastRefreshedAt: z.string().datetime().nullable(),
+    whyShown: FeedWhyShownSchema,
     createdAt: z.string().datetime()
   })
   .strict();

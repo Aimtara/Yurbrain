@@ -33,7 +33,16 @@ import {
   type FeedLens
 } from "@yurbrain/ui";
 
-type FeedCardDto = { id: string; itemId: string | null; title: string; body: string };
+type FeedCardDto = {
+  id: string;
+  itemId: string | null;
+  title: string;
+  body: string;
+  whyShown: {
+    summary: string;
+    reasons: string[];
+  };
+};
 type BrainItemDto = {
   id: string;
   userId: string;
@@ -548,6 +557,7 @@ export default function Page() {
           key={card.id}
           title={card.title}
           body={card.body}
+          whyShown={card.whyShown}
           onComment={async (comment) => {
             if (!card.itemId) return;
             setSelectedItemId(card.itemId);

@@ -29,8 +29,10 @@ test("GET /feed applies lens + limit deterministically", async () => {
 
   const resp = await app.inject({ method: "GET", url: `/feed?userId=${userId}&limit=2` });
   assert.equal(resp.statusCode, 200);
-  const body = resp.json<Array<{ id: string }>>();
+  const body = resp.json<Array<{ id: string; whyShown: { summary: string; reasons: string[] } }>>();
   assert.equal(body.length, 2);
+  assert.ok(body.every((card) => card.whyShown.summary.length > 0));
+  assert.ok(body.every((card) => card.whyShown.reasons.length >= 1));
 
   const respAgain = await app.inject({ method: "GET", url: `/feed?userId=${userId}&limit=2` });
   assert.equal(respAgain.statusCode, 200);
@@ -71,4 +73,93 @@ test("GET /feed excludes snoozed cards by default", async () => {
   assert.equal(feedResp.statusCode, 200);
   const cards = feedResp.json<Array<{ id: string }>>();
   assert.equal(cards.some((feedCard) => feedCard.id === card.id), false);
+
+  const includeSnoozedResp = await app.inject({
+    method: "GET",
+    url: "/feed?userId=33333333-3333-3333-3333-333333333333&includeSnoozed=true"
+  });
+  assert.equal(includeSnoozedResp.statusCode, 200);
+  const includeSnoozedCards = includeSnoozedResp.json<Array<{ id: string }>>();
+  assert.equal(includeSnoozedCards.some((feedCard) => feedCard.id === card.id), true);
+});
+
+test("dismissed cards stay hidden and cannot be snoozed", async () => {
+  const userId = "44444444-4444-4444-4444-444444444444";
+  const createResp = await app.inject({
+    method: "POST",
+    url: "/ai/feed/generate-card",
+    payload: {
+      userId,
+      title: "Dismiss me",
+      body: "Card should not surface after dismissal"
+    }
+  });
+
+  assert.equal(createResp.statusCode, 201);
+  const card = createResp.json<{ id: string }>();
+
+  const dismissResp = await app.inject({
+    method: "POST",
+    url: `/feed/${card.id}/dismiss`
+  });
+  assert.equal(dismissResp.statusCode, 200);
+  assert.equal(dismissResp.json<{ dismissed: boolean }>().dismissed, true);
+
+  const snoozeDismissedResp = await app.inject({
+    method: "POST",
+    url: `/feed/${card.id}/snooze`,
+    payload: { minutes: 120 }
+  });
+  assert.equal(snoozeDismissedResp.statusCode, 409);
+
+  const feedResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}`
+  });
+  assert.equal(feedResp.statusCode, 200);
+  const cards = feedResp.json<Array<{ id: string }>>();
+  assert.equal(cards.some((feedCard) => feedCard.id === card.id), false);
+});
+
+test("ranking lowers noisy over-refreshed cards", async () => {
+  const userId = "55555555-5555-4555-8555-555555555555";
+  const calmResp = await app.inject({
+    method: "POST",
+    url: "/ai/feed/generate-card",
+    payload: {
+      userId,
+      title: "Calm card",
+      body: "Stable signal should remain visible"
+    }
+  });
+  assert.equal(calmResp.statusCode, 201);
+  const calmCard = calmResp.json<{ id: string }>();
+
+  const noisyResp = await app.inject({
+    method: "POST",
+    url: "/ai/feed/generate-card",
+    payload: {
+      userId,
+      title: "Noisy card",
+      body: "Repeated refreshes should reduce ranking weight"
+    }
+  });
+  assert.equal(noisyResp.statusCode, 201);
+  const noisyCard = noisyResp.json<{ id: string }>();
+
+  for (let index = 0; index < 4; index += 1) {
+    const refreshResp = await app.inject({
+      method: "POST",
+      url: `/feed/${noisyCard.id}/refresh`
+    });
+    assert.equal(refreshResp.statusCode, 200);
+  }
+
+  const feedResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&limit=2`
+  });
+  assert.equal(feedResp.statusCode, 200);
+  const cards = feedResp.json<Array<{ id: string }>>();
+  assert.equal(cards[0]?.id, calmCard.id);
 });
