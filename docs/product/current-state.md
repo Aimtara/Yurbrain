@@ -1,73 +1,144 @@
-# Yurbrain Current State Checkpoint
+# Yurbrain Current Implementation State
 
-_Last updated: April 14, 2026._
+_Last audited: April 14, 2026 (UTC)._
 
-This document is the single source of truth for what is currently implemented versus what is still prototype/stub behavior.
+This document reflects the **observed implementation state** in the repository right now.
 
-## What is implemented today
+## Classification legend
 
-### Monorepo structure
-- `apps/api`, `apps/web`, `apps/mobile`
-- `packages/contracts`, `packages/client`, `packages/ui`, `packages/db`, `packages/ai`
+- **Implemented**: code path exists and is exercised by tests/builds.
+- **Partial**: code exists, but has notable limitations (non-persistent, placeholder UX, or incomplete execution path).
+- **Stubbed/Mocked**: intentionally placeholder behavior.
 
-### Backend/API (strongest layer)
-- Route groups and service modules for brain items, threads, messages, feed, AI, convert, tasks, and sessions.
-- Deterministic + AI-assisted flow coverage across Sprint 2–6 test suites.
-- Observability middleware and structured error envelopes.
+## Monorepo / root scripts
 
-### Contracts and schema foundation
-- `packages/contracts` contains real request/response + domain schemas.
-- `packages/db` includes schema and additive migrations for planned persistence model.
+### Implemented
+- Workspace layout is active via `pnpm-workspace.yaml` and Turbo (`apps/*`, `packages/*`).
+- Root scripts exist for `dev:api`, `dev:web`, `dev:mobile`, `test`, `lint`, and `build`.
+- `pnpm test` runs successfully through Turbo across packages that define `test` scripts.
+- `pnpm build` runs successfully (web build is active).
 
-### Client surfaces
-- Web shell integrates shared client/UI packages and demonstrates core loop flows.
-- Mobile shell exists and is wired to major flows, but remains less mature than web UX.
+### Partial
+- Root `lint` currently only executes in packages that define a `lint` script (practically `apps/api`), so lint coverage is not monorepo-wide.
+- README still instructs `node --test e2e/full-loop.spec.ts`, which does not execute `.ts` directly in current setup.
 
-## What is stubbed or placeholder behavior
+## apps/api
 
-- Several UI interactions are functional but visually and ergonomically placeholder-level.
-- AI flows include deterministic fallback paths designed for safety over quality.
-- Feed and conversion behavior are present but still tuned as prototype logic, not calibrated product UX.
+### Implemented
+- Fastify server and route registration for:
+  - brain items (`/brain-items` CRUD subset),
+  - threads/messages,
+  - feed ranking/actions,
+  - AI summarize/classify/query,
+  - task creation/update/list + manual convert + AI convert,
+  - session lifecycle (start/pause/finish).
+- Zod request validation and error envelope middleware.
+- Correlation/request headers + request completion logging middleware.
+- Test coverage across sprint suites (`sprint2` through `sprint6`) passes.
 
-## What is deterministic prototype behavior (by design)
+### Partial
+- **Persistence is in-memory only** via `createState()` maps/arrays in `apps/api/src/state.ts`.
+- API behavior resets on process restart.
+- `/events` endpoint is present but intentionally disabled (returns 403).
+- Feed generation is deterministic prototype logic (derived from stored in-memory items/cards), not backed by persisted ranking data.
 
-- API behavior prioritizes deterministic responses in key fallback paths.
-- Test coverage focuses heavily on route/service contract correctness and fallback behavior.
-- End-to-end flow exists as a technical smoke path, not a polished user journey.
+### Stubbed/Mocked
+- AI behavior includes deterministic fallback paths for timeout/invalid model outputs.
+- `/ai/feed/generate-card` returns placeholder-style generated card content when title/body omitted.
 
-## Not production-ready yet
+## apps/web
 
-- Runtime persistence is not integrated: API state is still in-memory, not repository-backed.
-- No durable multi-session continuity guarantees in live runtime.
-- Client UX (especially mobile-first experience and shared design system strategy) is not yet product-grade.
-- Operational hardening (deployment profile, real observability operations, perf budgets, data lifecycle) is incomplete.
+### Implemented
+- Next.js app compiles and builds.
+- Page uses shared client/UI packages and wires feed + AI actions + chat and retry/error states.
 
-## Next milestone: Persistent single-user MVP
+### Partial
+- Uses a hardcoded demo user and demo item IDs.
+- UX is prototype-level and not tied to auth, real session continuity, or durable state.
+- API requests use relative endpoints; correct behavior depends on local runtime/proxy setup.
 
-A single user can:
-- capture thoughts,
-- see them resurface,
-- comment or ask AI,
-- convert to tasks,
-- run sessions,
-- return later with continuity preserved.
+## apps/mobile
 
-## Items that still need to be addressed
+### Implemented
+- Expo entry app renders tab shell + capture field + feed preview attempt.
 
-- [ ] Replace in-memory API runtime state with DB-backed repositories.
-- [ ] Add local seed/reset scripts for repeatable product iteration.
-- [ ] Implement one coherent persistent end-to-end loop (capture → feed → item → comment/AI → convert → session).
-- [ ] Define the UI strategy as shared tokens/contracts + platform-specific components.
-- [ ] Add a local runbook for install, migrate, seed, and running API/web/mobile together.
+### Partial
+- Feed preview call is a best-effort request with fallback text; no robust API base-url/config layer here.
+- No automated tests configured in package scripts.
+- UI is scaffold/prototype level.
 
-## Verification checklist (must pass before claiming production-ready)
+## packages/contracts
 
-- [ ] `pnpm install`
-- [ ] `pnpm --filter api test`
-- [ ] `pnpm --filter @yurbrain/contracts test`
-- [ ] `node --test e2e/full-loop.spec.ts`
-- [ ] Manual persistence validation across API restart
+### Implemented
+- Domain/API schemas exported and used by API route validation and response shaping.
+- Enum tests pass.
 
-## Future work execution instructions
+## packages/db
 
-Follow `docs/product/ai-agent-execution-guide.md` for the ordered implementation plan from prototype to persistent MVP.
+### Implemented
+- Drizzle schema defines domain tables/enums for items, artifacts, threads, messages, feed cards, tasks, sessions, events, preferences.
+- SQL migrations exist (`0000`–`0003`).
+
+### Partial
+- Schema/migrations are **not wired into runtime API persistence**.
+- `db:migrate` requires a reachable Postgres instance and fails in a default environment without it.
+
+### Stubbed/Mocked
+- No seed/reset scripts exist yet in this package or at root.
+
+## packages/client
+
+### Implemented
+- Typed fetch helpers and endpoint wrappers for core API routes.
+
+### Partial
+- Base URL strategy is minimal (`fetch(path)`), so environment-specific API host wiring is left to app runtime.
+- Package test script is currently a placeholder echo.
+
+## packages/ui
+
+### Implemented
+- Shared UI components/tokens/hooks exist and are imported by web app.
+
+### Partial
+- No package-level automated tests in script.
+- Components are functional but still prototype-level in behavior/UX fidelity.
+
+## packages/ai
+
+### Implemented
+- AI task runner/validation/fallback helper functions are present and used by API services.
+
+### Partial
+- Package test script is placeholder echo (no dedicated assertions in this package script).
+
+## Test setup and execution state
+
+### Implemented and passing
+- `pnpm --filter api test`
+- `pnpm --filter @yurbrain/contracts test`
+- `pnpm test` (Turbo)
+- `pnpm build`
+- `pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts`
+
+### Failing / notable gaps
+- `node --test e2e/full-loop.spec.ts` fails because Node does not run `.ts` tests directly in current setup.
+- `pnpm --filter @yurbrain/db db:migrate` fails without an accessible Postgres instance.
+
+## Migrations, seed, and reset flow
+
+### Migrations
+- SQL migrations are present and additive.
+- Drizzle config points to `DATABASE_URL` or defaults to local Postgres on `localhost:5432/yurbrain`.
+
+### Seed/reset
+- No first-class `seed` or `reset` scripts were found at root or in `packages/db`.
+- Current API tests rely on in-process in-memory state and Fastify `app.inject`, not database fixtures.
+
+## Concise finding summary
+
+1. **Most route contracts and service paths are implemented and tested.**
+2. **Runtime persistence is still in-memory** (core limitation).
+3. **DB schema/migrations exist but are not integrated into API runtime.**
+4. **Web/mobile are functional prototype shells, not production-grade clients.**
+5. **Runbook command for root e2e test needed correction to a TypeScript-capable execution path.**
