@@ -11,6 +11,8 @@ import {
   endpoints,
   finishSession,
   getFeed,
+  listBrainItemArtifacts,
+  listSessions,
   listThreadMessages,
   listThreadsByTarget,
   pauseSession,
@@ -36,12 +38,19 @@ import {
 type FeedCardDto = {
   id: string;
   itemId: string | null;
+  taskId: string | null;
   title: string;
   body: string;
   whyShown: {
     summary: string;
     reasons: string[];
   };
+};
+type ItemArtifactDto = {
+  id: string;
+  type: "summary" | "classification" | "relation" | "feed_card";
+  payload: Record<string, unknown>;
+  createdAt: string;
 };
 type BrainItemDto = {
   id: string;
@@ -106,25 +115,28 @@ const userId = "11111111-1111-1111-1111-111111111111";
 const storageKeys = {
   activeLens: "yurbrain.activeLens",
   selectedItemId: "yurbrain.selectedItemId",
-  selectedTaskId: "yurbrain.selectedTaskId",
-  session: "yurbrain.activeSession",
-  summaries: "yurbrain.summaries",
-  classifications: "yurbrain.classifications"
+  selectedTaskId: "yurbrain.selectedTaskId"
 } as const;
 
-function readStorageRecord(key: string): Record<string, string> {
-  const raw = window.localStorage.getItem(key);
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object") return {};
-    const entries = Object.entries(parsed as Record<string, unknown>).filter((entry): entry is [string, string] => {
-      return typeof entry[0] === "string" && typeof entry[1] === "string";
-    });
-    return Object.fromEntries(entries);
-  } catch {
-    return {};
+function deriveArtifactText(payload: Record<string, unknown>): string {
+  if (typeof payload.content === "string" && payload.content.trim().length > 0) {
+    return payload.content;
   }
+  if (Array.isArray(payload.labels) && payload.labels.every((label) => typeof label === "string")) {
+    return `Labels: ${payload.labels.join(", ")}`;
+  }
+  if (typeof payload.rationale === "string" && payload.rationale.trim().length > 0) {
+    return payload.rationale;
+  }
+  return JSON.stringify(payload);
+}
+
+function selectActiveSession(sessions: SessionDto[]): SessionDto | null {
+  if (sessions.length === 0) {
+    return null;
+  }
+  const live = sessions.find((session) => session.state !== "finished");
+  return live ?? sessions[0] ?? null;
 }
 
 export default function Page() {
@@ -137,8 +149,9 @@ export default function Page() {
   const [chatThreadId, setChatThreadId] = useState("");
   const [commentMessages, setCommentMessages] = useState<MessageDto[]>([]);
   const [chatMessages, setChatMessages] = useState<MessageDto[]>([]);
-  const [summaryByItem, setSummaryByItem] = useState<Record<string, string>>({});
-  const [classificationByItem, setClassificationByItem] = useState<Record<string, string>>({});
+  const [artifactHistoryByItem, setArtifactHistoryByItem] = useState<
+    Record<string, { summary: string[]; classification: string[] }>
+  >({});
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [activeSession, setActiveSession] = useState<SessionDto | null>(null);
@@ -159,6 +172,12 @@ export default function Page() {
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
+  const selectedArtifacts = useMemo(() => {
+    if (!selectedItem) {
+      return { summary: [], classification: [] };
+    }
+    return artifactHistoryByItem[selectedItem.id] ?? { summary: [], classification: [] };
+  }, [artifactHistoryByItem, selectedItem]);
   const chatLines = useMemo(
     () =>
       chatMessages.map((message) => {
@@ -185,20 +204,6 @@ export default function Page() {
     setSelectedItemId(window.localStorage.getItem(storageKeys.selectedItemId) ?? "");
     setSelectedTaskId(window.localStorage.getItem(storageKeys.selectedTaskId) ?? "");
 
-    const storedSession = window.localStorage.getItem(storageKeys.session);
-    if (storedSession) {
-      try {
-        const parsed = JSON.parse(storedSession) as SessionDto;
-        if (parsed.id && parsed.taskId && parsed.state) {
-          setActiveSession(parsed);
-        }
-      } catch {
-        window.localStorage.removeItem(storageKeys.session);
-      }
-    }
-
-    setSummaryByItem(readStorageRecord(storageKeys.summaries));
-    setClassificationByItem(readStorageRecord(storageKeys.classifications));
     setHydrated(true);
   }, []);
 
@@ -227,25 +232,6 @@ export default function Page() {
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem(storageKeys.summaries, JSON.stringify(summaryByItem));
-  }, [hydrated, summaryByItem]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(storageKeys.classifications, JSON.stringify(classificationByItem));
-  }, [hydrated, classificationByItem]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    if (!activeSession) {
-      window.localStorage.removeItem(storageKeys.session);
-      return;
-    }
-    window.localStorage.setItem(storageKeys.session, JSON.stringify(activeSession));
-  }, [activeSession, hydrated]);
-
-  useEffect(() => {
-    if (!hydrated) return;
     void Promise.all([loadItems(), loadFeed(activeLens), loadTasks()]);
   }, [hydrated]);
 
@@ -265,6 +251,14 @@ export default function Page() {
     }
     void loadSelectedItemContext(selectedItemId);
   }, [hydrated, selectedItemId]);
+
+  useEffect(() => {
+    if (!hydrated || !selectedTaskId) {
+      setActiveSession(null);
+      return;
+    }
+    void loadSessionsForTask(selectedTaskId);
+  }, [hydrated, selectedTaskId]);
 
   async function loadFeed(lens: FeedLens) {
     setFeedLoading(true);
@@ -319,10 +313,36 @@ export default function Page() {
     }
   }
 
+  async function loadSessionsForTask(taskId: string) {
+    try {
+      const sessions = await listSessions<SessionDto[]>({ taskId });
+      setActiveSession(selectActiveSession(sessions));
+    } catch {
+      setTaskError("Could not load task sessions.");
+      setActiveSession(null);
+    }
+  }
+
+  function syncItemArtifacts(itemId: string, artifacts: ItemArtifactDto[]) {
+    const summary = artifacts
+      .filter((artifact) => artifact.type === "summary")
+      .map((artifact) => deriveArtifactText(artifact.payload));
+    const classification = artifacts
+      .filter((artifact) => artifact.type === "classification")
+      .map((artifact) => deriveArtifactText(artifact.payload));
+    setArtifactHistoryByItem((current) => ({
+      ...current,
+      [itemId]: { summary, classification }
+    }));
+  }
+
   async function loadSelectedItemContext(itemId: string) {
     setItemContextLoading(true);
     try {
-      const threads = await listThreadsByTarget<ThreadDto[]>(itemId);
+      const [threads, artifacts] = await Promise.all([
+        listThreadsByTarget<ThreadDto[]>(itemId),
+        listBrainItemArtifacts<ItemArtifactDto[]>(itemId)
+      ]);
       const commentThread = threads.find((thread) => thread.kind === "item_comment") ?? null;
       const chatThread = threads.find((thread) => thread.kind === "item_chat") ?? null;
 
@@ -342,6 +362,7 @@ export default function Page() {
       } else {
         setChatMessages([]);
       }
+      syncItemArtifacts(itemId, artifacts);
       setChatError("");
     } catch {
       setChatError("Could not load comments/chat for this item.");
@@ -460,19 +481,31 @@ export default function Page() {
           itemId: selectedItem.id,
           rawContent: selectedItem.rawContent
         });
-        setSummaryByItem((current) => ({
-          ...current,
-          [selectedItem.id]: response.ai.content
-        }));
+        setArtifactHistoryByItem((current) => {
+          const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
+          return {
+            ...current,
+            [selectedItem.id]: {
+              summary: [response.ai.content, ...existing.summary],
+              classification: existing.classification
+            }
+          };
+        });
       } else {
         const response = await classifyBrainItem<{ ai: { content: string } }>({
           itemId: selectedItem.id,
           rawContent: selectedItem.rawContent
         });
-        setClassificationByItem((current) => ({
-          ...current,
-          [selectedItem.id]: response.ai.content
-        }));
+        setArtifactHistoryByItem((current) => {
+          const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
+          return {
+            ...current,
+            [selectedItem.id]: {
+              summary: existing.summary,
+              classification: [response.ai.content, ...existing.classification]
+            }
+          };
+        });
       }
     } catch {
       setLastAction(`${action}_failed`);
@@ -586,6 +619,10 @@ export default function Page() {
           <button key={`${card.id}-open`} type="button" onClick={() => setSelectedItemId(card.itemId ?? "")}>
             Open item from card: {card.title}
           </button>
+        ) : card.taskId ? (
+          <button key={`${card.id}-open-task`} type="button" onClick={() => setSelectedTaskId(card.taskId ?? "")}>
+            Open task from card: {card.title}
+          </button>
         ) : null
       )}
       </section>
@@ -613,8 +650,8 @@ export default function Page() {
             <BrainItemScreen
               item={selectedItem}
               comments={commentMessages.map((message) => message.content)}
-              summary={summaryByItem[selectedItem.id]}
-              classification={classificationByItem[selectedItem.id]}
+              summary={selectedArtifacts.summary[0]}
+              classification={selectedArtifacts.classification[0]}
               onQuickAction={(action) => void runQuickAction(action)}
               onAddComment={(comment) => {
                 void createComment(selectedItem.id, comment);
@@ -635,6 +672,21 @@ export default function Page() {
               errorMessage={chatError}
               onRetry={lastQuestion ? () => void runAiQuery(lastQuestion) : undefined}
             />
+            <div>
+              <h3>AI artifact history</h3>
+              <p>Summary artifacts: {selectedArtifacts.summary.length}</p>
+              <ul>
+                {selectedArtifacts.summary.slice(0, 3).map((entry, index) => (
+                  <li key={`summary-${index}`}>{entry}</li>
+                ))}
+              </ul>
+              <p>Classification artifacts: {selectedArtifacts.classification.length}</p>
+              <ul>
+                {selectedArtifacts.classification.slice(0, 3).map((entry, index) => (
+                  <li key={`classification-${index}`}>{entry}</li>
+                ))}
+              </ul>
+            </div>
             <p>Last quick action: {lastAction || "none"}</p>
           </>
         ) : null}
@@ -662,10 +714,12 @@ export default function Page() {
                 const session = await startTaskSession<SessionDto>(selectedTask.id);
                 setActiveSession(session);
                 await loadTasks();
+                await loadSessionsForTask(selectedTask.id);
               }}
               onMarkDone={async () => {
                 await updateTask<TaskDto>(selectedTask.id, { status: "done" });
                 await loadTasks();
+                await loadSessionsForTask(selectedTask.id);
               }}
             />
             {activeSession && activeSession.taskId === selectedTask.id ? (
@@ -675,11 +729,13 @@ export default function Page() {
                   const updated = await pauseSession<SessionDto>(activeSession.id);
                   setActiveSession(updated);
                   await loadTasks();
+                  await loadSessionsForTask(selectedTask.id);
                 }}
                 onFinish={async () => {
                   const updated = await finishSession<SessionDto>(activeSession.id);
                   setActiveSession(updated);
                   await loadTasks();
+                  await loadSessionsForTask(selectedTask.id);
                 }}
               />
             ) : null}

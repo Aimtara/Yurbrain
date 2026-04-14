@@ -1,9 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { SessionResponseSchema } from "../../../../packages/contracts/src";
+import { ListSessionsQuerySchema, SessionListResponseSchema, SessionResponseSchema } from "../../../../packages/contracts/src";
 import { finishSession, pauseSession, startTaskSession } from "../services/sessions/lifecycle";
 import type { AppState } from "../state";
 
 export async function registerSessionRoutes(app: FastifyInstance, state: AppState) {
+  app.get("/sessions", async (request, reply) => {
+    const query = ListSessionsQuerySchema.parse(request.query ?? {});
+    const sessions = await state.repo.listSessions(query);
+    return reply.code(200).send(SessionListResponseSchema.parse(sessions));
+  });
+
   app.post("/tasks/:id/start", async (request, reply) => {
     const { id } = request.params as { id: string };
     const session = await startTaskSession(state, id);

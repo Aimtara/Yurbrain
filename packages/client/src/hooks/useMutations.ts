@@ -89,6 +89,15 @@ export async function finishSession<T>(sessionId: string) {
   return postJson<T>(`/sessions/${sessionId}/finish`, {});
 }
 
+export async function listSessions<T>(query: { taskId?: string; userId?: string; state?: "running" | "paused" | "finished" }) {
+  const params = new URLSearchParams();
+  if (query.taskId) params.set("taskId", query.taskId);
+  if (query.userId) params.set("userId", query.userId);
+  if (query.state) params.set("state", query.state);
+  const rendered = params.toString();
+  return withNormalizedErrors(() => apiClient<T>(`${endpoints.sessions}${rendered ? `?${rendered}` : ""}`));
+}
+
 export async function summarizeItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiSummarize, payload);
 }

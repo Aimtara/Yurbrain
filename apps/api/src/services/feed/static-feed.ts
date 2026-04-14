@@ -4,6 +4,7 @@ export type StoredFeedCard = {
   cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
   lens: "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
   itemId: string | null;
+  taskId: string | null;
   title: string;
   body: string;
   dismissed: boolean;
@@ -22,6 +23,14 @@ export type FeedCardResponse = StoredFeedCard & {
   snoozedUntil: string | null;
   refreshCount: number;
   lastRefreshedAt: string | null;
+  availableActions: Array<"open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh">;
+  stateFlags: {
+    dismissed: boolean;
+    snoozed: boolean;
+    actionable: boolean;
+    hasSourceItem: boolean;
+    hasSourceTask: boolean;
+  };
   whyShown: FeedWhyShown;
 };
 
@@ -30,11 +39,30 @@ export function isCardSnoozed(card: StoredFeedCard, now = new Date()): boolean {
 }
 
 export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown): FeedCardResponse {
+  const snoozedUntil = card.snoozedUntil ?? null;
+  const hasSourceItem = Boolean(card.itemId);
+  const hasSourceTask = Boolean(card.taskId);
+  const availableActions: FeedCardResponse["availableActions"] = ["dismiss", "snooze", "refresh"];
+  if (hasSourceItem) {
+    availableActions.unshift("open_item", "comment", "ask_ai", "convert_to_task");
+  }
+  if (hasSourceTask) {
+    availableActions.unshift("open_task", "start_session");
+  }
+
   return {
     ...card,
-    snoozedUntil: card.snoozedUntil ?? null,
+    snoozedUntil,
     refreshCount: card.refreshCount ?? 0,
     lastRefreshedAt: card.lastRefreshedAt ?? null,
+    availableActions,
+    stateFlags: {
+      dismissed: card.dismissed,
+      snoozed: isCardSnoozed(card),
+      actionable: hasSourceItem || hasSourceTask,
+      hasSourceItem,
+      hasSourceTask
+    },
     whyShown
   };
 }

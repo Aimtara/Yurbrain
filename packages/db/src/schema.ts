@@ -45,15 +45,26 @@ export const itemArtifacts = pgTable("item_artifacts", {
   payload: jsonb("payload").notNull(),
   confidence: text("confidence").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
-});
+},
+  (t) => ({
+    itemCreatedIdx: index("item_artifacts_item_created_idx").on(t.itemId, t.createdAt),
+    itemTypeIdx: index("item_artifacts_item_type_idx").on(t.itemId, t.type)
+  })
+);
 
-export const itemThreads = pgTable("item_threads", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  targetItemId: uuid("target_item_id").notNull(),
-  kind: threadKindEnum("kind").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
-});
+export const itemThreads = pgTable(
+  "item_threads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    targetItemId: uuid("target_item_id").notNull(),
+    kind: threadKindEnum("kind").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => ({
+    targetKindIdx: index("item_threads_target_kind_created_idx").on(t.targetItemId, t.kind, t.createdAt)
+  })
+);
 
 export const threadMessages = pgTable(
   "thread_messages",
@@ -75,6 +86,7 @@ export const feedCards = pgTable(
     cardType: feedCardTypeEnum("card_type").notNull(),
     lens: text("lens").default("all").notNull(),
     itemId: uuid("item_id"),
+    taskId: uuid("task_id"),
     title: text("title").notNull(),
     body: text("body").notNull(),
     dismissed: boolean("dismissed").default(false).notNull(),
@@ -84,7 +96,9 @@ export const feedCards = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
   },
   (t) => ({
-    userCreatedIdx: index("feed_cards_user_created_idx").on(t.userId, t.createdAt)
+    userCreatedIdx: index("feed_cards_user_created_idx").on(t.userId, t.createdAt),
+    userLensCreatedIdx: index("feed_cards_user_lens_created_idx").on(t.userId, t.lens, t.createdAt),
+    taskIdx: index("feed_cards_task_idx").on(t.taskId)
   })
 );
 
@@ -106,13 +120,20 @@ export const tasks = pgTable(
   })
 );
 
-export const sessions = pgTable("sessions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  taskId: uuid("task_id").notNull(),
-  state: sessionStateEnum("state").default("running").notNull(),
-  startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
-  endedAt: timestamp("ended_at", { withTimezone: true })
-});
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskId: uuid("task_id").notNull(),
+    state: sessionStateEnum("state").default("running").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true })
+  },
+  (t) => ({
+    taskStateIdx: index("sessions_task_state_idx").on(t.taskId, t.state),
+    taskStartedIdx: index("sessions_task_started_idx").on(t.taskId, t.startedAt)
+  })
+);
 
 export const events = pgTable(
   "events",
