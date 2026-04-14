@@ -13,8 +13,30 @@ export type StoredFeedCard = {
   createdAt: string;
 };
 
+export type FeedWhyShown = {
+  summary: string;
+  reasons: string[];
+};
+
+export type FeedCardResponse = StoredFeedCard & {
+  snoozedUntil: string | null;
+  refreshCount: number;
+  lastRefreshedAt: string | null;
+  whyShown: FeedWhyShown;
+};
+
 export function isCardSnoozed(card: StoredFeedCard, now = new Date()): boolean {
   return Boolean(card.snoozedUntil && new Date(card.snoozedUntil).getTime() > now.getTime());
+}
+
+export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown): FeedCardResponse {
+  return {
+    ...card,
+    snoozedUntil: card.snoozedUntil ?? null,
+    refreshCount: card.refreshCount ?? 0,
+    lastRefreshedAt: card.lastRefreshedAt ?? null,
+    whyShown
+  };
 }
 
 export function getDeterministicFeed(cards: Iterable<StoredFeedCard>, userId?: string): StoredFeedCard[] {

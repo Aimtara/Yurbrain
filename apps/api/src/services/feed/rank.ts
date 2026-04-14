@@ -1,41 +1,152 @@
-import type { StoredFeedCard } from "./static-feed";
+import type { FeedWhyShown, StoredFeedCard } from "./static-feed";
 
 type RankOptions = {
   lens?: StoredFeedCard["lens"];
   now?: Date;
 };
 
-export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}): StoredFeedCard[] {
+type BaseScore = {
+  card: StoredFeedCard;
+  recencyScore: number;
+  lensMatchBoost: number;
+  actionabilityBoost: number;
+  refreshPenalty: number;
+  stalePenalty: number;
+  baseScore: number;
+};
+
+type ScoreBreakdown = BaseScore & {
+  typeDiversityPenalty: number;
+  lensDiversityPenalty: number;
+  finalScore: number;
+};
+
+export type RankedFeedCard = {
+  card: StoredFeedCard;
+  score: number;
+  whyShown: FeedWhyShown;
+};
+
+const ACTIONABLE_CARD_TYPES: ReadonlySet<StoredFeedCard["cardType"]> = new Set(["open_loop", "opportunity", "resume"]);
+
+const lensLabels: Record<StoredFeedCard["lens"], string> = {
+  all: "All",
+  keep_in_mind: "Keep in mind",
+  open_loops: "Open loops",
+  learning: "Learning",
+  in_progress: "In progress",
+  recently_commented: "Recently commented"
+};
+
+export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}): RankedFeedCard[] {
   const now = options.now ?? new Date();
-  const typeCounts = countCardTypes(cards);
+  const requestedLens = options.lens ?? "all";
+  const remaining = cards.map((card) => scoreCard(card, requestedLens, now));
+  const selectedTypeCounts: Partial<Record<StoredFeedCard["cardType"], number>> = {};
+  const selectedLensCounts: Partial<Record<StoredFeedCard["lens"], number>> = {};
+  const ranked: RankedFeedCard[] = [];
 
-  return [...cards].sort((a, b) => {
-    const scoreA = scoreCard(a, typeCounts[a.cardType] ?? 0, options.lens, now);
-    const scoreB = scoreCard(b, typeCounts[b.cardType] ?? 0, options.lens, now);
+  while (remaining.length > 0) {
+    let bestIndex = 0;
+    let bestScore = applyDiversityPenalty(remaining[0], selectedTypeCounts, selectedLensCounts, requestedLens);
 
-    if (scoreA === scoreB) {
-      if (a.createdAt === b.createdAt) return a.id.localeCompare(b.id);
-      return b.createdAt.localeCompare(a.createdAt);
+    for (let index = 1; index < remaining.length; index += 1) {
+      const contenderScore = applyDiversityPenalty(remaining[index], selectedTypeCounts, selectedLensCounts, requestedLens);
+      if (isHigherRank(contenderScore, bestScore)) {
+        bestIndex = index;
+        bestScore = contenderScore;
+      }
     }
 
-    return scoreB - scoreA;
-  });
-}
+    const [selected] = remaining.splice(bestIndex, 1);
+    selectedTypeCounts[selected.card.cardType] = (selectedTypeCounts[selected.card.cardType] ?? 0) + 1;
+    selectedLensCounts[selected.card.lens] = (selectedLensCounts[selected.card.lens] ?? 0) + 1;
 
-function scoreCard(card: StoredFeedCard, totalTypeCount: number, lens: StoredFeedCard["lens"] | undefined, now: Date): number {
-  const ageHours = Math.max(0, (now.getTime() - new Date(card.createdAt).getTime()) / 3_600_000);
-  const recencyScore = Math.max(0, 100 - ageHours);
-  const lensBoost = lens && lens !== "all" && card.lens === lens ? 25 : 0;
-  const diversityPenalty = Math.max(0, totalTypeCount - 1) * 2;
-  const refreshBoost = Math.min(card.refreshCount ?? 0, 3);
-
-  return recencyScore + lensBoost + refreshBoost - diversityPenalty;
-}
-
-function countCardTypes(cards: StoredFeedCard[]): Partial<Record<StoredFeedCard["cardType"], number>> {
-  const counts: Partial<Record<StoredFeedCard["cardType"], number>> = {};
-  for (const card of cards) {
-    counts[card.cardType] = (counts[card.cardType] ?? 0) + 1;
+    ranked.push({
+      card: selected.card,
+      score: bestScore.finalScore,
+      whyShown: buildWhyShown(bestScore, requestedLens)
+    });
   }
-  return counts;
+
+  return ranked;
+}
+
+function scoreCard(card: StoredFeedCard, requestedLens: StoredFeedCard["lens"], now: Date): BaseScore {
+  const ageHours = Math.max(0, (now.getTime() - new Date(card.createdAt).getTime()) / 3_600_000);
+  const recencyScore = Math.max(0, 72 - ageHours);
+  const lensMatchBoost = requestedLens !== "all" && card.lens === requestedLens ? 24 : 0;
+  const actionabilityBoost = ACTIONABLE_CARD_TYPES.has(card.cardType) ? 8 : 0;
+  const refreshPenalty = Math.min((card.refreshCount ?? 0) * 4, 16);
+  const stalePenalty = ageHours > 72 ? Math.min(12, Math.floor((ageHours - 72) / 24) * 2 + 2) : 0;
+  const baseScore = recencyScore + lensMatchBoost + actionabilityBoost - refreshPenalty - stalePenalty;
+
+  return {
+    card,
+    recencyScore,
+    lensMatchBoost,
+    actionabilityBoost,
+    refreshPenalty,
+    stalePenalty,
+    baseScore
+  };
+}
+
+function applyDiversityPenalty(
+  base: BaseScore,
+  selectedTypeCounts: Partial<Record<StoredFeedCard["cardType"], number>>,
+  selectedLensCounts: Partial<Record<StoredFeedCard["lens"], number>>,
+  requestedLens: StoredFeedCard["lens"]
+): ScoreBreakdown {
+  const typeDiversityPenalty = (selectedTypeCounts[base.card.cardType] ?? 0) * 10;
+  const lensDiversityPenalty = requestedLens === "all" ? (selectedLensCounts[base.card.lens] ?? 0) * 3 : 0;
+
+  return {
+    ...base,
+    typeDiversityPenalty,
+    lensDiversityPenalty,
+    finalScore: base.baseScore - typeDiversityPenalty - lensDiversityPenalty
+  };
+}
+
+function isHigherRank(candidate: ScoreBreakdown, currentBest: ScoreBreakdown): boolean {
+  if (candidate.finalScore !== currentBest.finalScore) {
+    return candidate.finalScore > currentBest.finalScore;
+  }
+  if (candidate.card.createdAt !== currentBest.card.createdAt) {
+    return candidate.card.createdAt > currentBest.card.createdAt;
+  }
+  return candidate.card.id.localeCompare(currentBest.card.id) < 0;
+}
+
+function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["lens"]): FeedWhyShown {
+  const reasons: string[] = [];
+
+  if (requestedLens !== "all" && score.card.lens === requestedLens) {
+    reasons.push(`Matches your ${lensLabels[requestedLens]} lens.`);
+  }
+
+  if (score.recencyScore >= 48) {
+    reasons.push("Recent activity makes this relevant right now.");
+  } else if (score.recencyScore >= 24) {
+    reasons.push("Still fresh enough to be useful.");
+  }
+
+  if (score.actionabilityBoost > 0) {
+    reasons.push("Action-oriented card to maintain momentum.");
+  }
+
+  if (requestedLens === "all" && score.typeDiversityPenalty === 0) {
+    reasons.push("Adds variety to keep this feed from feeling repetitive.");
+  }
+
+  if (reasons.length === 0) {
+    reasons.push("Selected for a balance of relevance and feed quality.");
+  }
+
+  const summary = reasons[0];
+  return {
+    summary,
+    reasons: [summary, ...reasons.slice(1, 3)]
+  };
 }

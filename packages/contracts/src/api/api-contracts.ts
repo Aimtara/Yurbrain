@@ -165,6 +165,8 @@ export const QueryItemResponseSchema = z
 
 export const BrainItemResponseSchema = BrainItemSchema;
 export const BrainItemListResponseSchema = z.array(BrainItemSchema);
+export const FeedCardResponseSchema = FeedCardSchema;
+export const FeedListResponseSchema = z.array(FeedCardResponseSchema);
 export const ManualConvertTaskResponseSchema = TaskSchema;
 export const SessionListResponseSchema = z.array(SessionSchema.extend({ state: SessionStateSchema }));
 
@@ -184,6 +186,8 @@ export type ClassifyItemRequest = z.infer<typeof ClassifyItemRequestSchema>;
 export type QueryItemRequest = z.infer<typeof QueryItemRequestSchema>;
 export type BrainItemResponse = z.infer<typeof BrainItemResponseSchema>;
 export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;
+export type FeedCardResponse = z.infer<typeof FeedCardResponseSchema>;
+export type FeedListResponse = z.infer<typeof FeedListResponseSchema>;
 export type ManualConvertTaskResponse = z.infer<typeof ManualConvertTaskResponseSchema>;
 export type TaskResponse = z.infer<typeof TaskResponseSchema>;
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;

@@ -13,7 +13,15 @@ import {
 } from "@yurbrain/client";
 import { BrainItemScreen, CaptureComposer, FeedCard, FeedLensBar, ItemChatPanel, type FeedLens } from "@yurbrain/ui";
 
-type FeedCardDto = { id: string; title: string; body: string };
+type FeedCardDto = {
+  id: string;
+  title: string;
+  body: string;
+  whyShown: {
+    summary: string;
+    reasons: string[];
+  };
+};
 const userId = "11111111-1111-1111-1111-111111111111";
 
 export default function Page() {
@@ -124,6 +132,7 @@ export default function Page() {
           key={card.id}
           title={card.title}
           body={card.body}
+          whyShown={card.whyShown}
           onComment={(comment) => setComments((current) => [comment, ...current])}
           onConvertToTask={() => setLastAction("convert_to_task")}
           onDismiss={async () => {
