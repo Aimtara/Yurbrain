@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   AiSummaryModeSchema,
   BrainItemTypeSchema,
+  ExploreNodeSchema,
   FeedDensitySchema,
   FeedActionSchema,
   FeedLensSchema,
@@ -43,4 +44,41 @@ test("Personalization enums stay strict", () => {
   assert.throws(() => AiSummaryModeSchema.parse("verbose"));
   assert.throws(() => FeedDensitySchema.parse("dense"));
   assert.throws(() => ResurfacingIntensitySchema.parse("proactive"));
+});
+
+test("Explore node contract validates cluster and layout metadata", () => {
+  const parsed = ExploreNodeSchema.parse({
+    clusterId: "memory-cluster-1",
+    position: { x: 12.5, y: -3.2 },
+    salience: 0.72,
+    grouping: {
+      autoGroupId: "auto-group-a",
+      manualGroupId: "manual-group-alpha",
+      manualGroupLabel: "Weekly synthesis"
+    },
+    relationships: [
+      {
+        targetItemId: "11111111-1111-1111-1111-111111111111",
+        kind: "related",
+        weight: 0.8
+      }
+    ]
+  });
+
+  assert.equal(parsed.clusterId, "memory-cluster-1");
+  assert.equal(parsed.grouping.manualGroupLabel, "Weekly synthesis");
+  assert.equal(parsed.relationships[0]?.kind, "related");
+  assert.throws(() =>
+    ExploreNodeSchema.parse({
+      clusterId: "memory-cluster-1",
+      position: { x: Number.NaN, y: 0 },
+      salience: 0.5,
+      grouping: {
+        autoGroupId: null,
+        manualGroupId: null,
+        manualGroupLabel: null
+      },
+      relationships: []
+    })
+  );
 });
