@@ -57,6 +57,8 @@ export type FeedCardRecord = {
   dismissed: boolean;
   snoozedUntil?: string | null;
   refreshCount?: number;
+  postponeCount?: number;
+  lastPostponedAt?: string | null;
   lastRefreshedAt?: string | null;
   createdAt: string;
 };
@@ -122,7 +124,9 @@ export type DbRepository = {
   listFeedCardsByUser: (userId: string) => Promise<FeedCardRecord[]>;
   updateFeedCard: (
     id: string,
-    updates: Partial<Pick<FeedCardRecord, "dismissed" | "snoozedUntil" | "refreshCount" | "lastRefreshedAt">>
+    updates: Partial<
+      Pick<FeedCardRecord, "dismissed" | "snoozedUntil" | "refreshCount" | "postponeCount" | "lastPostponedAt" | "lastRefreshedAt">
+    >
   ) => Promise<FeedCardRecord | null>;
   createTask: (task: TaskRecord) => Promise<TaskRecord>;
   getTaskById: (id: string) => Promise<TaskRecord | null>;
@@ -208,6 +212,8 @@ function toFeedCardRecord(row: typeof schema.feedCards.$inferSelect): FeedCardRe
     dismissed: row.dismissed,
     snoozedUntil: toIso(row.snoozedUntil),
     refreshCount: row.refreshCount,
+    postponeCount: row.postponeCount,
+    lastPostponedAt: toIso(row.lastPostponedAt),
     lastRefreshedAt: toIso(row.lastRefreshedAt),
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString()
   };
@@ -452,6 +458,8 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             dismissed: card.dismissed,
             snoozedUntil: toDate(card.snoozedUntil),
             refreshCount: card.refreshCount ?? 0,
+            postponeCount: card.postponeCount ?? 0,
+            lastPostponedAt: toDate(card.lastPostponedAt),
             lastRefreshedAt: toDate(card.lastRefreshedAt),
             createdAt: toDate(card.createdAt) ?? undefined
           })
@@ -483,6 +491,12 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
         }
         if (updates.refreshCount !== undefined) {
           patch.refreshCount = updates.refreshCount;
+        }
+        if (updates.postponeCount !== undefined) {
+          patch.postponeCount = updates.postponeCount;
+        }
+        if (updates.lastPostponedAt !== undefined) {
+          patch.lastPostponedAt = toDate(updates.lastPostponedAt);
         }
         if (updates.lastRefreshedAt !== undefined) {
           patch.lastRefreshedAt = toDate(updates.lastRefreshedAt);

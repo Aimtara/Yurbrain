@@ -92,6 +92,8 @@ export const feedCards = pgTable(
     dismissed: boolean("dismissed").default(false).notNull(),
     snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
     refreshCount: integer("refresh_count").default(0).notNull(),
+    postponeCount: integer("postpone_count").default(0).notNull(),
+    lastPostponedAt: timestamp("last_postponed_at", { withTimezone: true }),
     lastRefreshedAt: timestamp("last_refreshed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
   },

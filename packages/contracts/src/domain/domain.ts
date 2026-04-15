@@ -85,6 +85,8 @@ export const FeedCardSchema = z
     dismissed: z.boolean(),
     snoozedUntil: z.string().datetime().nullable(),
     refreshCount: z.number().int().min(0),
+    postponeCount: z.number().int().min(0),
+    lastPostponedAt: z.string().datetime().nullable(),
     lastRefreshedAt: z.string().datetime().nullable(),
     availableActions: z.array(FeedActionSchema).min(1),
     stateFlags: z

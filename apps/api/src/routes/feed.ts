@@ -96,6 +96,8 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       dismissed: false,
       snoozedUntil: null,
       refreshCount: 0,
+      postponeCount: 0,
+      lastPostponedAt: null,
       lastRefreshedAt: null,
       createdAt: new Date().toISOString()
     };
@@ -130,8 +132,10 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
 
     const snoozeMinutes = parseSnoozeMinutes(minutes);
     const snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
-    await state.repo.updateFeedCard(id, { snoozedUntil });
-    return reply.send({ ok: true, id, snoozeMinutes, snoozedUntil });
+    const postponeCount = (card.postponeCount ?? 0) + 1;
+    const lastPostponedAt = new Date().toISOString();
+    await state.repo.updateFeedCard(id, { snoozedUntil, postponeCount, lastPostponedAt });
+    return reply.send({ ok: true, id, snoozeMinutes, snoozedUntil, postponeCount, lastPostponedAt });
   });
 
   app.post("/feed/:id/refresh", async (request, reply) => {

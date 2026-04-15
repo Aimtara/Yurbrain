@@ -13,6 +13,7 @@ type BaseScore = {
   actionabilityBoost: number;
   continuityBoost: number;
   refreshPenalty: number;
+  postponePenalty: number;
   stalePenalty: number;
   baseScore: number;
 };
@@ -90,8 +91,9 @@ function scoreCard(card: StoredFeedCard, requestedLens: StoredFeedCard["lens"], 
   const actionabilityBoost = ACTIONABLE_CARD_TYPES.has(card.cardType) ? 8 : 0;
   const continuityBoost = scoreContinuity(card, now);
   const refreshPenalty = Math.min((card.refreshCount ?? 0) * 4, 16);
+  const postponePenalty = Math.min((card.postponeCount ?? 0) * 3, 18);
   const stalePenalty = ageHours > 72 ? Math.min(12, Math.floor((ageHours - 72) / 24) * 2 + 2) : 0;
-  const baseScore = recencyScore + lensMatchBoost + actionabilityBoost + continuityBoost - refreshPenalty - stalePenalty;
+  const baseScore = recencyScore + lensMatchBoost + actionabilityBoost + continuityBoost - refreshPenalty - postponePenalty - stalePenalty;
 
   return {
     card,
@@ -101,6 +103,7 @@ function scoreCard(card: StoredFeedCard, requestedLens: StoredFeedCard["lens"], 
     actionabilityBoost,
     continuityBoost,
     refreshPenalty,
+    postponePenalty,
     stalePenalty,
     baseScore
   };
@@ -166,6 +169,9 @@ function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["len
 
   if (score.continuityBoost > 0) {
     reasons.push("You revisited this recently, so it stays in your flow.");
+  }
+  if ((score.card.postponeCount ?? 0) > 0) {
+    reasons.push("You've postponed this before, so it stays visible without dominating the feed.");
   }
 
   if (requestedLens === "all" && score.typeDiversityPenalty === 0) {
