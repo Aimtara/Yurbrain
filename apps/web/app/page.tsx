@@ -37,6 +37,7 @@ import {
   FounderSummarySurface,
   ItemChatPanel,
   ItemDetailScreen,
+  PlanPreviewSheet,
   TaskDetailCard,
   TimeWindowSelector,
   type CaptureSubmitIntent,
@@ -140,21 +141,34 @@ type UserPreferenceDto = {
 
 type ConvertResponse =
   | {
-      outcome: "create_task";
+      outcome: "task_created";
       confidence: number;
       task: TaskDto;
+      sourceItemId?: string | null;
+      sourceMessageId?: string | null;
     }
   | {
-      outcome: "mini_plan";
+      outcome: "plan_suggested";
       confidence: number;
       title: string;
       steps: string[];
+      sourceItemId?: string | null;
+      sourceMessageId?: string | null;
     }
   | {
       outcome: "not_recommended";
       confidence: number;
       reason: string;
+      sourceItemId?: string | null;
+      sourceMessageId?: string | null;
     };
+
+type PlanPreviewDraft = {
+  sourceItemId: string;
+  title: string;
+  steps: Array<{ id: string; title: string; minutes: number }>;
+  confidence: number;
+};
 
 type ContinuityContext = {
   whyShown?: string;
@@ -188,6 +202,30 @@ const captureSuccessMessages: Record<CaptureSubmitIntent, string> = {
   save_and_remind: "Saved. Reminder stub captured for follow-up."
 };
 
+function normalizePlanStepMinutes(index: number): number {
+  return index === 0 ? 20 : 15;
+}
+
+const promptStopWords = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "this",
+  "that",
+  "from",
+  "your",
+  "about",
+  "into",
+  "have",
+  "has",
+  "were",
+  "been",
+  "what",
+  "when",
+  "where"
+]);
+
 const timeWindowMinutes: Record<Exclude<TimeWindowOption, "custom">, number> = {
   "2h": 120,
   "4h": 240,
@@ -207,6 +245,53 @@ function deriveArtifactText(payload: Record<string, unknown>): string {
     return payload.rationale;
   }
   return JSON.stringify(payload);
+}
+
+function tokenizeForSimilarity(input: string): string[] {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !promptStopWords.has(token));
+}
+
+function buildRelatedItems(currentItem: BrainItemDto | null, items: BrainItemDto[]): Array<{ id: string; title: string; hint: string }> {
+  if (!currentItem) return [];
+
+  const currentTokens = new Set(tokenizeForSimilarity(`${currentItem.title} ${currentItem.rawContent}`));
+  const candidates = items
+    .filter((item) => item.id !== currentItem.id)
+    .map((item) => {
+      const tokens = tokenizeForSimilarity(`${item.title} ${item.rawContent}`);
+      const overlap = tokens.filter((token) => currentTokens.has(token));
+      return {
+        id: item.id,
+        title: item.title,
+        overlapCount: overlap.length,
+        hint: overlap[0] ? `Shares context around "${overlap[0]}"` : "Resurfaces adjacent thinking",
+        updatedAt: item.updatedAt
+      };
+    })
+    .sort((left, right) => {
+      if (right.overlapCount !== left.overlapCount) return right.overlapCount - left.overlapCount;
+      return right.updatedAt.localeCompare(left.updatedAt);
+    });
+
+  return candidates.slice(0, 3).map((candidate) => ({
+    id: candidate.id,
+    title: candidate.title,
+    hint: candidate.hint
+  }));
+}
+
+function buildSuggestedPrompts(item: BrainItemDto, nextStep?: string): string[] {
+  const prompts = [
+    `Summarize progress on "${item.title}".`,
+    `What should I do next on "${item.title}"?`,
+    nextStep ? `Can you sharpen this next move: ${nextStep}` : `What is one 10-minute action for "${item.title}"?`
+  ];
+
+  return Array.from(new Set(prompts)).slice(0, 3);
 }
 
 function selectActiveSession(sessions: SessionDto[]): SessionDto | null {
@@ -372,6 +457,8 @@ export default function Page() {
   const [taskError, setTaskError] = useState("");
   const [chatFallbackNotice, setChatFallbackNotice] = useState("");
   const [conversionNotice, setConversionNotice] = useState("");
+  const [itemActionNotice, setItemActionNotice] = useState("");
+  const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
   const [timeActionNotice, setTimeActionNotice] = useState("");
   const [lastAction, setLastAction] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
@@ -546,6 +633,12 @@ export default function Page() {
     if (lastAction) return `Last action: ${lastAction}.`;
     return "Everything starts here. Open a card, continue, and return.";
   }, [lastAction, selectedItem]);
+
+  const relatedItemsForDetail = useMemo(() => buildRelatedItems(selectedItem, items), [items, selectedItem]);
+  const suggestedPromptsForDetail = useMemo(() => {
+    if (!selectedItem) return [];
+    return buildSuggestedPrompts(selectedItem, derivedItemContinuity.nextStep);
+  }, [derivedItemContinuity.nextStep, selectedItem]);
 
   useEffect(() => {
     const storedLens = window.localStorage.getItem(storageKeys.activeLens);
@@ -785,6 +878,7 @@ export default function Page() {
 
   async function loadSelectedItemContext(itemId: string) {
     setItemContextLoading(true);
+    setItemActionNotice("");
     try {
       const [threads, artifacts] = await Promise.all([listThreadsByTarget<ThreadDto[]>(itemId), listBrainItemArtifacts<ItemArtifactDto[]>(itemId)]);
       const commentThread = threads.find((thread) => thread.kind === "item_comment") ?? null;
@@ -846,6 +940,7 @@ export default function Page() {
     const created = await sendMessage<MessageDto>({ threadId, role: "user", content: normalized });
     if (itemId === selectedItemId) {
       setCommentMessages((current) => [...current, created]);
+      setItemActionNotice("Comment added to continuity timeline.");
     }
     return created;
   }
@@ -915,14 +1010,20 @@ export default function Page() {
         sourceMessageId: input.sourceMessageId ?? null,
         content: input.content
       });
-      if (result.outcome === "create_task") {
+      if (result.outcome === "task_created") {
         setTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
         setSelectedTaskId(result.task.id);
         setConversionNotice(`Task created: ${result.task.title}`);
         await loadTasks();
         return result.task;
-      } else if (result.outcome === "mini_plan") {
-        setConversionNotice(`AI suggested a mini plan (${result.steps.length} steps) to keep execution lightweight.`);
+      } else if (result.outcome === "plan_suggested") {
+        openPlanPreview({
+          sourceItemId: result.sourceItemId ?? input.itemId,
+          title: result.title,
+          steps: result.steps,
+          confidence: result.confidence
+        });
+        setConversionNotice(`Plan preview ready (${result.steps.length} steps).`);
       } else {
         setConversionNotice(`Conversion skipped: ${result.reason}`);
       }
@@ -1030,6 +1131,7 @@ export default function Page() {
       });
       setChatMessages((current) => [...current, response.userMessage, response.message]);
       setChatFallbackNotice(response.fallbackUsed ? "AI fallback used for this response." : "");
+      setItemActionNotice("Asked Yurbrain in-context.");
     } catch {
       setChatError("Could not reach AI query. Retry your last question.");
       setChatFallbackNotice("AI query unavailable; using local echo fallback.");
@@ -1044,7 +1146,97 @@ export default function Page() {
           createdAt: new Date().toISOString()
         }
       ]);
+      setItemActionNotice("Used local ask fallback.");
     }
+  }
+
+  function handleOpenRelatedItem(itemId: string) {
+    if (!itemId) return;
+    setSelectedItemId(itemId);
+    setSelectedContinuity(null);
+    setItemActionNotice("Opened a related item to continue context.");
+  }
+
+  function handleKeepInMind() {
+    setItemActionNotice("Marked as keep in mind. You can switch to that lens in feed anytime.");
+  }
+
+  function openPlanPreview(input: { sourceItemId: string; title: string; steps: string[]; confidence: number }) {
+    const normalizedSteps = input.steps
+      .map((step, index) => ({
+        id: `${Date.now()}-${index}`,
+        title: step.trim(),
+        minutes: normalizePlanStepMinutes(index)
+      }))
+      .filter((step) => step.title.length > 0);
+    if (normalizedSteps.length === 0) return;
+
+    setPendingPlanPreview({
+      sourceItemId: input.sourceItemId,
+      title: input.title,
+      steps: normalizedSteps,
+      confidence: input.confidence
+    });
+  }
+
+  function updatePlanStepMinutes(stepId: string, minutes: number) {
+    setPendingPlanPreview((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        steps: current.steps.map((step) =>
+          step.id === stepId ? { ...step, minutes: Math.max(5, Math.min(120, Math.trunc(minutes || 0))) } : step
+        )
+      };
+    });
+  }
+
+  async function acceptPlanPreview(startFirstStep: boolean) {
+    if (!pendingPlanPreview) return;
+    setTaskError("");
+    setTasksLoading(true);
+
+    try {
+      const createdTasks: TaskDto[] = [];
+      for (const step of pendingPlanPreview.steps) {
+        const created = await createTask<TaskDto>({
+          userId,
+          title: step.title,
+          sourceItemId: pendingPlanPreview.sourceItemId
+        });
+        createdTasks.push(created);
+      }
+
+      setTasks((current) => {
+        const deduped = current.filter((task) => !createdTasks.some((created) => created.id === task.id));
+        return [...createdTasks, ...deduped];
+      });
+      setPendingPlanPreview(null);
+
+      if (createdTasks.length > 0) {
+        setSelectedTaskId(createdTasks[0].id);
+      }
+
+      if (startFirstStep && createdTasks.length > 0) {
+        const session = await startTaskSession<SessionDto>(createdTasks[0].id);
+        setActiveSession(session);
+        setActiveSurface("session");
+        setConversionNotice(`Plan accepted (${createdTasks.length} tasks). Started first step.`);
+        await loadSessionsForTask(createdTasks[0].id);
+      } else {
+        setConversionNotice(`Plan accepted (${createdTasks.length} tasks). Continue from feed when ready.`);
+      }
+
+      await loadTasks();
+    } catch {
+      setTaskError("Could not accept this plan right now.");
+    } finally {
+      setTasksLoading(false);
+    }
+  }
+
+  async function startPlanFirstStep() {
+    await acceptPlanPreview(true);
   }
 
   function openItemFromModel(model: FeedCardModel) {
@@ -1267,6 +1459,24 @@ export default function Page() {
         </section>
       ) : null}
 
+      {pendingPlanPreview ? (
+        <PlanPreviewSheet
+          isOpen
+          title={pendingPlanPreview.title}
+          steps={pendingPlanPreview.steps}
+          isSubmitting={tasksLoading}
+          errorMessage={taskError}
+          onClose={() => setPendingPlanPreview(null)}
+          onUpdateStepMinutes={(stepId, minutes) => updatePlanStepMinutes(stepId, minutes)}
+          onAcceptPlan={() => {
+            void acceptPlanPreview(false);
+          }}
+          onStartFirstStep={() => {
+            void startPlanFirstStep();
+          }}
+        />
+      ) : null}
+
       {activeSurface === "time" ? (
         <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
           <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "12px" }}>
@@ -1379,6 +1589,9 @@ export default function Page() {
               timeline={timelineEntries}
               loading={itemContextLoading}
               errorMessage={chatError}
+              actionNotice={itemActionNotice}
+              suggestedPrompts={suggestedPromptsForDetail}
+              relatedItems={relatedItemsForDetail}
               onBackToFeed={() => setActiveSurface("feed")}
               onQuickAction={(action) => void runQuickAction(action)}
               onAddComment={(comment) => {
@@ -1395,6 +1608,8 @@ export default function Page() {
               onAskYurbrain={(question) => {
                 void runAiQuery(question);
               }}
+              onOpenRelatedItem={handleOpenRelatedItem}
+              onKeepInMind={handleKeepInMind}
               chatPanel={
                 <ItemChatPanel
                   onSend={(question) => void runAiQuery(question)}

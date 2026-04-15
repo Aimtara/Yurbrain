@@ -22,7 +22,7 @@
 ## Task conversion and task loop
 
 - `POST /tasks/manual-convert` creates a deterministic `todo` task from item/comment content.
-- `POST /ai/convert` returns one of: `create_task`, `mini_plan`, `not_recommended`.
+- `POST /ai/convert` returns one of: `task_created`, `plan_suggested`, `not_recommended`.
 - `POST /tasks` creates a task.
 - `GET /tasks/:id` fetches a task.
 - `PATCH /tasks/:id` updates title/status.

@@ -95,14 +95,14 @@ Use this sequence for lower rework when running Cursor bots:
 
 | Ticket | Title | Owner Role | Effort | Depends On | Status |
 | --- | --- | --- | --- | --- | --- |
-| YB-101 | Capture Sheet UX | UX / Frontend Agent | M | None | Planned |
-| YB-102 | FeedCard contract upgrade | Backend / Persistence Agent | M | None | Planned |
-| YB-103 | Feed lenses + filtering | Backend / Persistence Agent + UX / Frontend Agent | M | YB-102 | Planned |
-| YB-104 | Deterministic feed ranking v1 | Backend / Persistence Agent | M | YB-102 | Planned |
-| YB-105 | CommentComposer + Ask Yurbrain toggle | UX / Frontend Agent + AI Behavior Agent | M | YB-102 | Planned |
-| YB-106 | Brain Item Detail surface | UX / Frontend Agent + AI Behavior Agent | M/L | YB-105 | Planned |
-| YB-201 | Plan Preview sheet | UX / Frontend Agent | M | YB-102 | Planned |
-| YB-202 | Convert flow refinement | AI Behavior Agent + Backend / Persistence Agent | M | YB-201 (optional) | Planned |
+| YB-101 | Capture Sheet UX | UX / Frontend Agent | M | None | Done |
+| YB-102 | FeedCard contract upgrade | Backend / Persistence Agent | M | None | Done |
+| YB-103 | Feed lenses + filtering | Backend / Persistence Agent + UX / Frontend Agent | M | YB-102 | Done |
+| YB-104 | Deterministic feed ranking v1 | Backend / Persistence Agent | M | YB-102 | Done |
+| YB-105 | CommentComposer + Ask Yurbrain toggle | UX / Frontend Agent + AI Behavior Agent | M | YB-102 | Done |
+| YB-106 | Brain Item Detail surface | UX / Frontend Agent + AI Behavior Agent | M/L | YB-105 | Done |
+| YB-201 | Plan Preview sheet | UX / Frontend Agent | M | YB-102 | Done |
+| YB-202 | Convert flow refinement | AI Behavior Agent + Backend / Persistence Agent | M | YB-201 (optional) | Done |
 | YB-203 | Time Tab + time-window selector | UX / Frontend Agent | M | YB-202 | Done |
 | YB-204 | Active Task / Focus Mode | UX / Frontend Agent | M | YB-203 | Planned |
 | YB-205 | Finish / Rebalance sheet | UX / Frontend Agent + AI Behavior Agent | M | YB-204 | Planned |

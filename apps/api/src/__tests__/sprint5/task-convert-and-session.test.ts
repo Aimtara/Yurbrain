@@ -41,7 +41,7 @@ test("POST /ai/convert creates task and preserves source linkage", async () => {
     task?: { id: string; sourceItemId: string | null; sourceMessageId: string | null; status: string };
   }>();
 
-  assert.equal(body.outcome, "create_task");
+  assert.equal(body.outcome, "task_created");
   assert.equal(body.task?.sourceItemId, "33333333-3333-3333-3333-333333333333");
   assert.equal(body.task?.sourceMessageId, "44444444-4444-4444-4444-444444444444");
   assert.equal(body.task?.status, "todo");
