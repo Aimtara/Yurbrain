@@ -46,6 +46,8 @@ Not used for runtime truth:
 - Founder mode and default feed lens are now persisted in backend user preferences (`user_preferences`) and restored on reload.
 - Item AI summary/classification continuity now uses persisted artifacts from API (`GET /brain-items/:id/artifacts`) rather than local-only cache.
 - Task session continuity now uses persisted sessions from API (`GET /sessions?taskId=...`) rather than local-only session snapshots.
+- Integration QA confirms feed remains the gravity center (home surface), item detail restores context quickly (<5s in manual checks), founder mode behaves as an inline lens (no separate route/surface), and comments/sessions/preferences persist across refresh.
+- AI continuity outputs (`/brain-items/:id/progress-summary`, `/brain-items/:id/next-step`, summarize action) are concise and grounded in persisted signals (task/session/comment/execution metadata), not generic chatbot copy.
 
 ### Feed semantics and contract (real)
 - Feed ranking is deterministic with diversity/recency/actionability penalties/boosts.
@@ -74,6 +76,7 @@ Not used for runtime truth:
 - Monorepo lint/build coverage is uneven:
   - `pnpm lint` effectively validates packages that define lint scripts (mainly API).
   - `pnpm build` is effectively centered on web.
+- Founder mode state is persisted in backend preferences, but execution lens selection remains local-storage UX state (non-critical convenience).
 
 ## What is placeholder or mocked
 
@@ -91,6 +94,24 @@ Not used for runtime truth:
 - Repository uses app-local import path from API to `packages/db/src` instead of published package build boundaries.
 - Database schema keeps `confidence` as text in artifacts for compatibility with current migrations.
 - `/events` endpoint intentionally returns `403` until auth/per-user filtering is implemented.
+- Integration/QA finding fixed in this branch: `apps/web/next.config.ts` now rewrites `/preferences/:path*` to API origin; without this rewrite founder preference persistence fails in web runtime.
+
+## Integration / QA verdict against UX strategy
+
+### What works
+- Feed functions as home and gravity center, with re-entry messaging and continuity-aware cards.
+- Item detail acts as a continuity screen with full resume packet fields and timeline context.
+- Founder mode feels like a lens over the same feed surface; no app/surface split detected.
+- Progress updates (comments), sessions, and founder preference state persist across reload.
+- AI continuity guidance is concise, optional, and explainable using concrete product signals.
+
+### What is partial
+- UX polish and visual hierarchy remain prototype-level; interaction quality is coherent but not final-design grade.
+- AI remains deterministic/mock-backed and intentionally non-adaptive beyond current persisted signals.
+
+### What breaks intended experience
+- No current major break was reproduced in final QA run.
+- Prior transient Next.js dev-server instability was observed during validation attempts but did not persist after server/session reset; treated as environment/runtime noise rather than product logic regression.
 
 ## Missing pieces relative to full product direction (not MVP blockers)
 

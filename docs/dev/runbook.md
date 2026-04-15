@@ -175,6 +175,7 @@ pnpm reseed
 - Feed contract now includes source linkage/action semantics:
   - `taskId`, `availableActions`, `stateFlags`, `whyShown`
 - Founder mode + default lens preference is persisted via `GET/PUT /preferences/:userId` (`user_preferences` table), not only browser local storage.
+- Web dev proxy rewrites include `/preferences/:path*` to API origin. Without this rewrite, founder mode/lens preference persistence will 404 in web dev.
 
 ## 8) Fast sanity loop
 
