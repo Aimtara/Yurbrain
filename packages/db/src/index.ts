@@ -89,6 +89,14 @@ export type ArtifactRecord = {
   createdAt: string;
 };
 
+export type UserPreferenceRecord = {
+  userId: string;
+  defaultLens: FeedLens;
+  cleanFocusMode: boolean;
+  founderMode: boolean;
+  updatedAt: string;
+};
+
 type RepositoryContext = {
   client: PGlite;
   db: ReturnType<typeof drizzle<typeof schema>>;
@@ -131,6 +139,11 @@ export type DbRepository = {
   createArtifact: (artifact: ArtifactRecord) => Promise<ArtifactRecord>;
   getArtifactById: (id: string) => Promise<ArtifactRecord | null>;
   listArtifactsByItem: (itemId: string, query?: { type?: ArtifactRecord["type"] }) => Promise<ArtifactRecord[]>;
+  getUserPreference: (userId: string) => Promise<UserPreferenceRecord | null>;
+  upsertUserPreference: (
+    userId: string,
+    updates: Partial<Pick<UserPreferenceRecord, "defaultLens" | "cleanFocusMode" | "founderMode">>
+  ) => Promise<UserPreferenceRecord>;
 };
 
 export type CreateRepositoryOptions = {
@@ -231,6 +244,16 @@ function toArtifactRecord(row: typeof schema.itemArtifacts.$inferSelect): Artifa
     payload: row.payload as Record<string, unknown>,
     confidence: Number(row.confidence),
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString()
+  };
+}
+
+function toUserPreferenceRecord(row: typeof schema.userPreferences.$inferSelect): UserPreferenceRecord {
+  return {
+    userId: row.userId,
+    defaultLens: row.defaultLens as FeedLens,
+    cleanFocusMode: row.cleanFocusMode,
+    founderMode: row.founderMode,
+    updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
   };
 }
 
@@ -636,6 +659,36 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
               .where(eq(schema.itemArtifacts.itemId, itemId))
               .orderBy(desc(schema.itemArtifacts.createdAt), desc(schema.itemArtifacts.id));
         return rows.map(toArtifactRecord);
+      }),
+    getUserPreference: (userId) =>
+      withDb(async ({ db }) => {
+        const [row] = await db.select().from(schema.userPreferences).where(eq(schema.userPreferences.userId, userId)).limit(1);
+        return row ? toUserPreferenceRecord(row) : null;
+      }),
+    upsertUserPreference: (userId, updates) =>
+      withDb(async ({ db }) => {
+        const updatePatch: Partial<typeof schema.userPreferences.$inferInsert> = {
+          updatedAt: new Date()
+        };
+        if (updates.defaultLens !== undefined) updatePatch.defaultLens = updates.defaultLens;
+        if (updates.cleanFocusMode !== undefined) updatePatch.cleanFocusMode = updates.cleanFocusMode;
+        if (updates.founderMode !== undefined) updatePatch.founderMode = updates.founderMode;
+
+        const [row] = await db
+          .insert(schema.userPreferences)
+          .values({
+            userId,
+            defaultLens: updates.defaultLens ?? "all",
+            cleanFocusMode: updates.cleanFocusMode ?? true,
+            founderMode: updates.founderMode ?? false,
+            updatedAt: new Date()
+          })
+          .onConflictDoUpdate({
+            target: schema.userPreferences.userId,
+            set: updatePatch
+          })
+          .returning();
+        return toUserPreferenceRecord(row);
       })
   };
 }

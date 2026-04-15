@@ -6,6 +6,7 @@ import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerConvertRoutes } from "./routes/convert";
 import { registerFeedRoutes } from "./routes/feed";
 import { registerMessageRoutes } from "./routes/messages";
+import { registerPreferenceRoutes } from "./routes/preferences";
 import { registerSessionRoutes } from "./routes/sessions";
 import { registerTaskRoutes } from "./routes/tasks";
 import { registerThreadRoutes } from "./routes/threads";
@@ -45,6 +46,7 @@ export function createServer(options: ServerOptions = {}) {
   registerBrainItemRoutes(app, state);
   registerThreadRoutes(app, state);
   registerMessageRoutes(app, state);
+  registerPreferenceRoutes(app, state);
   registerFeedRoutes(app, state);
   registerTaskRoutes(app, state);
   registerSessionRoutes(app, state);

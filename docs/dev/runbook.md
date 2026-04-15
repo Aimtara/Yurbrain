@@ -46,9 +46,9 @@ Use [cursor.com/onboard](https://cursor.com/onboard) and apply this prompt:
 
 ### API
 ```bash
-pnpm dev
+pnpm --filter api exec tsx --watch src/index.ts
 ```
-- Runs Fastify via `ts-node-dev` on port `3001` by default.
+- Runs Fastify on port `3001` with a watch loop that works with the monorepo ESM package setup.
 
 ### Web
 ```bash
@@ -125,7 +125,7 @@ That direct Node command fails in this repo setup.
 ```bash
 pnpm --filter @yurbrain/db db:migrate
 ```
-- Runtime path note: app/API startup and scripts use `@yurbrain/db` repository migrations (including `0004_sprint8.sql`) automatically against PGlite.
+- Runtime path note: app/API startup and scripts use `@yurbrain/db` repository migrations (including `0005_sprint9.sql`) automatically against PGlite.
 - Drizzle CLI migrate remains available for manual workflows.
 - Optional override paths:
   - `YURBRAIN_DB_PATH` for DB data directory
@@ -174,6 +174,7 @@ pnpm reseed
 - Task/session continuity is persisted via `GET /sessions?taskId=...` and `GET /sessions?userId=...`.
 - Feed contract now includes source linkage/action semantics:
   - `taskId`, `availableActions`, `stateFlags`, `whyShown`
+- Founder mode + default lens preference is persisted via `GET/PUT /preferences/:userId` (`user_preferences` table), not only browser local storage.
 
 ## 8) Fast sanity loop
 
