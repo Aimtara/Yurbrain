@@ -58,6 +58,7 @@ Not used for runtime truth:
 - Task session continuity now uses persisted sessions from API (`GET /sessions?taskId=...`) rather than local-only session snapshots.
 - Web now includes a dedicated Time home surface with deterministic time-window selection (`2h`, `4h`, `6h`, `8h`, `24h`, `custom`), a resume card for running/paused sessions, suggested tasks that fit the selected window, and a prominent "Start without planning" action.
 - Mobile Time tab now mirrors the same lightweight planning intent with window selection and start-without-planning guidance to keep parity with web without introducing heavy planning UX.
+- Finishing a focus session now opens a supportive Finish/Rebalance sheet with planned-vs-actual time, reclaimed/overflow delta, and next moves (`Continue plan`, `Rebalance day`, `Take a break`, `Schedule rest later`) that route users back into feed/time surfaces without punitive language.
 - Web execution now includes an Active Task / Focus Mode surface with a large task hero, live session timer, reliable pause/finish controls, and an in-place source context peek that can reopen the linked item without leaving the execution flow.
 
 ### Feed semantics and contract (real)

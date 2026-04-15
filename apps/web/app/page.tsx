@@ -32,6 +32,7 @@ import {
   CaptureComposer,
   ExecutionLensBar,
   FeedCard,
+  FinishRebalanceSheet,
   FocusFeedScreen,
   FounderModeToggle,
   FounderSummarySurface,
@@ -174,6 +175,14 @@ type PlanPreviewDraft = {
   title: string;
   steps: Array<{ id: string; title: string; minutes: number }>;
   confidence: number;
+};
+
+type FinishRebalanceDraft = {
+  taskTitle: string;
+  plannedMinutes: number;
+  actualMinutes: number;
+  deltaMinutes: number;
+  suggestion: string;
 };
 
 type ContinuityContext = {
@@ -453,6 +462,27 @@ function formatDurationLabel(seconds: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${Math.max(minutes, 1)}m`;
 }
+
+function calculatePlannedMinutesForSession(task: TaskDto | null): number {
+  if (!task) return 25;
+  return estimateTaskMinutes(task);
+}
+
+function buildRebalanceSuggestion(deltaMinutes: number): string {
+  if (deltaMinutes > 20) {
+    return "This took longer than expected. Trim one optional follow-up so your next step stays lightweight.";
+  }
+  if (deltaMinutes > 0) {
+    return "Small overflow is normal. Keep your next step focused and avoid stacking new tasks.";
+  }
+  if (deltaMinutes < -15) {
+    return "You reclaimed time here. Consider using a short block to close one nearby open loop.";
+  }
+  if (deltaMinutes < 0) {
+    return "You finished a little early. Keep that momentum with one tiny continuation step.";
+  }
+  return "Nice pacing. Keep the same rhythm for your next focused session.";
+}
 export default function Page() {
   const [hydrated, setHydrated] = useState(false);
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
@@ -492,6 +522,7 @@ export default function Page() {
   const [conversionNotice, setConversionNotice] = useState("");
   const [itemActionNotice, setItemActionNotice] = useState("");
   const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
+  const [pendingFinishRebalance, setPendingFinishRebalance] = useState<FinishRebalanceDraft | null>(null);
   const [timeActionNotice, setTimeActionNotice] = useState("");
   const [lastAction, setLastAction] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
@@ -1287,6 +1318,32 @@ export default function Page() {
     await acceptPlanPreview(true);
   }
 
+  async function handleFinishAction(action: "continue_plan" | "rebalance_day" | "take_break" | "schedule_rest_later") {
+    if (!pendingFinishRebalance) return;
+    setPendingFinishRebalance(null);
+    if (action === "continue_plan") {
+      setLastAction("Finished session and continued plan.");
+      setConversionNotice("Nice close. Continue your next planned step when ready.");
+      setActiveSurface("session");
+      return;
+    }
+    if (action === "rebalance_day") {
+      setLastAction("Finished session and rebalanced day.");
+      setTimeActionNotice("Rebalanced suggestion: pick one task that fits your remaining window.");
+      setActiveSurface("time");
+      return;
+    }
+    if (action === "take_break") {
+      setLastAction("Finished session and took a break.");
+      setConversionNotice("Break acknowledged. Return to the feed when you're ready.");
+      setActiveSurface("feed");
+      return;
+    }
+    setLastAction("Finished session and scheduled rest later.");
+    setConversionNotice("Rest reminder captured. Keep the next step lightweight.");
+    setActiveSurface("feed");
+  }
+
   function openItemFromModel(model: FeedCardModel) {
     if (!model.card.itemId) return;
     setSelectedItemId(model.card.itemId);
@@ -1756,11 +1813,21 @@ export default function Page() {
               }
               onFinish={() =>
                 void (async () => {
+                  const plannedMinutes = calculatePlannedMinutesForSession(selectedTask);
                   const updated = await finishSession<SessionDto>(selectedTaskSession.id);
+                  const actualMinutesValue = Math.max(1, Math.floor(deriveSessionElapsedSeconds(updated) / 60));
+                  const deltaMinutes = actualMinutesValue - plannedMinutes;
                   setActiveSession(updated);
                   await loadTasks();
                   await loadSessionsForTask(selectedTask.id);
                   setLastAction("Finished a session.");
+                  setPendingFinishRebalance({
+                    taskTitle: selectedTask.title,
+                    plannedMinutes,
+                    actualMinutes: actualMinutesValue,
+                    deltaMinutes,
+                    suggestion: buildRebalanceSuggestion(deltaMinutes)
+                  });
                 })()
               }
               onOpenSource={() => {
@@ -1783,6 +1850,30 @@ export default function Page() {
             </div>
           )}
         </section>
+      ) : null}
+      {pendingFinishRebalance ? (
+        <FinishRebalanceSheet
+          isOpen
+          taskTitle={pendingFinishRebalance.taskTitle}
+          plannedMinutes={pendingFinishRebalance.plannedMinutes}
+          actualMinutes={pendingFinishRebalance.actualMinutes}
+          deltaMinutes={pendingFinishRebalance.deltaMinutes}
+          suggestion={pendingFinishRebalance.suggestion}
+          isApplying={tasksLoading}
+          onClose={() => setPendingFinishRebalance(null)}
+          onContinuePlan={() => {
+            void handleFinishAction("continue_plan");
+          }}
+          onRebalanceDay={() => {
+            void handleFinishAction("rebalance_day");
+          }}
+          onTakeBreak={() => {
+            void handleFinishAction("take_break");
+          }}
+          onScheduleRestLater={() => {
+            void handleFinishAction("schedule_rest_later");
+          }}
+        />
       ) : null}
     </main>
   );
