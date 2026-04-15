@@ -219,6 +219,8 @@ type ContinuityContext = {
   blockedState?: string;
   nextStep?: string;
   lastTouched?: string;
+  sourceItemId?: string;
+  sourceItemTitle?: string;
 };
 
 type FeedCardModel = {
@@ -357,27 +359,31 @@ function formatRelative(isoValue?: string): string | undefined {
   return date.toLocaleDateString();
 }
 
-function inferVariant(card: FeedCardDto, relatedTask?: TaskDto): FeedCardVariant {
+function inferVariant(card: FeedCardDto, relatedTask?: TaskDto, relatedSession?: SessionDto): FeedCardVariant {
   if (card.stateFlags.dismissed) return "done";
   if (relatedTask?.status === "done") return "done";
+  const postponeCount = card.postponeCount ?? 0;
+  const blockedState = inferBlockedState(card, relatedTask, relatedSession);
+  if ((blockedState && relatedSession?.state !== "running") || postponeCount >= 2) return "blocked";
   if (relatedTask?.status === "in_progress" || card.cardType === "resume") return "execution";
   if (card.cardType === "open_loop") return "resume";
-  if ((card.postponeCount ?? 0) >= 2) return "blocked";
   const summary = card.whyShown.summary.toLowerCase();
-  if (summary.includes("blocked") || summary.includes("stale") || summary.includes("waiting")) return "blocked";
   if (summary.includes("resume") || summary.includes("revisit") || summary.includes("return")) return "resume";
   if (summary.includes("in progress") || summary.includes("next step") || summary.includes("continue")) return "execution";
   return "default";
 }
 
-function inferBlockedState(card: FeedCardDto, relatedTask?: TaskDto): string | undefined {
+function inferBlockedState(card: FeedCardDto, relatedTask?: TaskDto, relatedSession?: SessionDto): string | undefined {
   const postponeCount = card.postponeCount ?? 0;
   if (postponeCount >= 2) {
     const lastPostponed = formatRelative(card.lastPostponedAt ?? undefined);
     return lastPostponed ? `Postponed ${postponeCount} times (last ${lastPostponed})` : `Postponed ${postponeCount} times`;
   }
-  if (relatedTask?.status === "in_progress") {
+  if (relatedTask?.status === "in_progress" && relatedSession?.state === "paused") {
     return "Task is in progress but not actively moving.";
+  }
+  if (relatedTask?.status === "todo" && postponeCount > 0) {
+    return "Task exists but keeps getting deferred.";
   }
   const explicitReason = card.whyShown.reasons.find((reason) => /blocked|waiting|stuck|dependency|approval|review/i.test(reason));
   if (explicitReason) return explicitReason;
@@ -387,9 +393,15 @@ function inferBlockedState(card: FeedCardDto, relatedTask?: TaskDto): string | u
   return undefined;
 }
 
-function inferNextStep(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto): string {
-  const blockedState = inferBlockedState(card, relatedTask);
-  if (relatedTask?.status === "todo") return "Start the linked task with one focused 15-minute session.";
+function inferNextStep(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto, relatedSession?: SessionDto, relatedItem?: BrainItemDto): string {
+  const blockedState = inferBlockedState(card, relatedTask, relatedSession);
+  if (relatedTask?.status === "todo") {
+    if (relatedItem) {
+      return `Open "${relatedItem.title}" and start the linked task with one focused 15-minute session.`;
+    }
+    return "Start the linked task with one focused 15-minute session.";
+  }
+  if (relatedTask?.status === "in_progress" && relatedSession?.state === "paused") return "Resume your paused session and finish one concrete sub-step.";
   if (relatedTask?.status === "in_progress") return "Resume execution and finish one concrete sub-step.";
   if (relatedTask?.status === "done") return "Close the loop with one reflection note.";
   const reasonWithStep = card.whyShown.reasons.find((reason) => /next|step|follow|continue|resume/i.test(reason));
@@ -404,26 +416,31 @@ function inferNextStep(card: FeedCardDto, variant: FeedCardVariant, relatedTask?
   return "Open and add one continuation note.";
 }
 
-function inferContinuityNote(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto): string | undefined {
-  const blockedState = inferBlockedState(card, relatedTask);
+function inferContinuityNote(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto, relatedSession?: SessionDto): string | undefined {
+  const blockedState = inferBlockedState(card, relatedTask, relatedSession);
   if (variant === "blocked" && blockedState) {
     return `Blocked signal: ${blockedState}`;
   }
   return card.whyShown.reasons.find((reason) => !/next|step|follow|continue|resume/i.test(reason));
 }
 
-function inferWhereLeftOff(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto): string | undefined {
-  const blockedState = inferBlockedState(card, relatedTask);
+function inferWhereLeftOff(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto, relatedSession?: SessionDto, relatedItem?: BrainItemDto): string | undefined {
+  const blockedState = inferBlockedState(card, relatedTask, relatedSession);
   if (variant === "blocked" && blockedState) {
     return `Last state: ${blockedState}`;
   }
+  if (!card.itemId && relatedTask?.sourceItemId && relatedItem) {
+    return `Converted from "${relatedItem.title}" and queued for execution.`;
+  }
+  if (relatedTask?.status === "in_progress" && relatedSession?.state === "paused") return "Execution is paused and ready to resume.";
   if (relatedTask?.status === "in_progress") return "Execution is already in progress.";
   if (relatedTask?.status === "todo") return "You already converted this into a lightweight task.";
   if (relatedTask?.status === "done") return "The linked task is done; this is back for closure.";
   return card.whyShown.reasons.find((reason) => /left|last|previous|revisit|resume/i.test(reason));
 }
 
-function inferPrimaryActionLabel(card: FeedCardDto): string {
+function inferPrimaryActionLabel(card: FeedCardDto, canOpenContinuity: boolean): string {
+  if (canOpenContinuity) return "Open continuity";
   if (card.stateFlags.hasSourceTask) return "Open execution";
   if (card.stateFlags.hasSourceItem) return "Open continuity";
   return "Open";
@@ -728,6 +745,27 @@ export default function Page() {
     return map;
   }, [tasks]);
 
+  const sessionByTaskId = useMemo(() => {
+    const map = new Map<string, SessionDto>();
+    for (const session of sessionHistory) {
+      const existing = map.get(session.taskId);
+      if (!existing) {
+        map.set(session.taskId, session);
+        continue;
+      }
+      if (session.startedAt > existing.startedAt) {
+        map.set(session.taskId, session);
+      }
+    }
+    if (activeSession) {
+      const existing = map.get(activeSession.taskId);
+      if (!existing || activeSession.startedAt >= existing.startedAt) {
+        map.set(activeSession.taskId, activeSession);
+      }
+    }
+    return map;
+  }, [activeSession, sessionHistory]);
+
   const itemById = useMemo(() => {
     const map = new Map<string, BrainItemDto>();
     items.forEach((item) => map.set(item.id, item));
@@ -737,22 +775,26 @@ export default function Page() {
   const feedModels = useMemo<FeedCardModel[]>(() => {
     return feedCards.map((card) => {
       const linkedTask = card.taskId ? taskById.get(card.taskId) : undefined;
-      const linkedItem = card.itemId ? itemById.get(card.itemId) : undefined;
-      const variant = inferVariant(card, linkedTask);
+      const linkedSession = linkedTask ? sessionByTaskId.get(linkedTask.id) : undefined;
+      const sourceItemId = card.itemId ?? linkedTask?.sourceItemId ?? undefined;
+      const linkedItem = sourceItemId ? itemById.get(sourceItemId) : undefined;
+      const variant = inferVariant(card, linkedTask, linkedSession);
       return {
         card,
         variant,
         continuity: {
           whyShown: card.whyShown.summary,
-          whereLeftOff: inferWhereLeftOff(card, variant, linkedTask),
-          changedSince: inferContinuityNote(card, variant, linkedTask),
-          blockedState: variant === "blocked" ? inferBlockedState(card, linkedTask) : undefined,
-          nextStep: inferNextStep(card, variant, linkedTask),
-          lastTouched: formatRelative(linkedItem?.updatedAt ?? linkedTask?.updatedAt)
+          whereLeftOff: inferWhereLeftOff(card, variant, linkedTask, linkedSession, linkedItem),
+          changedSince: inferContinuityNote(card, variant, linkedTask, linkedSession),
+          blockedState: variant === "blocked" ? inferBlockedState(card, linkedTask, linkedSession) : undefined,
+          nextStep: inferNextStep(card, variant, linkedTask, linkedSession, linkedItem),
+          lastTouched: formatRelative(linkedItem?.updatedAt ?? linkedTask?.updatedAt ?? linkedSession?.startedAt),
+          sourceItemId,
+          sourceItemTitle: linkedItem?.title
         }
       };
     });
-  }, [feedCards, itemById, taskById]);
+  }, [feedCards, itemById, sessionByTaskId, taskById]);
 
   const visibleFeedModels = useMemo(() => {
     if (!founderMode) return feedModels;
@@ -773,7 +815,7 @@ export default function Page() {
 
   const suggestedFocus = useMemo(() => {
     const candidate = visibleFeedModels
-      .filter((model) => Boolean(model.card.itemId))
+      .filter((model) => Boolean(model.continuity.sourceItemId))
       .sort((left, right) => {
         const leftBlocked = left.variant === "blocked" ? 30 : 0;
         const rightBlocked = right.variant === "blocked" ? 30 : 0;
@@ -783,7 +825,7 @@ export default function Page() {
         const rightPostpone = Math.min(right.card.postponeCount ?? 0, 4) * 4;
         return rightBlocked + rightReady + rightPostpone - (leftBlocked + leftReady + leftPostpone);
       })[0];
-    if (!candidate || !candidate.card.itemId) return null;
+    if (!candidate || !candidate.continuity.sourceItemId) return null;
     const reason = candidate.continuity.blockedState
       ? `Blocked: ${candidate.continuity.blockedState}`
       : candidate.continuity.whyShown ?? "Worth revisiting now.";
@@ -792,7 +834,7 @@ export default function Page() {
       reason,
       nextStep: candidate.continuity.nextStep ?? "Open and leave one continuation note.",
       onOpen: () => {
-        setSelectedItemId(candidate.card.itemId ?? "");
+        setSelectedItemId(candidate.continuity.sourceItemId ?? "");
         setSelectedContinuity(candidate.continuity);
         setActiveSurface("item");
       }
@@ -802,7 +844,7 @@ export default function Page() {
   const founderBlockedItems = useMemo(
     () =>
       visibleFeedModels
-        .filter((model) => model.variant === "blocked" && model.card.itemId)
+        .filter((model) => model.variant === "blocked" && model.continuity.sourceItemId)
         .slice(0, 2)
         .map((model) => ({
           id: model.card.id,
@@ -810,7 +852,7 @@ export default function Page() {
           reason: model.continuity.blockedState ?? "Blocked signal detected.",
           nextMove: model.continuity.nextStep ?? "Open and leave one unblock note.",
           onOpen: () => {
-            setSelectedItemId(model.card.itemId ?? "");
+            setSelectedItemId(model.continuity.sourceItemId ?? "");
             setSelectedContinuity(model.continuity);
             setActiveSurface("item");
           }
@@ -897,14 +939,16 @@ export default function Page() {
     [selectedContinuity, selectedItem, selectedItemTask]
   );
   const syntheticDetailVariant = useMemo(
-    () => inferVariant(syntheticDetailCard, selectedItemTask ?? undefined),
-    [selectedItemTask, syntheticDetailCard]
+    () => inferVariant(syntheticDetailCard, selectedItemTask ?? undefined, selectedItemSession ?? undefined),
+    [selectedItemSession, selectedItemTask, syntheticDetailCard]
   );
   const derivedItemContinuity = useMemo(
     () => {
       const blockedState =
         selectedContinuity?.blockedState ??
-        (syntheticDetailVariant === "blocked" ? inferBlockedState(syntheticDetailCard, selectedItemTask ?? undefined) : undefined);
+        (syntheticDetailVariant === "blocked"
+          ? inferBlockedState(syntheticDetailCard, selectedItemTask ?? undefined, selectedItemSession ?? undefined)
+          : undefined);
       return {
         whyShown:
           selectedContinuity?.whyShown ??
@@ -918,7 +962,9 @@ export default function Page() {
           selectedContinuity?.changedSince ??
           (latestComment ? `Latest continuation note: ${latestComment.content}` : blockedState ? `Still blocked: ${blockedState}` : "No new updates since the last feed refresh."),
         blockedState,
-        nextStep: selectedContinuity?.nextStep ?? inferNextStep(syntheticDetailCard, syntheticDetailVariant, selectedItemTask ?? undefined),
+        nextStep:
+          selectedContinuity?.nextStep ??
+          inferNextStep(syntheticDetailCard, syntheticDetailVariant, selectedItemTask ?? undefined, selectedItemSession ?? undefined, selectedItem ?? undefined),
         executionHint: summarizeExecutionHint(selectedItemTask, selectedItemSession)
       };
     },
@@ -1621,8 +1667,9 @@ export default function Page() {
   }
 
   function openItemFromModel(model: FeedCardModel) {
-    if (!model.card.itemId) return;
-    setSelectedItemId(model.card.itemId);
+    const itemId = model.continuity.sourceItemId ?? model.card.itemId;
+    if (!itemId) return;
+    setSelectedItemId(itemId);
     setSelectedContinuity(model.continuity);
     setActiveSurface("item");
   }
@@ -1832,9 +1879,9 @@ export default function Page() {
               continuityNote={model.continuity.changedSince}
               nextStep={model.continuity.nextStep}
               availableActions={model.card.availableActions}
-              primaryActionLabel={inferPrimaryActionLabel(model.card)}
+              primaryActionLabel={inferPrimaryActionLabel(model.card, Boolean(model.continuity.sourceItemId))}
               onOpen={
-                model.card.itemId
+                model.continuity.sourceItemId
                   ? () => openItemFromModel(model)
                   : model.card.taskId
                     ? () => openTaskFromCard(model.card.taskId ?? "")
