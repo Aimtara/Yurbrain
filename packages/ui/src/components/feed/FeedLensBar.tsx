@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import { tokens } from "../../design/tokens";
 
 export type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
@@ -13,15 +13,18 @@ const lensLabels: Record<FeedLens, string> = {
 };
 
 export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens[]; activeLens: FeedLens; onChange: (lens: FeedLens) => void }) {
+  const hintId = useId();
+
   return (
     <div style={{ marginBottom: `${tokens.space.sm + 2}px` }}>
-      <nav aria-label="Feed lenses" style={{ display: "flex", flexWrap: "wrap", gap: `${tokens.space.sm}px` }}>
+      <nav aria-label="Feed lenses" aria-describedby={hintId} style={{ display: "flex", flexWrap: "wrap", gap: `${tokens.space.sm}px` }}>
         {lenses.map((lens) => (
           <button
             key={lens}
             type="button"
             onClick={() => onChange(lens)}
             aria-pressed={activeLens === lens}
+            aria-label={`${lensLabels[lens]} lens`}
             style={{
               border: `1px solid ${feedPalette.border}`,
               borderRadius: "999px",
@@ -35,7 +38,7 @@ export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens
           </button>
         ))}
       </nav>
-      <p style={{ margin: `${tokens.space.sm}px 0 0`, color: feedPalette.hintText }}>
+      <p id={hintId} style={{ margin: `${tokens.space.sm}px 0 0`, color: feedPalette.hintText }}>
         <small>{lensHints[activeLens]}</small>
       </p>
     </div>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import { tokens } from "../../design/tokens";
 
 export function FeedCard({
@@ -32,15 +32,25 @@ export function FeedCard({
   onSnooze?: (minutes: number) => void;
   onRefresh?: () => void;
 }) {
+  const idBase = useId();
+  const titleId = `${idBase}-title`;
+  const whyShownId = `${idBase}-why`;
+  const whyShownSecondaryId = `${idBase}-why-secondary`;
+  const timeId = `${idBase}-time`;
   const whyShownSummary = typeof whyShown === "string" ? whyShown : whyShown?.summary;
   const whyShownSecondary = typeof whyShown === "string" ? null : whyShown?.reasons?.[1] ?? null;
   const showWhyShownSecondary = Boolean(whyShownSecondary && whyShownSecondary !== whyShownSummary);
   const lensLabel = lens ? lensLabels[lens] : null;
   const cardTypeLabel = cardType ? cardTypeLabels[cardType] : null;
   const timeLabel = formatTimeSignal(lastRefreshedAt ?? undefined, createdAt);
+  const describedByIds = [whyShownSummary ? whyShownId : "", showWhyShownSecondary ? whyShownSecondaryId : "", timeLabel ? timeId : ""]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <article
+      aria-labelledby={titleId}
+      aria-describedby={describedByIds || undefined}
       style={{
         border: `1px solid ${feedPalette.border}`,
         borderRadius: `${tokens.radius.md}px`,
@@ -57,54 +67,62 @@ export function FeedCard({
           {lensLabel ? <span>{lensLabel}</span> : null}
         </p>
       ) : null}
-      <h3 style={{ margin: `0 0 ${tokens.space.xs + 2}px`, fontSize: "18px", lineHeight: "1.25" }}>{title}</h3>
+      <h3 id={titleId} style={{ margin: `0 0 ${tokens.space.xs + 2}px`, fontSize: "18px", lineHeight: "1.25" }}>
+        {title}
+      </h3>
       <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, color: feedPalette.mainText, lineHeight: "1.4" }}>{body}</p>
       {whyShownSummary ? (
-        <p style={{ margin: `0 0 ${tokens.space.xs}px`, fontSize: "13px", color: feedPalette.secondaryText }}>
+        <p id={whyShownId} style={{ margin: `0 0 ${tokens.space.xs}px`, fontSize: "13px", color: feedPalette.secondaryText }}>
           <strong>Why shown:</strong> {whyShownSummary}
         </p>
       ) : null}
       {showWhyShownSecondary ? (
-        <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, fontSize: "12px", color: feedPalette.mutedText }}>{whyShownSecondary}</p>
+        <p id={whyShownSecondaryId} style={{ margin: `0 0 ${tokens.space.sm + 2}px`, fontSize: "12px", color: feedPalette.mutedText }}>
+          {whyShownSecondary}
+        </p>
       ) : null}
       {timeLabel ? (
-        <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, color: feedPalette.mutedText }}>
+        <p id={timeId} style={{ margin: `0 0 ${tokens.space.sm + 2}px`, color: feedPalette.mutedText }}>
           <small>{timeLabel}</small>
         </p>
       ) : null}
-      <div style={{ display: "flex", gap: `${tokens.space.sm}px`, flexWrap: "wrap" }} role="group" aria-label="Card actions">
+      <div
+        style={{ display: "flex", gap: `${tokens.space.sm}px`, flexWrap: "wrap" }}
+        role="group"
+        aria-label={`Actions for ${title}`}
+      >
         {onComment ? (
-          <button style={actionButtonStyles.secondary} onClick={() => onComment("Noted for follow-up.")}>
+          <button type="button" aria-label={`Add update to ${title}`} style={actionButtonStyles.secondary} onClick={() => onComment("Noted for follow-up.")}>
             Add Update
           </button>
         ) : null}
         {onContinue ? (
-          <button style={actionButtonStyles.primary} onClick={onContinue}>
+          <button type="button" aria-label={`Continue from ${title}`} style={actionButtonStyles.primary} onClick={onContinue}>
             Continue
           </button>
         ) : null}
         {onConvertToTask ? (
-          <button style={actionButtonStyles.primary} onClick={onConvertToTask}>
+          <button type="button" aria-label={`Plan from ${title}`} style={actionButtonStyles.primary} onClick={onConvertToTask}>
             Plan This
           </button>
         ) : null}
         {onStartSession ? (
-          <button style={actionButtonStyles.primary} onClick={onStartSession}>
+          <button type="button" aria-label={`Start session for ${title}`} style={actionButtonStyles.primary} onClick={onStartSession}>
             Start Session
           </button>
         ) : null}
         {onSnooze ? (
-          <button style={actionButtonStyles.secondary} onClick={() => onSnooze(120)}>
+          <button type="button" aria-label={`Revisit ${title} later`} style={actionButtonStyles.secondary} onClick={() => onSnooze(120)}>
             Revisit Later
           </button>
         ) : null}
         {onRefresh ? (
-          <button style={actionButtonStyles.secondary} onClick={onRefresh}>
+          <button type="button" aria-label={`Keep ${title} in focus`} style={actionButtonStyles.secondary} onClick={onRefresh}>
             Keep in Focus
           </button>
         ) : null}
         {onDismiss ? (
-          <button style={actionButtonStyles.tertiary} onClick={onDismiss}>
+          <button type="button" aria-label={`Dismiss ${title}`} style={actionButtonStyles.tertiary} onClick={onDismiss}>
             Dismiss
           </button>
         ) : null}

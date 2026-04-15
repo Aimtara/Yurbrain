@@ -583,37 +583,38 @@ export default function Page() {
       <h1>Yurbrain</h1>
       <p>Focus is your home for resurfacing, continuing, and planning from memory.</p>
 
-      <section>
-        <h2>Capture</h2>
+      <section aria-labelledby="capture-heading">
+        <h2 id="capture-heading">Capture</h2>
         <p>Capture quickly now; Focus will resurface it when the moment is right.</p>
         <CaptureComposer value={captureDraft} onChange={setCaptureDraft} onSubmit={captureItem} />
-        {captureLoading ? <p>Saving capture...</p> : null}
-        {captureError ? <p>{captureError}</p> : null}
+        {captureLoading ? <p role="status" aria-live="polite">Saving capture...</p> : null}
+        {captureError ? <p role="alert">{captureError}</p> : null}
       </section>
 
       <hr />
 
-      <section>
-        <h2>Focus Feed</h2>
+      <section aria-labelledby="focus-feed-heading">
+        <h2 id="focus-feed-heading">Focus Feed</h2>
         <p>Window shop your mind: notice what is back, why now, and what to do next.</p>
       <FeedLensBar
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
         activeLens={activeLens}
         onChange={setActiveLens}
       />
-      <button type="button" onClick={() => void loadFeed(activeLens)}>
+      <button type="button" onClick={() => void loadFeed(activeLens)} aria-label="Refresh focus feed">
         Refresh Focus
       </button>
-      {feedLoading ? <p>Gathering the most relevant memories...</p> : null}
+      {feedLoading ? <p role="status" aria-live="polite">Gathering the most relevant memories...</p> : null}
       {feedError ? (
         <div>
-          <p>{feedError}</p>
-          <button onClick={() => void loadFeed(activeLens)}>Try again</button>
+          <p role="alert">{feedError}</p>
+          <button onClick={() => void loadFeed(activeLens)} aria-label="Retry loading focus feed">Try again</button>
         </div>
       ) : null}
-      {!feedError && feedCards.length === 0 ? (
-        <p>This lens is quiet right now. Try another lens, or capture something fresh for Focus to revisit later.</p>
+      {!feedLoading && !feedError && feedCards.length === 0 ? (
+        <p role="status" aria-live="polite">This lens is quiet right now. Try another lens, or capture something fresh for Focus to revisit later.</p>
       ) : null}
+      <div aria-live="polite" aria-busy={feedLoading}>
       {feedCards.map((card) => (
         <FeedCard
           key={card.id}
@@ -649,16 +650,17 @@ export default function Page() {
           }}
         />
       ))}
+      </div>
       </section>
 
       <hr />
 
-      <section>
-        <h2>Items</h2>
+      <section aria-labelledby="items-heading">
+        <h2 id="items-heading">Items</h2>
         <p>Browse the full set when you want deliberate review beyond Focus.</p>
         {items.length === 0 ? <p>No captured items yet.</p> : null}
         {items.map((item) => (
-          <button key={item.id} type="button" onClick={() => setSelectedItemId(item.id)}>
+          <button key={item.id} type="button" onClick={() => setSelectedItemId(item.id)} aria-label={`Open item ${item.title}`}>
             {item.title}
           </button>
         ))}
@@ -666,12 +668,12 @@ export default function Page() {
 
       <hr />
 
-      <section>
-        <h2>Item</h2>
+      <section aria-labelledby="item-detail-heading">
+        <h2 id="item-detail-heading">Item</h2>
         {!selectedItem ? <p>Select something from Focus or Items to continue.</p> : null}
         {selectedItem ? (
           <>
-            {itemContextLoading ? <p>Loading item context...</p> : null}
+            {itemContextLoading ? <p role="status" aria-live="polite">Loading item context...</p> : null}
             <BrainItemScreen
               item={selectedItem}
               comments={commentMessages.map((message) => message.content)}
@@ -704,15 +706,15 @@ export default function Page() {
 
       <hr />
 
-      <section>
-        <h2>Task + Session</h2>
+      <section aria-labelledby="task-session-heading">
+        <h2 id="task-session-heading">Task + Session</h2>
         <p>When a memory becomes action, continue here without leaving context.</p>
-        {tasksLoading ? <p>Loading tasks...</p> : null}
-        {taskError ? <p>{taskError}</p> : null}
-        {conversionNotice ? <p>{conversionNotice}</p> : null}
+        {tasksLoading ? <p role="status" aria-live="polite">Loading tasks...</p> : null}
+        {taskError ? <p role="alert">{taskError}</p> : null}
+        {conversionNotice ? <p role="status" aria-live="polite">{conversionNotice}</p> : null}
         {tasks.length === 0 ? <p>No tasks yet.</p> : null}
         {tasks.map((task) => (
-          <button key={task.id} type="button" onClick={() => setSelectedTaskId(task.id)}>
+          <button key={task.id} type="button" onClick={() => setSelectedTaskId(task.id)} aria-label={`Open task ${task.title}`}>
             {task.title} ({task.status})
           </button>
         ))}

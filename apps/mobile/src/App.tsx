@@ -50,7 +50,13 @@ export default function App() {
   const tabButtons = useMemo(
     () =>
       tabs.map((tab) => (
-        <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} accessibilityRole="button">
+        <TouchableOpacity
+          key={tab}
+          onPress={() => setActiveTab(tab)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === tab }}
+          accessibilityLabel={`${tab} tab`}
+        >
           <Text>{tab}</Text>
         </TouchableOpacity>
       )),
@@ -62,15 +68,23 @@ export default function App() {
       <ScrollView contentContainerStyle={{ padding: 14 }}>
         <Text style={{ fontSize: 22, fontWeight: "700", color: "#1d2130", marginBottom: 4 }}>Yurbrain</Text>
         <Text style={{ color: "#4d5468", marginBottom: 12 }}>Focus is home for resurfacing and gentle momentum.</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>{tabButtons}</View>
-        <Text style={{ marginBottom: 10, color: "#4d5468" }}>Active tab: {activeTab}</Text>
-        <Text style={{ fontSize: 18, fontWeight: "600", color: "#1d2130", marginBottom: 6 }}>Focus Feed</Text>
+        <View accessibilityRole="tablist" style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+          {tabButtons}
+        </View>
+        <Text accessibilityLiveRegion="polite" style={{ marginBottom: 10, color: "#4d5468" }}>
+          Active tab: {activeTab}
+        </Text>
+        <Text accessibilityRole="header" style={{ fontSize: 18, fontWeight: "600", color: "#1d2130", marginBottom: 6 }}>
+          Focus Feed
+        </Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
           {focusLenses.map((lens) => (
             <TouchableOpacity
               key={lens}
               onPress={() => setActiveLens(lens)}
               accessibilityRole="button"
+              accessibilityState={{ selected: activeLens === lens }}
+              accessibilityLabel={`Focus lens ${lensLabels[lens]}`}
               style={{
                 paddingVertical: 6,
                 paddingHorizontal: 10,
@@ -85,9 +99,15 @@ export default function App() {
           ))}
         </View>
         <Text style={{ color: "#5a6072", marginBottom: 8 }}>{lensHints[activeLens]}</Text>
-        {focusLoading ? <Text style={{ color: "#4d5468", marginBottom: 8 }}>Gathering memories worth resurfacing...</Text> : null}
+        {focusLoading ? (
+          <Text accessibilityLiveRegion="polite" style={{ color: "#4d5468", marginBottom: 8 }}>
+            Gathering memories worth resurfacing...
+          </Text>
+        ) : null}
         {!focusLoading && !feedFailed && focusCards.length === 0 ? (
-          <Text style={{ color: "#4d5468", marginBottom: 8 }}>This lens is quiet right now. Capture and Focus will bring more back.</Text>
+          <Text accessibilityLiveRegion="polite" style={{ color: "#4d5468", marginBottom: 8 }}>
+            This lens is quiet right now. Capture and Focus will bring more back.
+          </Text>
         ) : null}
         {!feedFailed ? (
           <View style={{ marginBottom: 8 }}>
@@ -105,7 +125,9 @@ export default function App() {
         ) : null}
         {feedFailed ? (
           <View style={{ marginBottom: 10 }}>
-            <Text style={{ color: "#4d5468", marginBottom: 6 }}>Focus is taking a breath. Your captures are safe.</Text>
+            <Text accessibilityLiveRegion="polite" style={{ color: "#4d5468", marginBottom: 6 }}>
+              Focus is taking a breath. Your captures are safe.
+            </Text>
             <TouchableOpacity
               onPress={() => loadFocusPreview(activeLens)}
               accessibilityRole="button"
@@ -115,9 +137,13 @@ export default function App() {
             </TouchableOpacity>
           </View>
         ) : null}
-        {!feedFailed && focusActionNotice ? <Text style={{ color: "#374151", marginBottom: 8 }}>{focusActionNotice}</Text> : null}
+        {!feedFailed && focusActionNotice ? (
+          <Text accessibilityLiveRegion="polite" style={{ color: "#374151", marginBottom: 8 }}>
+            {focusActionNotice}
+          </Text>
+        ) : null}
         <Text style={{ color: "#6b7280", marginBottom: 8 }}>Clean/focus mode is enabled by default.</Text>
-        <TextInput placeholder="CaptureComposer" />
+        <TextInput placeholder="CaptureComposer" accessibilityLabel="Capture composer input" />
       </ScrollView>
     </SafeAreaView>
   );
@@ -224,12 +250,18 @@ function MobileFeedCard({
       <Text style={{ color: "#556079", marginBottom: 4 }}>
         {card.cardType ? cardTypeLabels[card.cardType] : "Memory"} · {card.lens ? lensLabels[card.lens] : lensLabels.all}
       </Text>
-      <Text style={{ color: "#374151", marginBottom: 4 }}>Why shown: {card.whyShown?.summary ?? "Resurfaced to support continuity."}</Text>
+      <Text
+        accessibilityLabel={`Why shown: ${card.whyShown?.summary ?? "Resurfaced to support continuity."}`}
+        style={{ color: "#374151", marginBottom: 4 }}
+      >
+        Why shown: {card.whyShown?.summary ?? "Resurfaced to support continuity."}
+      </Text>
       <Text style={{ color: "#6b7280", marginBottom: 8 }}>{formatMobileTimeSignal(card.lastRefreshedAt ?? null, card.createdAt)}</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         <TouchableOpacity
           onPress={() => onAction("continue")}
           accessibilityRole="button"
+          accessibilityLabel={`Continue from ${card.title}`}
           disabled={isBusy}
           style={mobileActionStyle}
         >
@@ -238,6 +270,7 @@ function MobileFeedCard({
         <TouchableOpacity
           onPress={() => onAction("keep_in_focus")}
           accessibilityRole="button"
+          accessibilityLabel={`Keep ${card.title} in focus`}
           disabled={isBusy}
           style={mobileActionStyle}
         >
@@ -246,6 +279,7 @@ function MobileFeedCard({
         <TouchableOpacity
           onPress={() => onAction("revisit_later")}
           accessibilityRole="button"
+          accessibilityLabel={`Revisit ${card.title} later`}
           disabled={isBusy}
           style={mobileActionStyle}
         >
@@ -254,6 +288,7 @@ function MobileFeedCard({
         <TouchableOpacity
           onPress={() => onAction("dismiss")}
           accessibilityRole="button"
+          accessibilityLabel={`Dismiss ${card.title}`}
           disabled={isBusy}
           style={mobileActionStyle}
         >
