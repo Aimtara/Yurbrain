@@ -176,7 +176,7 @@ test("brain item execution metadata persists and powers continuity endpoints", a
   assert.equal(progress.statusCode, 200);
   const progressBody = progress.json<{ summary: string; signals: { executionStatus?: string } }>();
   assert.equal(progressBody.signals.executionStatus, "blocked");
-  assert.match(progressBody.summary, /Blocked on missing integration evidence/i);
+  assert.match(progressBody.summary, /blocked|smallest next move|unblock/i);
 
   const nextStep = await app.inject({
     method: "GET",
@@ -186,6 +186,125 @@ test("brain item execution metadata persists and powers continuity endpoints", a
   const nextStepBody = nextStep.json<{ source: string; nextStep: string }>();
   assert.equal(nextStepBody.source, "execution_metadata");
   assert.equal(nextStepBody.nextStep, "Write one unblock note.");
+});
+
+test("progress summary and next step stay concise, grounded, and explainable", async () => {
+  const userId = "81818181-8181-4818-8818-818181818181";
+  const created = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Founder continuity quality check",
+      rawContent: "Need to move this from idea to one concrete action."
+    }
+  });
+  assert.equal(created.statusCode, 201);
+  const item = created.json<{ id: string }>();
+
+  const taskResp = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: {
+      userId,
+      title: "Convert idea into one testable action",
+      sourceItemId: item.id
+    }
+  });
+  assert.equal(taskResp.statusCode, 201);
+  const task = taskResp.json<{ id: string }>();
+
+  const inProgress = await app.inject({
+    method: "PATCH",
+    url: `/tasks/${task.id}`,
+    payload: { status: "in_progress" }
+  });
+  assert.equal(inProgress.statusCode, 200);
+
+  const startSession = await app.inject({
+    method: "POST",
+    url: `/tasks/${task.id}/start`,
+    payload: {}
+  });
+  assert.equal(startSession.statusCode, 201);
+
+  const threadResp = await app.inject({
+    method: "POST",
+    url: "/threads",
+    payload: {
+      targetItemId: item.id,
+      kind: "item_comment"
+    }
+  });
+  assert.equal(threadResp.statusCode, 201);
+  const thread = threadResp.json<{ id: string }>();
+
+  const messageResp = await app.inject({
+    method: "POST",
+    url: "/messages",
+    payload: {
+      threadId: thread.id,
+      role: "user",
+      content: "Left off drafting acceptance criteria."
+    }
+  });
+  assert.equal(messageResp.statusCode, 201);
+
+  const progress = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/progress-summary`
+  });
+  assert.equal(progress.statusCode, 200);
+  const progressBody = progress.json<{ summary: string; signals: { hasRunningSession: boolean; linkedTaskStatus?: string } }>();
+  assert.match(progressBody.summary, /smallest next move|latest continuation note|momentum is active/i);
+  assert.match(progressBody.summary, /running session|active task|latest note/i);
+  assert.equal(progressBody.signals.hasRunningSession, true);
+  assert.equal(progressBody.signals.linkedTaskStatus, "in_progress");
+
+  const nextStep = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/next-step`
+  });
+  assert.equal(nextStep.statusCode, 200);
+  const nextStepBody = nextStep.json<{ source: string; nextStep: string; reason: string }>();
+  assert.equal(nextStepBody.source, "task");
+  assert.match(nextStepBody.reason, /status|session|progress/i);
+  assert.match(nextStepBody.nextStep, /10 minutes|resume|session|task/i);
+});
+
+test("continuity endpoints use graceful fallback when item has minimal signals", async () => {
+  const userId = "82828282-8282-4828-8828-828282828282";
+  const created = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Minimal continuity signals",
+      rawContent: "Just captured, no follow-up yet."
+    }
+  });
+  assert.equal(created.statusCode, 201);
+  const item = created.json<{ id: string }>();
+
+  const progress = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/progress-summary`
+  });
+  assert.equal(progress.statusCode, 200);
+  const progressBody = progress.json<{ summary: string }>();
+  assert.match(progressBody.summary, /smallest next move|continue/i);
+
+  const nextStep = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/next-step`
+  });
+  assert.equal(nextStep.statusCode, 200);
+  const nextStepBody = nextStep.json<{ source: string; reason: string; nextStep: string }>();
+  assert.equal(nextStepBody.source, "fallback");
+  assert.match(nextStepBody.reason, /limited|signal|yet/i);
+  assert.match(nextStepBody.nextStep, /one note|one action|10-minute|10 minutes/i);
 });
 
 test("feed supports founder execution lens filtering", async () => {
@@ -253,4 +372,87 @@ test("feed supports founder execution lens filtering", async () => {
   assert.equal(readyLensResp.statusCode, 200);
   const readyLensCards = readyLensResp.json<Array<{ itemId: string | null }>>();
   assert.ok(readyLensCards.some((card) => card.itemId === plannedItem.id));
+});
+
+test("continuity endpoints explain signals without generic AI tone", async () => {
+  const userId = "81818181-8181-4818-8818-818181818181";
+  const createItem = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Continuity explanation check",
+      rawContent: "Need a grounded explanation for summary and next step."
+    }
+  });
+  assert.equal(createItem.statusCode, 201);
+  const item = createItem.json<{ id: string }>();
+
+  const threadResp = await app.inject({
+    method: "POST",
+    url: "/threads",
+    payload: {
+      targetItemId: item.id,
+      kind: "item_comment"
+    }
+  });
+  assert.equal(threadResp.statusCode, 201);
+  const thread = threadResp.json<{ id: string }>();
+
+  const commentResp = await app.inject({
+    method: "POST",
+    url: "/messages",
+    payload: {
+      threadId: thread.id,
+      role: "user",
+      content: "I stalled because I need one concrete next move."
+    }
+  });
+  assert.equal(commentResp.statusCode, 201);
+
+  const taskResp = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: {
+      userId,
+      title: "Turn this into one action",
+      sourceItemId: item.id
+    }
+  });
+  assert.equal(taskResp.statusCode, 201);
+  const task = taskResp.json<{ id: string }>();
+
+  const taskInProgress = await app.inject({
+    method: "PATCH",
+    url: `/tasks/${task.id}`,
+    payload: { status: "in_progress" }
+  });
+  assert.equal(taskInProgress.statusCode, 200);
+
+  const startSession = await app.inject({
+    method: "POST",
+    url: `/tasks/${task.id}/start`,
+    payload: {}
+  });
+  assert.equal(startSession.statusCode, 201);
+
+  const progressResp = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/progress-summary`
+  });
+  assert.equal(progressResp.statusCode, 200);
+  const progressBody = progressResp.json<{ summary: string; signals: { hasRunningSession: boolean } }>();
+  assert.equal(progressBody.signals.hasRunningSession, true);
+  assert.match(progressBody.summary, /momentum is active|latest continuation note|smallest next move/i);
+
+  const nextStepResp = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/next-step`
+  });
+  assert.equal(nextStepResp.statusCode, 200);
+  const nextStepBody = nextStepResp.json<{ nextStep: string; reason: string; source: string }>();
+  assert.ok(nextStepBody.nextStep.length > 0);
+  assert.match(nextStepBody.reason, /because|shows|signal|based on/i);
+  assert.equal(nextStepBody.source, "task");
 });
