@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { getFeed } from "@yurbrain/client";
+import { dismissFeedCard, getFeed, refreshFeedCard, snoozeFeedCard } from "@yurbrain/client";
 
 const tabs = ["Brain", "Focus", "Time", "Me"] as const;
 
@@ -10,6 +10,7 @@ type FeedCardDto = {
   cardType?: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
   title: string;
   body?: string;
+  itemId?: string | null;
   lens?: FeedLens;
   createdAt?: string;
   lastRefreshedAt?: string | null;
@@ -21,6 +22,8 @@ export default function App() {
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
   const [focusCards, setFocusCards] = useState<FeedCardDto[]>([]);
   const [focusLoading, setFocusLoading] = useState(false);
+  const [cardActionBusyId, setCardActionBusyId] = useState("");
+  const [focusActionNotice, setFocusActionNotice] = useState("");
   const [feedFailed, setFeedFailed] = useState(false);
   const userId = "11111111-1111-1111-1111-111111111111";
 
@@ -30,6 +33,7 @@ export default function App() {
       const cards = await getFeed<FeedCardDto[]>({ userId, lens, limit: 3 });
       setFocusCards(cards);
       setFeedFailed(false);
+      setFocusActionNotice("");
     } catch {
       setFocusCards([]);
       setFeedFailed(true);
@@ -72,13 +76,14 @@ export default function App() {
         {!feedFailed ? (
           <ScrollView style={{ maxHeight: 260 }}>
             {focusCards.map((card) => (
-              <View key={card.id} style={{ marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderColor: "#ddd" }}>
-                <Text>{card.title}</Text>
-                <Text numberOfLines={2}>{card.body ?? "Memory resurfaced for review."}</Text>
-                <Text>{card.cardType ? cardTypeLabels[card.cardType] : "Memory"} · {card.lens ? lensLabels[card.lens] : lensLabels.all}</Text>
-                <Text>Why shown: {card.whyShown?.summary ?? "Resurfaced to support continuity."}</Text>
-                <Text>{formatMobileTimeSignal(card.lastRefreshedAt ?? null, card.createdAt)}</Text>
-              </View>
+              <MobileFeedCard
+                key={card.id}
+                card={card}
+                isBusy={cardActionBusyId === card.id}
+                onAction={(action) => {
+                  void runCardAction(card, action);
+                }}
+              />
             ))}
           </ScrollView>
         ) : null}
@@ -90,11 +95,41 @@ export default function App() {
             </TouchableOpacity>
           </View>
         ) : null}
+        {!feedFailed && focusActionNotice ? <Text>{focusActionNotice}</Text> : null}
         <Text>Clean/focus mode is enabled by default.</Text>
         <TextInput placeholder="CaptureComposer" />
       </View>
     </SafeAreaView>
   );
+
+  async function runCardAction(
+    card: FeedCardDto,
+    action: "dismiss" | "revisit_later" | "keep_in_focus" | "continue"
+  ) {
+    if (cardActionBusyId) return;
+    setCardActionBusyId(card.id);
+    setFocusActionNotice("");
+    try {
+      if (action === "dismiss") {
+        await dismissFeedCard<{ ok: boolean }>(card.id);
+        setFocusActionNotice("Dismissed. Focus will keep this out of your way.");
+      } else if (action === "revisit_later") {
+        await snoozeFeedCard<{ ok: boolean }>(card.id, 120);
+        setFocusActionNotice("Snoozed for later.");
+      } else if (action === "keep_in_focus") {
+        await refreshFeedCard<{ ok: boolean }>(card.id);
+        setFocusActionNotice("Kept in focus.");
+      } else {
+        setActiveTab("Brain");
+        setFocusActionNotice("Continue from Brain to keep momentum.");
+      }
+      await loadFocusPreview(activeLens);
+    } catch {
+      setFocusActionNotice("Could not complete that action right now.");
+    } finally {
+      setCardActionBusyId("");
+    }
+  }
 }
 
 const lensLabels: Record<FeedLens, string> = {
@@ -131,4 +166,40 @@ function formatRelativeTime(timestamp: string): string {
   if (diffHours < 24) return `${Math.floor(diffHours)}h ago`;
   const days = Math.floor(diffHours / 24);
   return days === 1 ? "1 day ago" : `${days} days ago`;
+}
+
+function MobileFeedCard({
+  card,
+  isBusy,
+  onAction
+}: {
+  card: FeedCardDto;
+  isBusy: boolean;
+  onAction: (action: "dismiss" | "revisit_later" | "keep_in_focus" | "continue") => void;
+}) {
+  return (
+    <View style={{ marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderColor: "#ddd" }}>
+      <Text>{card.title}</Text>
+      <Text numberOfLines={2}>{card.body ?? "Memory resurfaced for review."}</Text>
+      <Text>
+        {card.cardType ? cardTypeLabels[card.cardType] : "Memory"} · {card.lens ? lensLabels[card.lens] : lensLabels.all}
+      </Text>
+      <Text>Why shown: {card.whyShown?.summary ?? "Resurfaced to support continuity."}</Text>
+      <Text>{formatMobileTimeSignal(card.lastRefreshedAt ?? null, card.createdAt)}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
+        <TouchableOpacity onPress={() => onAction("continue")} accessibilityRole="button" disabled={isBusy}>
+          <Text>Continue</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => onAction("keep_in_focus")} accessibilityRole="button" disabled={isBusy}>
+          <Text>Keep in focus</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => onAction("revisit_later")} accessibilityRole="button" disabled={isBusy}>
+          <Text>Revisit later</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => onAction("dismiss")} accessibilityRole="button" disabled={isBusy}>
+          <Text>Dismiss</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
