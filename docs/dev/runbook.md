@@ -182,6 +182,10 @@ pnpm reseed
   - subtle save micro-state before auto-dismiss
 - Item detail continuation now uses one inline composer with mode toggle (`Comment` / `Ask Yurbrain`), and both comment + ask interactions append to the same continuity timeline with explicit role labels (`You`, `Yurbrain`).
 - Time home now includes deterministic window planning (`2h`, `4h`, `6h`, `8h`, `24h`, `Custom`), session resume card, tasks-that-fit suggestions, and a start-without-planning action.
+- Focus mode now uses the active session screen as an execution surface with:
+  - task hero and live session timer
+  - pause and finish controls wired to real session routes
+  - context peek from the linked source item with quick-open back to item detail
 
 ## 8) Fast sanity loop
 

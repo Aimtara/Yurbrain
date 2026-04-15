@@ -130,6 +130,12 @@ type SessionDto = {
   endedAt: string | null;
 };
 
+type ActiveTaskContextPeek = {
+  title: string;
+  excerpt: string;
+  updatedAt?: string;
+};
+
 type UserPreferenceDto = {
   userId: string;
   defaultLens: FeedLens;
@@ -335,6 +341,34 @@ function estimateTaskMinutes(task: TaskDto): number {
   return Math.max(15, Math.min(180, base + statusAdjustment));
 }
 
+function formatSessionClock(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  if (hours > 0) {
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function deriveSessionElapsedSeconds(session: SessionDto | null): number {
+  if (!session) return 0;
+  const startValue = new Date(session.startedAt).getTime();
+  if (!Number.isFinite(startValue)) return 0;
+  const endValue = session.endedAt ? new Date(session.endedAt).getTime() : Date.now();
+  if (!Number.isFinite(endValue)) return 0;
+  return Math.max(0, Math.floor((endValue - startValue) / 1000));
+}
+
+function formatDurationLabel(seconds: number): string {
+  const safeSeconds = Math.max(0, Math.trunc(seconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${Math.max(minutes, 1)}m`;
+}
+
 export default function Page() {
   const [hydrated, setHydrated] = useState(false);
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
@@ -389,6 +423,10 @@ export default function Page() {
     () => selectedItemTasks.find((task) => task.status !== "done") ?? selectedItemTasks[0] ?? null,
     [selectedItemTasks]
   );
+  const selectedTaskSourceItem = useMemo(() => {
+    if (!selectedTask?.sourceItemId) return null;
+    return items.find((item) => item.id === selectedTask.sourceItemId) ?? null;
+  }, [items, selectedTask?.sourceItemId]);
   const selectedArtifacts = useMemo(() => {
     if (!selectedItem) return { summary: [], classification: [] };
     return artifactHistoryByItem[selectedItem.id] ?? { summary: [], classification: [] };
@@ -515,6 +553,17 @@ export default function Page() {
 
   const selectedItemSession =
     selectedItemTask && activeSession && activeSession.taskId === selectedItemTask.id ? activeSession : null;
+  const selectedTaskSession = selectedTask && activeSession && activeSession.taskId === selectedTask.id ? activeSession : null;
+  const sessionElapsedSeconds = useMemo(() => deriveSessionElapsedSeconds(selectedTaskSession), [selectedTaskSession]);
+  const sessionElapsedLabel = useMemo(() => formatDurationLabel(sessionElapsedSeconds), [sessionElapsedSeconds]);
+  const executionSourceContext = useMemo<ActiveTaskContextPeek | null>(() => {
+    if (!selectedTaskSourceItem) return null;
+    return {
+      title: selectedTaskSourceItem.title,
+      excerpt: selectedTaskSourceItem.rawContent.slice(0, 180),
+      updatedAt: selectedTaskSourceItem.updatedAt
+    };
+  }, [selectedTaskSourceItem]);
   const latestComment = commentMessages.length > 0 ? commentMessages[commentMessages.length - 1] : null;
   const syntheticDetailCard = useMemo(
     () => buildSyntheticDetailCard(selectedItem, selectedItemTask, selectedContinuity),
@@ -1061,6 +1110,7 @@ export default function Page() {
 
   async function startTimeTask(taskId: string) {
     try {
+      setTaskError("");
       const session = await startTaskSession<SessionDto>(taskId);
       setActiveSession(session);
       setSelectedTaskId(taskId);
@@ -1465,13 +1515,26 @@ export default function Page() {
               />
             ) : null}
           </div>
-          {selectedTask && activeSession && activeSession.taskId === selectedTask.id ? (
+          {selectedTask && selectedTaskSession ? (
             <ActiveSessionScreen
               taskTitle={selectedTask.title}
-              state={activeSession.state}
+              state={selectedTaskSession.state}
+              startedAt={selectedTaskSession.startedAt}
+              endedAt={selectedTaskSession.endedAt}
+              contextPeek={
+                executionSourceContext
+                  ? {
+                      title: executionSourceContext.title,
+                      content: executionSourceContext.excerpt,
+                      hint: executionSourceContext.updatedAt
+                        ? `Source updated ${formatRelative(executionSourceContext.updatedAt) ?? "recently"}`
+                        : `Session elapsed ${sessionElapsedLabel}`
+                    }
+                  : null
+              }
               onPause={() =>
                 void (async () => {
-                  const updated = await pauseSession<SessionDto>(activeSession.id);
+                  const updated = await pauseSession<SessionDto>(selectedTaskSession.id);
                   setActiveSession(updated);
                   await loadTasks();
                   await loadSessionsForTask(selectedTask.id);
@@ -1479,13 +1542,25 @@ export default function Page() {
               }
               onFinish={() =>
                 void (async () => {
-                  const updated = await finishSession<SessionDto>(activeSession.id);
+                  const updated = await finishSession<SessionDto>(selectedTaskSession.id);
                   setActiveSession(updated);
                   await loadTasks();
                   await loadSessionsForTask(selectedTask.id);
                   setLastAction("Finished a session.");
                 })()
               }
+              onOpenSource={() => {
+                if (!selectedTaskSourceItem) return;
+                setSelectedItemId(selectedTaskSourceItem.id);
+                setSelectedContinuity({
+                  whyShown: "Source context for active execution session.",
+                  whereLeftOff: "Opened from Focus Mode context peek.",
+                  changedSince: "Review source details without losing execution flow.",
+                  nextStep: "Return to Focus Mode after confirming source context.",
+                  lastTouched: formatRelative(selectedTaskSourceItem.updatedAt)
+                });
+                setActiveSurface("item");
+              }}
               onReturnToFeed={() => setActiveSurface("feed")}
             />
           ) : (
