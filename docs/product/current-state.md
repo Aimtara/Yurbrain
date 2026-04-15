@@ -49,8 +49,9 @@ Not used for runtime truth:
 - Item detail continuation now uses one inline `CommentComposer` with mode toggle (`Comment` / `Ask Yurbrain`) so both flows share the same continuity surface.
 - Ask mode now appends both user question and assistant reply into the same continuity timeline with explicit role labels (`You`, `Yurbrain`) for recognition-first re-entry.
 - Item detail now includes suggested AI prompt chips and a lightweight related-items list so users can continue in-place without leaving the continuity surface.
-- Convert `mini_plan` outcomes now open a Plan Preview sheet in web, with editable per-step durations and actions to accept plan or start first step.
+- Convert `plan_suggested` outcomes now open a Plan Preview sheet in web, with editable per-step durations and actions to accept plan or start first step.
 - Accepting a plan now creates real tasks from preview steps (preserving `sourceItemId` linkage), and optional start-first-step launches a real session.
+- Convert responses now use typed outcomes (`task_created`, `plan_suggested`, `not_recommended`) and include optional `sourceItemId` / `sourceMessageId` linkage fields.
 - Feed and item detail continuity UI now explicitly surfaces: why shown, where you left off, what changed, and smallest next move.
 - Founder mode and default feed lens are now persisted in backend user preferences (`user_preferences`) and restored on reload.
 - Item AI summary/classification continuity now uses persisted artifacts from API (`GET /brain-items/:id/artifacts`) rather than local-only cache.

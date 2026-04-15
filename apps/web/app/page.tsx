@@ -139,20 +139,26 @@ type UserPreferenceDto = {
 
 type ConvertResponse =
   | {
-      outcome: "create_task";
+      outcome: "task_created";
       confidence: number;
       task: TaskDto;
+      sourceItemId?: string | null;
+      sourceMessageId?: string | null;
     }
   | {
-      outcome: "mini_plan";
+      outcome: "plan_suggested";
       confidence: number;
       title: string;
       steps: string[];
+      sourceItemId?: string | null;
+      sourceMessageId?: string | null;
     }
   | {
       outcome: "not_recommended";
       confidence: number;
       reason: string;
+      sourceItemId?: string | null;
+      sourceMessageId?: string | null;
     };
 
 type PlanPreviewDraft = {
@@ -909,15 +915,15 @@ export default function Page() {
         sourceMessageId: input.sourceMessageId ?? null,
         content: input.content
       });
-      if (result.outcome === "create_task") {
+      if (result.outcome === "task_created") {
         setTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
         setSelectedTaskId(result.task.id);
         setConversionNotice(`Task created: ${result.task.title}`);
         await loadTasks();
         return result.task;
-      } else if (result.outcome === "mini_plan") {
+      } else if (result.outcome === "plan_suggested") {
         openPlanPreview({
-          sourceItemId: input.itemId,
+          sourceItemId: result.sourceItemId ?? input.itemId,
           title: result.title,
           steps: result.steps,
           confidence: result.confidence

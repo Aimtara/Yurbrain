@@ -85,17 +85,21 @@ export const AiConvertRequestSchema = z
 
 const ConvertCreateTaskSchema = z
   .object({
-    outcome: z.literal("create_task"),
+    outcome: z.literal("task_created"),
     task: TaskResponseSchema,
+    sourceItemId: z.string().uuid().nullable().optional(),
+    sourceMessageId: z.string().uuid().nullable().optional(),
     confidence: z.number().min(0).max(1)
   })
   .strict();
 
 const ConvertMiniPlanSchema = z
   .object({
-    outcome: z.literal("mini_plan"),
+    outcome: z.literal("plan_suggested"),
     title: z.string().min(1),
     steps: z.array(z.string().min(1)).min(2).max(5),
+    sourceItemId: z.string().uuid().nullable().optional(),
+    sourceMessageId: z.string().uuid().nullable().optional(),
     confidence: z.number().min(0).max(1)
   })
   .strict();
@@ -104,6 +108,8 @@ const ConvertNotRecommendedSchema = z
   .object({
     outcome: z.literal("not_recommended"),
     reason: z.string().min(1),
+    sourceItemId: z.string().uuid().nullable().optional(),
+    sourceMessageId: z.string().uuid().nullable().optional(),
     confidence: z.number().min(0).max(1)
   })
   .strict();

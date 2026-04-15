@@ -91,7 +91,7 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
     task?: { id: string; sourceItemId: string | null; sourceMessageId: string | null; status: string };
   }>();
 
-  assert.equal(convertBody.outcome, "create_task");
+  assert.equal(convertBody.outcome, "task_created");
   assert.equal(convertBody.task?.sourceItemId, createdItem.id);
   assert.equal(convertBody.task?.sourceMessageId, comment.id);
 

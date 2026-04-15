@@ -182,7 +182,7 @@ pnpm reseed
   - subtle save micro-state before auto-dismiss
 - Item detail continuation now uses one inline composer with mode toggle (`Comment` / `Ask Yurbrain`), and both comment + ask interactions append to the same continuity timeline with explicit role labels (`You`, `Yurbrain`).
 - Item detail also includes suggested prompt chips and a related-items list so users can branch or return without leaving feed-centered continuity.
-- Convert `mini_plan` outcomes now open a Plan Preview sheet in web with editable step durations, supportive capacity warning, and actions to accept plan or start first step (creating real tasks through existing task routes).
+- Convert `plan_suggested` outcomes now open a Plan Preview sheet in web with editable step durations, supportive capacity warning, and actions to accept plan or start first step (creating real tasks through existing task routes).
 
 ## 8) Fast sanity loop
 

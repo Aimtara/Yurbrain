@@ -54,7 +54,7 @@ test("full loop: capture -> feed -> comment/query -> convert -> act", async () =
   });
   assert.equal(convert.statusCode, 201);
   const convertBody = convert.json<{ outcome: string; task?: { id: string } }>();
-  assert.equal(convertBody.outcome, "create_task");
+  assert.equal(convertBody.outcome, "task_created");
   assert.ok(convertBody.task?.id);
 
   const start = await app.inject({ method: "POST", url: `/tasks/${convertBody.task?.id}/start`, payload: {} });
