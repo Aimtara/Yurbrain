@@ -18,8 +18,10 @@ type ItemDetailScreenProps = {
   };
   whyShown?: string;
   lastTouched?: string;
+  whereLeftOff?: string;
   changedSince?: string;
   nextStep?: string;
+  executionHint?: string;
   summary?: string;
   classification?: string;
   timeline: ContinuityTimelineEntry[];
@@ -62,8 +64,10 @@ export function ItemDetailScreen({
   item,
   whyShown,
   lastTouched,
+  whereLeftOff,
   changedSince,
   nextStep,
+  executionHint,
   summary,
   classification,
   timeline,
@@ -99,6 +103,11 @@ export function ItemDetailScreen({
             <strong>Last touched:</strong> {lastTouched}
           </p>
         ) : null}
+        {whereLeftOff ? (
+          <p style={{ margin: 0 }}>
+            <strong>Where you left off:</strong> {whereLeftOff}
+          </p>
+        ) : null}
         {changedSince ? (
           <p style={{ margin: 0 }}>
             <strong>What changed:</strong> {changedSince}
@@ -107,6 +116,11 @@ export function ItemDetailScreen({
         {nextStep ? (
           <p style={{ margin: 0 }}>
             <strong>Small next step:</strong> {nextStep}
+          </p>
+        ) : null}
+        {executionHint ? (
+          <p style={{ margin: 0 }}>
+            <strong>Execution status:</strong> {executionHint}
           </p>
         ) : null}
       </div>
@@ -125,6 +139,11 @@ export function ItemDetailScreen({
 
       <div>
         <h3 style={{ marginTop: 0 }}>Continuation timeline</h3>
+        {timeline.length > 0 ? (
+          <p style={{ margin: "0 0 8px", color: "#475569", fontSize: "14px", lineHeight: "20px" }}>
+            Most recent: {timeline[timeline.length - 1]?.label}
+          </p>
+        ) : null}
         {timeline.length === 0 ? <p style={{ margin: 0 }}>No continuation notes yet. Add one sentence to preserve context.</p> : null}
         {timeline.length > 0 ? (
           <ul style={styles.timeline}>

@@ -120,6 +120,9 @@ export function FocusFeedScreen({
       <div style={{ ...styles.panel, display: "grid", gap: "16px" }}>
         <FeedLensBar lenses={lenses} activeLens={activeLens} onChange={onLensChange} />
         {executionLens}
+        <p style={{ margin: 0, fontSize: "14px", lineHeight: "20px", color: "#475569" }}>
+          Focus on one card, continue lightly, then return.
+        </p>
         {loading ? <p style={{ margin: 0 }}>Loading your focus feed...</p> : null}
         {errorMessage ? (
           <div style={styles.stateCard}>

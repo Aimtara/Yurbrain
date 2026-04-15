@@ -10,7 +10,8 @@ export type {
   MessageRecord,
   SessionRecord,
   TaskRecord,
-  ThreadRecord
+  ThreadRecord,
+  UserPreferenceRecord
 } from "../../../packages/db/src";
 
 export type AppState = {

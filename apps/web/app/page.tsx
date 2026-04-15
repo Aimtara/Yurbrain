@@ -13,6 +13,7 @@ import {
   getFeed,
   listBrainItemArtifacts,
   listSessions,
+  getUserPreference,
   listThreadMessages,
   listThreadsByTarget,
   pauseSession,
@@ -22,7 +23,8 @@ import {
   snoozeFeedCard,
   startTaskSession,
   summarizeBrainItem,
-  updateTask
+  updateTask,
+  updateUserPreference
 } from "@yurbrain/client";
 import {
   ActiveSessionScreen,
@@ -44,14 +46,29 @@ type Surface = "feed" | "item" | "session";
 
 type FeedCardDto = {
   id: string;
+  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+  lens: FeedLens;
   itemId: string | null;
   taskId: string | null;
   title: string;
   body: string;
+  dismissed: boolean;
+  snoozedUntil: string | null;
+  refreshCount: number;
+  lastRefreshedAt: string | null;
+  availableActions: Array<"open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh">;
+  stateFlags: {
+    dismissed: boolean;
+    snoozed: boolean;
+    actionable: boolean;
+    hasSourceItem: boolean;
+    hasSourceTask: boolean;
+  };
   whyShown: {
     summary: string;
     reasons: string[];
   };
+  createdAt: string;
 };
 
 type ItemArtifactDto = {
@@ -107,6 +124,14 @@ type SessionDto = {
   endedAt: string | null;
 };
 
+type UserPreferenceDto = {
+  userId: string;
+  defaultLens: FeedLens;
+  cleanFocusMode: boolean;
+  founderMode: boolean;
+  updatedAt: string;
+};
+
 type ConvertResponse =
   | {
       outcome: "create_task";
@@ -127,6 +152,7 @@ type ConvertResponse =
 
 type ContinuityContext = {
   whyShown?: string;
+  whereLeftOff?: string;
   changedSince?: string;
   nextStep?: string;
   lastTouched?: string;
@@ -182,8 +208,10 @@ function formatRelative(isoValue?: string): string | undefined {
 }
 
 function inferVariant(card: FeedCardDto, relatedTask?: TaskDto): FeedCardVariant {
+  if (card.stateFlags.dismissed) return "done";
   if (relatedTask?.status === "done") return "done";
-  if (relatedTask?.status === "in_progress") return "execution";
+  if (relatedTask?.status === "in_progress" || card.cardType === "resume") return "execution";
+  if (card.cardType === "open_loop") return "resume";
   const summary = card.whyShown.summary.toLowerCase();
   if (summary.includes("blocked") || summary.includes("stale") || summary.includes("waiting")) return "blocked";
   if (summary.includes("resume") || summary.includes("revisit") || summary.includes("return")) return "resume";
@@ -191,7 +219,10 @@ function inferVariant(card: FeedCardDto, relatedTask?: TaskDto): FeedCardVariant
   return "default";
 }
 
-function inferNextStep(card: FeedCardDto, variant: FeedCardVariant): string {
+function inferNextStep(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto): string {
+  if (relatedTask?.status === "todo") return "Start a short session to move this forward.";
+  if (relatedTask?.status === "in_progress") return "Resume your active execution session.";
+  if (relatedTask?.status === "done") return "Close the loop with a short reflection note.";
   const reasonWithStep = card.whyShown.reasons.find((reason) => /next|step|follow|continue|resume/i.test(reason));
   if (reasonWithStep) return reasonWithStep;
   if (variant === "blocked") return "Leave one short note on what is blocking this, then snooze.";
@@ -201,6 +232,59 @@ function inferNextStep(card: FeedCardDto, variant: FeedCardVariant): string {
 
 function inferContinuityNote(card: FeedCardDto): string | undefined {
   return card.whyShown.reasons.find((reason) => !/next|step|follow|continue|resume/i.test(reason));
+}
+
+function inferWhereLeftOff(card: FeedCardDto, relatedTask?: TaskDto): string | undefined {
+  if (relatedTask?.status === "in_progress") return "Execution is already in progress.";
+  if (relatedTask?.status === "todo") return "You already converted this into a lightweight task.";
+  if (relatedTask?.status === "done") return "The linked task is done; this is back for closure.";
+  return card.whyShown.reasons.find((reason) => /left|last|previous|revisit|resume/i.test(reason));
+}
+
+function inferPrimaryActionLabel(card: FeedCardDto): string {
+  if (card.stateFlags.hasSourceTask) return "Open execution";
+  if (card.stateFlags.hasSourceItem) return "Open continuity";
+  return "Open";
+}
+
+function summarizeExecutionHint(task: TaskDto | null, session: SessionDto | null): string | undefined {
+  if (!task) return undefined;
+  if (task.status === "done") return "Task completed.";
+  if (task.status === "in_progress") {
+    if (session?.state === "running") return "Task in progress with a running session.";
+    if (session?.state === "paused") return "Task in progress with a paused session.";
+    return "Task in progress.";
+  }
+  return "Task is queued as the next lightweight step.";
+}
+
+function buildSyntheticDetailCard(item: BrainItemDto | null, task: TaskDto | null, continuity: ContinuityContext | null): FeedCardDto {
+  return {
+    id: item?.id ?? "detail-view",
+    cardType: "item",
+    lens: "all",
+    itemId: item?.id ?? null,
+    taskId: task?.id ?? null,
+    title: item?.title ?? "Item",
+    body: item?.rawContent ?? "",
+    dismissed: false,
+    snoozedUntil: null,
+    refreshCount: 0,
+    lastRefreshedAt: null,
+    availableActions: ["open_item", "comment", "convert_to_task", "dismiss", "snooze", "refresh"],
+    stateFlags: {
+      dismissed: false,
+      snoozed: false,
+      actionable: true,
+      hasSourceItem: true,
+      hasSourceTask: Boolean(task)
+    },
+    whyShown: {
+      summary: continuity?.whyShown ?? "Continue this item in one small step.",
+      reasons: continuity?.changedSince ? [continuity.changedSince] : []
+    },
+    createdAt: item?.createdAt ?? new Date().toISOString()
+  };
 }
 
 function matchesExecutionLens(variant: FeedCardVariant, lens: ExecutionLens): boolean {
@@ -248,6 +332,14 @@ export default function Page() {
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
+  const selectedItemTasks = useMemo(
+    () => (selectedItem ? tasks.filter((task) => task.sourceItemId === selectedItem.id) : []),
+    [selectedItem, tasks]
+  );
+  const selectedItemTask = useMemo(
+    () => selectedItemTasks.find((task) => task.status !== "done") ?? selectedItemTasks[0] ?? null,
+    [selectedItemTasks]
+  );
   const selectedArtifacts = useMemo(() => {
     if (!selectedItem) return { summary: [], classification: [] };
     return artifactHistoryByItem[selectedItem.id] ?? { summary: [], classification: [] };
@@ -275,8 +367,9 @@ export default function Page() {
         variant,
         continuity: {
           whyShown: card.whyShown.summary,
+          whereLeftOff: inferWhereLeftOff(card, linkedTask),
           changedSince: inferContinuityNote(card),
-          nextStep: inferNextStep(card, variant),
+          nextStep: inferNextStep(card, variant, linkedTask),
           lastTouched: formatRelative(linkedItem?.updatedAt ?? linkedTask?.updatedAt)
         }
       };
@@ -328,6 +421,34 @@ export default function Page() {
     }
     return "Momentum is healthy. Pick one ready item, do a tiny session, then return to the feed.";
   }, [feedModels]);
+
+  const selectedItemSession =
+    selectedItemTask && activeSession && activeSession.taskId === selectedItemTask.id ? activeSession : null;
+  const latestComment = commentMessages.length > 0 ? commentMessages[commentMessages.length - 1] : null;
+  const syntheticDetailCard = useMemo(
+    () => buildSyntheticDetailCard(selectedItem, selectedItemTask, selectedContinuity),
+    [selectedContinuity, selectedItem, selectedItemTask]
+  );
+  const syntheticDetailVariant = useMemo(
+    () => inferVariant(syntheticDetailCard, selectedItemTask ?? undefined),
+    [selectedItemTask, syntheticDetailCard]
+  );
+  const derivedItemContinuity = useMemo(
+    () => ({
+      whyShown:
+        selectedContinuity?.whyShown ??
+        (selectedItem ? "Resurfaced to restore context and keep this thought moving." : undefined),
+      lastTouched: selectedContinuity?.lastTouched ?? formatRelative(selectedItem?.updatedAt),
+      whereLeftOff:
+        latestComment?.content ?? selectedContinuity?.changedSince ?? "No continuation note yet; add one sentence to preserve re-entry.",
+      changedSince:
+        selectedContinuity?.changedSince ??
+        (latestComment ? `Latest continuation note: ${latestComment.content}` : "No new updates since the last feed refresh."),
+      nextStep: selectedContinuity?.nextStep ?? inferNextStep(syntheticDetailCard, syntheticDetailVariant, selectedItemTask ?? undefined),
+      executionHint: summarizeExecutionHint(selectedItemTask, selectedItemSession)
+    }),
+    [latestComment, selectedContinuity, selectedItem, selectedItemSession, selectedItemTask, syntheticDetailCard, syntheticDetailVariant]
+  );
 
   const reentryMessage = useMemo(() => {
     if (selectedItem) return `Last continuity touchpoint: ${selectedItem.title}.`;
@@ -405,7 +526,11 @@ export default function Page() {
 
   useEffect(() => {
     if (!hydrated) return;
-    void Promise.all([loadItems(), loadFeed(activeLens), loadTasks()]);
+    void (async () => {
+      const preferredLens = await loadUserPreferences();
+      const lensForInitialLoad = preferredLens ?? activeLens;
+      await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks()]);
+    })();
   }, [hydrated]);
 
   useEffect(() => {
@@ -493,6 +618,39 @@ export default function Page() {
     } catch {
       setTaskError("Could not load sessions for this task.");
       setActiveSession(null);
+    }
+  }
+
+  async function loadUserPreferences() {
+    try {
+      const preferences = await getUserPreference<UserPreferenceDto>(userId);
+      setActiveLens(preferences.defaultLens);
+      setFounderMode(preferences.founderMode);
+      return preferences.defaultLens;
+    } catch {
+      return null;
+    }
+  }
+
+  async function persistUserPreferences(updates: Partial<Pick<UserPreferenceDto, "defaultLens" | "founderMode">>) {
+    try {
+      await updateUserPreference<UserPreferenceDto>(userId, updates);
+    } catch {
+      // Preference persistence should not block core loop actions.
+    }
+  }
+
+  function handleLensChange(nextLens: FeedLens) {
+    setActiveLens(nextLens);
+    if (hydrated) {
+      void persistUserPreferences({ defaultLens: nextLens });
+    }
+  }
+
+  function handleFounderModeToggle(enabled: boolean) {
+    setFounderMode(enabled);
+    if (hydrated) {
+      void persistUserPreferences({ founderMode: enabled });
     }
   }
 
@@ -722,13 +880,13 @@ export default function Page() {
         reentryMessage={reentryMessage}
         activeLens={activeLens}
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
-        onLensChange={setActiveLens}
+        onLensChange={handleLensChange}
         loading={feedLoading}
         errorMessage={feedError}
         onRetry={() => void loadFeed(activeLens)}
         onReload={() => void loadFeed(activeLens)}
         hasCards={visibleFeedModels.length > 0}
-        founderToggle={<FounderModeToggle enabled={founderMode} onToggle={setFounderMode} />}
+        founderToggle={<FounderModeToggle enabled={founderMode} onToggle={handleFounderModeToggle} />}
         executionLens={founderMode ? <ExecutionLensBar activeLens={executionLens} onChange={setExecutionLens} /> : undefined}
         captureComposer={
           <div style={{ display: "grid", gap: "12px" }}>
@@ -746,27 +904,22 @@ export default function Page() {
               key={model.card.id}
               variant={model.variant}
               badge={activeLens.replaceAll("_", " ")}
+              cardType={model.card.cardType}
               title={model.card.title}
               body={model.card.body}
               whyShown={model.card.whyShown}
               lastTouched={model.continuity.lastTouched}
+              whereLeftOff={model.continuity.whereLeftOff}
               continuityNote={model.continuity.changedSince}
               nextStep={model.continuity.nextStep}
+              availableActions={model.card.availableActions}
+              primaryActionLabel={inferPrimaryActionLabel(model.card)}
               onOpen={
                 model.card.itemId
                   ? () => openItemFromModel(model)
                   : model.card.taskId
                     ? () => openTaskFromCard(model.card.taskId ?? "")
                     : undefined
-              }
-              onComment={
-                model.card.itemId
-                  ? (comment) =>
-                      void (async () => {
-                        await createComment(model.card.itemId ?? "", comment);
-                        setLastAction("Added continuation note from feed.");
-                      })()
-                  : undefined
               }
               onConvertToTask={
                 model.card.itemId
@@ -824,10 +977,12 @@ export default function Page() {
           {selectedItem ? (
             <ItemDetailScreen
               item={{ title: selectedItem.title, rawContent: selectedItem.rawContent }}
-              whyShown={selectedContinuity?.whyShown}
-              changedSince={selectedContinuity?.changedSince}
-              nextStep={selectedContinuity?.nextStep}
-              lastTouched={selectedContinuity?.lastTouched}
+              whyShown={derivedItemContinuity.whyShown}
+              whereLeftOff={derivedItemContinuity.whereLeftOff}
+              changedSince={derivedItemContinuity.changedSince}
+              nextStep={derivedItemContinuity.nextStep}
+              lastTouched={derivedItemContinuity.lastTouched}
+              executionHint={derivedItemContinuity.executionHint}
               summary={selectedArtifacts.summary[0]}
               classification={selectedArtifacts.classification[0]}
               timeline={timelineEntries}

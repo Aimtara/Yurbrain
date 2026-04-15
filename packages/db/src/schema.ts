@@ -155,6 +155,7 @@ export const userPreferences = pgTable(
     userId: uuid("user_id").primaryKey(),
     defaultLens: text("default_lens").default("all").notNull(),
     cleanFocusMode: boolean("clean_focus_mode").default(true).notNull(),
+    founderMode: boolean("founder_mode").default(false).notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
   },
   (t) => ({

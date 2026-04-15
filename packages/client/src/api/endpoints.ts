@@ -3,6 +3,7 @@ export const endpoints = {
   feed: "/feed",
   threads: "/threads",
   messages: "/messages",
+  preferences: "/preferences",
   tasks: "/tasks",
   sessions: "/sessions",
   manualConvertTask: "/tasks/manual-convert",

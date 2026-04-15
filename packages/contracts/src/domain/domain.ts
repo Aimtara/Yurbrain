@@ -138,6 +138,7 @@ export const UserPreferenceSchema = z
     userId: z.string().uuid(),
     defaultLens: FeedLensSchema,
     cleanFocusMode: z.boolean(),
+    founderMode: z.boolean(),
     updatedAt: z.string().datetime()
   })
   .strict();

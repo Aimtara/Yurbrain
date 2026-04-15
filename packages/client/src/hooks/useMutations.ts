@@ -110,6 +110,20 @@ export async function queryItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiQuery, payload);
 }
 
+export async function getUserPreference<T>(userId: string) {
+  return withNormalizedErrors(() => apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`));
+}
+
+export async function updateUserPreference<T>(userId: string, payload: unknown) {
+  return withNormalizedErrors(() =>
+    apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
 export async function dismissFeedCard<T>(id: string) {
   return postJson<T>(`/feed/${id}/dismiss`, {});
 }

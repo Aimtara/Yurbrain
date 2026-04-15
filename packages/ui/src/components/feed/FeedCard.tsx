@@ -1,18 +1,22 @@
 import React from "react";
 
 export type FeedCardVariant = "default" | "execution" | "blocked" | "done" | "resume";
+export type FeedCardAction = "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh";
 
 export function FeedCard({
   variant = "default",
   badge,
+  cardType,
   title,
   body,
   whyShown,
   lastTouched,
   continuityNote,
   nextStep,
+  whereLeftOff,
+  availableActions,
+  primaryActionLabel,
   onOpen,
-  onComment,
   onConvertToTask,
   onDismiss,
   onSnooze,
@@ -20,14 +24,17 @@ export function FeedCard({
 }: {
   variant?: FeedCardVariant;
   badge?: string;
+  cardType?: string;
   title: string;
   body: string;
   whyShown?: { summary: string; reasons: string[] } | string;
   lastTouched?: string;
   continuityNote?: string;
   nextStep?: string;
+  whereLeftOff?: string;
+  availableActions?: FeedCardAction[];
+  primaryActionLabel?: string;
   onOpen?: () => void;
-  onComment?: (value: string) => void;
   onConvertToTask?: () => void;
   onDismiss?: () => void;
   onSnooze?: (minutes: number) => void;
@@ -62,6 +69,11 @@ export function FeedCard({
             {badge}
           </span>
         ) : null}
+        {cardType ? (
+          <span style={{ borderRadius: "999px", border: "1px solid #cbd5e1", padding: "4px 10px", fontSize: "12px", fontWeight: 700, color: "#475569" }}>
+            {cardType.replaceAll("_", " ")}
+          </span>
+        ) : null}
         <span style={{ borderRadius: "999px", border: "1px solid #cbd5e1", padding: "4px 10px", fontSize: "12px", fontWeight: 700 }}>
           {variant}
         </span>
@@ -85,11 +97,16 @@ export function FeedCard({
           ) : null}
         </div>
       ) : null}
-      {(lastTouched || continuityNote || nextStep) ? (
+      {(lastTouched || whereLeftOff || continuityNote || nextStep) ? (
         <div style={{ display: "grid", gap: "6px", color: "#475569", fontSize: "14px" }}>
           {lastTouched ? (
             <p style={{ margin: 0 }}>
               <strong>Last touched:</strong> {lastTouched}
+            </p>
+          ) : null}
+          {whereLeftOff ? (
+            <p style={{ margin: 0 }}>
+              <strong>Where you left off:</strong> {whereLeftOff}
             </p>
           ) : null}
           {continuityNote ? (
@@ -105,16 +122,15 @@ export function FeedCard({
         </div>
       ) : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-        {onOpen ? (
+        {onOpen && (!availableActions || availableActions.includes("open_item") || availableActions.includes("open_task") || availableActions.includes("start_session")) ? (
           <button type="button" onClick={onOpen}>
-            Open continuity
+            {primaryActionLabel ?? "Open continuity"}
           </button>
         ) : null}
-        {onComment ? <button onClick={() => onComment("Quick continuation note")}>Continue</button> : null}
-        {onConvertToTask ? <button onClick={onConvertToTask}>Plan next step</button> : null}
-        {onSnooze ? <button onClick={() => onSnooze(120)}>Snooze 2h</button> : null}
-        {onRefresh ? <button onClick={onRefresh}>Re-score</button> : null}
-        {onDismiss ? <button onClick={onDismiss}>Hide for now</button> : null}
+        {onConvertToTask && (!availableActions || availableActions.includes("convert_to_task")) ? <button onClick={onConvertToTask}>Plan next step</button> : null}
+        {onSnooze && (!availableActions || availableActions.includes("snooze")) ? <button onClick={() => onSnooze(120)}>Snooze 2h</button> : null}
+        {onRefresh && (!availableActions || availableActions.includes("refresh")) ? <button onClick={onRefresh}>Re-score</button> : null}
+        {onDismiss && (!availableActions || availableActions.includes("dismiss")) ? <button onClick={onDismiss}>Hide for now</button> : null}
       </div>
       {whyShownSummary ? (
         <p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>
