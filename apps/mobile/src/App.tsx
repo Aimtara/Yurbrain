@@ -17,6 +17,8 @@ type FeedCardDto = {
   whyShown?: { summary?: string; reasons?: string[] };
 };
 
+type TimeWindowOption = "2h" | "4h" | "6h" | "8h" | "24h" | "custom";
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Brain");
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
@@ -24,6 +26,9 @@ export default function App() {
   const [focusLoading, setFocusLoading] = useState(false);
   const [cardActionBusyId, setCardActionBusyId] = useState("");
   const [focusActionNotice, setFocusActionNotice] = useState("");
+  const [timeWindow, setTimeWindow] = useState<TimeWindowOption>("4h");
+  const [customWindowMinutes, setCustomWindowMinutes] = useState("180");
+  const [timeActionNotice, setTimeActionNotice] = useState("");
   const [feedFailed, setFeedFailed] = useState(false);
   const userId = "11111111-1111-1111-1111-111111111111";
 
@@ -62,6 +67,15 @@ export default function App() {
       )),
     [activeTab]
   );
+
+  const windowMinutes = useMemo(() => {
+    if (timeWindow === "custom") {
+      const parsed = Number.parseInt(customWindowMinutes, 10);
+      if (Number.isNaN(parsed)) return 180;
+      return Math.max(30, Math.min(1440, parsed));
+    }
+    return timeWindowDurations[timeWindow];
+  }, [customWindowMinutes, timeWindow]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f6f7fb" }}>
@@ -143,6 +157,57 @@ export default function App() {
           </Text>
         ) : null}
         <Text style={{ color: "#6b7280", marginBottom: 8 }}>Clean/focus mode is enabled by default.</Text>
+        {activeTab === "Time" ? (
+          <View style={{ borderWidth: 1, borderColor: "#d8dce8", borderRadius: 12, backgroundColor: "#ffffff", padding: 12, marginBottom: 8 }}>
+            <Text style={{ fontSize: 18, fontWeight: "600", color: "#1d2130", marginBottom: 6 }}>Time home</Text>
+            <Text style={{ color: "#4d5468", marginBottom: 8 }}>Pick a window and choose one task that fits.</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+              {timeWindowOptions.map((window) => (
+                <TouchableOpacity
+                  key={window}
+                  onPress={() => setTimeWindow(window)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: timeWindow === window }}
+                  style={{
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: "#d8dce8",
+                    backgroundColor: timeWindow === window ? "#eef2ff" : "#ffffff"
+                  }}
+                >
+                  <Text style={{ fontWeight: timeWindow === window ? "700" : "500", color: "#2d3448" }}>{timeWindowLabels[window]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {timeWindow === "custom" ? (
+              <View style={{ marginBottom: 8 }}>
+                <Text style={{ color: "#4d5468", marginBottom: 4 }}>Custom minutes</Text>
+                <TextInput
+                  keyboardType="numeric"
+                  value={customWindowMinutes}
+                  onChangeText={setCustomWindowMinutes}
+                  accessibilityLabel="Custom time window minutes"
+                  style={{ borderWidth: 1, borderColor: "#d8dce8", borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: "#ffffff" }}
+                />
+              </View>
+            ) : null}
+            <Text style={{ color: "#4d5468", marginBottom: 8 }}>Current window: {windowMinutes} minutes.</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setActiveTab("Focus");
+                setFocusActionNotice("Start without planning: continue from the top Focus card.");
+                setTimeActionNotice("Switched to Focus to continue immediately.");
+              }}
+              accessibilityRole="button"
+              style={{ alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: "#d8dce8", backgroundColor: "#ffffff" }}
+            >
+              <Text style={{ color: "#2d3448", fontWeight: "600" }}>Start without planning</Text>
+            </TouchableOpacity>
+            {timeActionNotice ? <Text style={{ color: "#374151", marginTop: 8 }}>{timeActionNotice}</Text> : null}
+          </View>
+        ) : null}
         <TextInput placeholder="CaptureComposer" accessibilityLabel="Capture composer input" />
       </ScrollView>
     </SafeAreaView>
@@ -196,6 +261,25 @@ const lensHints: Record<FeedLens, string> = {
   learning: "Ideas and notes with reusable takeaways.",
   in_progress: "Things already in motion so momentum stays intact.",
   recently_commented: "Memories you recently discussed or updated."
+};
+
+const timeWindowOptions: TimeWindowOption[] = ["2h", "4h", "6h", "8h", "24h", "custom"];
+
+const timeWindowLabels: Record<TimeWindowOption, string> = {
+  "2h": "2h",
+  "4h": "4h",
+  "6h": "6h",
+  "8h": "8h",
+  "24h": "24h",
+  custom: "Custom"
+};
+
+const timeWindowDurations: Record<Exclude<TimeWindowOption, "custom">, number> = {
+  "2h": 120,
+  "4h": 240,
+  "6h": 360,
+  "8h": 480,
+  "24h": 1440
 };
 
 const cardTypeLabels: Record<NonNullable<FeedCardDto["cardType"]>, string> = {
