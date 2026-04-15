@@ -1,4 +1,5 @@
 import React from "react";
+import { tokens } from "../../design/tokens";
 
 export type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
 
@@ -13,8 +14,8 @@ const lensLabels: Record<FeedLens, string> = {
 
 export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens[]; activeLens: FeedLens; onChange: (lens: FeedLens) => void }) {
   return (
-    <div style={{ marginBottom: "10px" }}>
-      <nav aria-label="Feed lenses" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+    <div style={{ marginBottom: `${tokens.space.sm + 2}px` }}>
+      <nav aria-label="Feed lenses" style={{ display: "flex", flexWrap: "wrap", gap: `${tokens.space.sm}px` }}>
         {lenses.map((lens) => (
           <button
             key={lens}
@@ -22,10 +23,10 @@ export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens
             onClick={() => onChange(lens)}
             aria-pressed={activeLens === lens}
             style={{
-              border: "1px solid #d9d9df",
+              border: `1px solid ${feedPalette.border}`,
               borderRadius: "999px",
-              padding: "6px 10px",
-              background: activeLens === lens ? "#f1f4ff" : "#fff",
+              padding: `${tokens.space.xs + 2}px ${tokens.space.sm + 2}px`,
+              background: activeLens === lens ? feedPalette.activeBackground : "#fff",
               fontWeight: activeLens === lens ? 600 : 500
             }}
           >
@@ -33,7 +34,7 @@ export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens
           </button>
         ))}
       </nav>
-      <p style={{ margin: "8px 0 0", color: "#5a6072" }}>
+      <p style={{ margin: `${tokens.space.sm}px 0 0`, color: feedPalette.hintText }}>
         <small>{lensHints[activeLens]}</small>
       </p>
     </div>
@@ -47,4 +48,10 @@ const lensHints: Record<FeedLens, string> = {
   learning: "Ideas and notes with reusable takeaways.",
   in_progress: "Things already in motion so momentum stays intact.",
   recently_commented: "Memories you recently discussed or updated."
+};
+
+const feedPalette = {
+  border: "#d9d9df",
+  activeBackground: "#f1f4ff",
+  hintText: "#5a6072"
 };

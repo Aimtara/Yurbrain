@@ -1,4 +1,5 @@
 import React from "react";
+import { tokens } from "../../design/tokens";
 
 export function FeedCard({
   title,
@@ -32,6 +33,7 @@ export function FeedCard({
   onRefresh?: () => void;
 }) {
   const whyShownSummary = typeof whyShown === "string" ? whyShown : whyShown?.summary;
+  const whyShownSecondary = typeof whyShown === "string" ? null : whyShown?.reasons?.[1] ?? null;
   const lensLabel = lens ? lensLabels[lens] : null;
   const cardTypeLabel = cardType ? cardTypeLabels[cardType] : null;
   const timeLabel = formatTimeSignal(lastRefreshedAt ?? undefined, createdAt);
@@ -39,33 +41,37 @@ export function FeedCard({
   return (
     <article
       style={{
-        border: "1px solid #d9d9df",
-        borderRadius: "12px",
-        padding: "14px",
-        marginBottom: "12px",
-        background: "#fff"
+        border: `1px solid ${feedPalette.border}`,
+        borderRadius: `${tokens.radius.md}px`,
+        padding: `${tokens.space.md}px`,
+        marginBottom: `${tokens.space.sm + tokens.space.xs}px`,
+        background: feedPalette.cardBackground,
+        boxShadow: "0 1px 2px rgba(12, 17, 29, 0.05)"
       }}
     >
       {cardTypeLabel || lensLabel ? (
-        <p style={{ margin: "0 0 6px", fontSize: "12px", color: "#5a6072" }}>
+        <p style={{ margin: `0 0 ${tokens.space.xs + 2}px`, fontSize: "12px", color: feedPalette.mutedText }}>
           {cardTypeLabel ? <strong>{cardTypeLabel}</strong> : null}
           {cardTypeLabel && lensLabel ? " · " : null}
           {lensLabel ? <span>{lensLabel}</span> : null}
         </p>
       ) : null}
-      <h3 style={{ margin: "0 0 6px", fontSize: "18px", lineHeight: "1.25" }}>{title}</h3>
-      <p style={{ margin: "0 0 10px", color: "#222", lineHeight: "1.4" }}>{body}</p>
+      <h3 style={{ margin: `0 0 ${tokens.space.xs + 2}px`, fontSize: "18px", lineHeight: "1.25" }}>{title}</h3>
+      <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, color: feedPalette.mainText, lineHeight: "1.4" }}>{body}</p>
       {whyShownSummary ? (
-        <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#40455a" }}>
+        <p style={{ margin: `0 0 ${tokens.space.xs}px`, fontSize: "13px", color: feedPalette.secondaryText }}>
           <strong>Why shown:</strong> {whyShownSummary}
         </p>
       ) : null}
+      {whyShownSecondary ? (
+        <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, fontSize: "12px", color: feedPalette.mutedText }}>{whyShownSecondary}</p>
+      ) : null}
       {timeLabel ? (
-        <p style={{ margin: "0 0 10px" }}>
+        <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, color: feedPalette.mutedText }}>
           <small>{timeLabel}</small>
         </p>
       ) : null}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: `${tokens.space.sm}px`, flexWrap: "wrap" }}>
         {onComment ? <button onClick={() => onComment("Noted for follow-up.")}>Add update</button> : null}
         {onContinue ? <button onClick={onContinue}>Continue</button> : null}
         {onConvertToTask ? <button onClick={onConvertToTask}>Plan this</button> : null}
@@ -94,6 +100,14 @@ const cardTypeLabels: Record<NonNullable<Parameters<typeof FeedCard>[0]["cardTyp
   opportunity: "Opportunity",
   open_loop: "Open loop",
   resume: "Resume point"
+};
+
+const feedPalette = {
+  border: "#d9d9df",
+  cardBackground: "#ffffff",
+  mainText: "#1d2130",
+  secondaryText: "#3e4458",
+  mutedText: "#5a6072"
 };
 
 function formatTimeSignal(lastRefreshedAt?: string, createdAt?: string): string | null {
