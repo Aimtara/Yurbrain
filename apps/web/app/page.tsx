@@ -362,6 +362,7 @@ function formatRelative(isoValue?: string): string | undefined {
 function inferVariant(card: FeedCardDto, relatedTask?: TaskDto, relatedSession?: SessionDto): FeedCardVariant {
   if (card.stateFlags.dismissed) return "done";
   if (relatedTask?.status === "done") return "done";
+  if (relatedSession?.state === "running") return "execution";
   const postponeCount = card.postponeCount ?? 0;
   const blockedState = inferBlockedState(card, relatedTask, relatedSession);
   if ((blockedState && relatedSession?.state !== "running") || postponeCount >= 2) return "blocked";
