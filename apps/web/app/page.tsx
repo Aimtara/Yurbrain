@@ -435,7 +435,6 @@ export default function Page() {
   const [lastAction, setLastAction] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
-  const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewState | null>(null);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
@@ -1341,7 +1340,7 @@ export default function Page() {
           onClose={() => setPendingPlanPreview(null)}
           onUpdateStepMinutes={(stepId, minutes) => updatePlanStepMinutes(stepId, minutes)}
           onAcceptPlan={() => {
-            void acceptPlanPreview();
+            void acceptPlanPreview(false);
           }}
           onStartFirstStep={() => {
             void startPlanFirstStep();
