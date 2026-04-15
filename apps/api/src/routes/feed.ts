@@ -33,10 +33,10 @@ function toFeedCardContract(card: StoredFeedCard, whyShown: FeedWhyShown) {
 }
 
 const generatedCardWhyShown: FeedWhyShown = {
-  summary: "Generated from one of your saved items.",
+  summary: "Based on one of your saved memories.",
   reasons: [
-    "Generated from one of your saved items.",
-    "Kept concise so your feed stays focused."
+    "Based on one of your saved memories.",
+    "Kept visible so you can quickly pick up the thread."
   ]
 };
 

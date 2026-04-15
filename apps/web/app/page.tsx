@@ -6,6 +6,7 @@ import {
   classifyBrainItem,
   convertToTask,
   createBrainItem,
+  createTask,
   createThread,
   dismissFeedCard,
   endpoints,
@@ -70,6 +71,8 @@ type FeedCardDto = {
   };
   createdAt: string;
 };
+
+type FeedAction = FeedCardDto["availableActions"][number];
 
 type ItemArtifactDto = {
   id: string;
@@ -292,6 +295,10 @@ function matchesExecutionLens(variant: FeedCardVariant, lens: ExecutionLens): bo
   if (lens === "ready_to_move") return variant === "execution" || variant === "resume";
   if (lens === "needs_unblock") return variant === "blocked";
   return variant === "execution" || variant === "done";
+}
+
+function supportsAction(card: FeedCardDto, action: FeedAction): boolean {
+  return card.availableActions.includes(action);
 }
 
 export default function Page() {
@@ -565,7 +572,7 @@ export default function Page() {
       setFeedCards(cards);
       setFeedError("");
     } catch {
-      setFeedError("Feed is unavailable right now. Retry in a moment.");
+      setFeedError("Focus needs a moment. Your memory is safe—try again shortly.");
       setFeedCards([]);
     } finally {
       setFeedLoading(false);
@@ -752,7 +759,7 @@ export default function Page() {
     }
   }
 
-  async function runConvert(input: { itemId: string; content: string; sourceMessageId?: string }) {
+  async function runConvert(input: { itemId: string; content: string; sourceMessageId?: string }): Promise<TaskDto | null> {
     setConversionNotice("");
     setTaskError("");
     try {
@@ -765,15 +772,70 @@ export default function Page() {
       if (result.outcome === "create_task") {
         setTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
         setSelectedTaskId(result.task.id);
-        setConversionNotice(`Planned: ${result.task.title}`);
+        setConversionNotice(`Task created: ${result.task.title}`);
+        await loadTasks();
+        return result.task;
       } else if (result.outcome === "mini_plan") {
         setConversionNotice(`AI suggested a mini plan (${result.steps.length} steps) to keep execution lightweight.`);
       } else {
         setConversionNotice(`Conversion skipped: ${result.reason}`);
       }
       await loadTasks();
+      return null;
     } catch {
       setTaskError("Could not convert into execution step.");
+      return null;
+    }
+  }
+
+  async function createManualTaskFromFeedCard(card: FeedCardDto): Promise<TaskDto> {
+    const fallbackTitle = card.title.trim().slice(0, 200) || "Follow up on resurfaced memory";
+    const created = await createTask<TaskDto>({
+      userId,
+      title: fallbackTitle,
+      sourceItemId: card.itemId
+    });
+    setTasks((current) => [created, ...current.filter((task) => task.id !== created.id)]);
+    setSelectedTaskId(created.id);
+    setConversionNotice(`Task created: ${created.title}`);
+    await loadTasks();
+    return created;
+  }
+
+  async function startSessionFromFeedCard(card: FeedCardDto) {
+    if (!card.itemId) return;
+
+    setTaskError("");
+    setSelectedItemId(card.itemId);
+
+    const existingTask = tasks.find((task) => task.sourceItemId === card.itemId && task.status !== "done");
+    const convertedTask =
+      existingTask ??
+      (await runConvert({
+        itemId: card.itemId,
+        content: card.body
+      }));
+
+    let taskToStart = convertedTask;
+    if (!taskToStart) {
+      try {
+        taskToStart = await createManualTaskFromFeedCard(card);
+      } catch {
+        setTaskError("Could not start a session from this card yet.");
+        return;
+      }
+    }
+
+    try {
+      const session = await startTaskSession<SessionDto>(taskToStart.id);
+      setActiveSession(session);
+      setSelectedTaskId(taskToStart.id);
+      setConversionNotice(`Session started: ${taskToStart.title}`);
+      setActiveSurface("session");
+      await loadTasks();
+      await loadSessionsForTask(taskToStart.id);
+    } catch {
+      setTaskError("Could not start a session right now.");
     }
   }
 
@@ -905,8 +967,11 @@ export default function Page() {
               variant={model.variant}
               badge={activeLens.replaceAll("_", " ")}
               cardType={model.card.cardType}
+              lens={model.card.lens}
               title={model.card.title}
               body={model.card.body}
+              createdAt={model.card.createdAt}
+              lastRefreshedAt={model.card.lastRefreshedAt}
               whyShown={model.card.whyShown}
               lastTouched={model.continuity.lastTouched}
               whereLeftOff={model.continuity.whereLeftOff}
@@ -925,9 +990,18 @@ export default function Page() {
                 model.card.itemId
                   ? () =>
                       void (async () => {
-                        await runConvert({ itemId: model.card.itemId ?? "", content: model.card.body });
-                        setActiveSurface("session");
+                        const createdTask = await runConvert({ itemId: model.card.itemId ?? "", content: model.card.body });
+                        if (createdTask) {
+                          setActiveSurface("session");
+                        }
                       })()
+                  : undefined
+              }
+              onStartSession={
+                model.card.itemId && supportsAction(model.card, "start_session")
+                  ? () => {
+                      void startSessionFromFeedCard(model.card);
+                    }
                   : undefined
               }
               onDismiss={() =>
