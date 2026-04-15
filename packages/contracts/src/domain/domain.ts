@@ -21,6 +21,10 @@ export const FeedActionSchema = z.enum([
 export const TaskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export const SessionStateSchema = z.enum(["running", "paused", "finished"]);
 export const EventTypeSchema = z.enum(["brain_item_created", "brain_item_updated"]);
+export const RenderModeSchema = z.enum(["focus", "explore"]);
+export const AiSummaryModeSchema = z.enum(["concise", "balanced", "detailed"]);
+export const FeedDensitySchema = z.enum(["comfortable", "compact"]);
+export const ResurfacingIntensitySchema = z.enum(["gentle", "balanced", "active"]);
 export const FeedWhyShownSchema = z
   .object({
     summary: z.string().min(1).max(160),
@@ -141,6 +145,10 @@ export const UserPreferenceSchema = z
     defaultLens: FeedLensSchema,
     cleanFocusMode: z.boolean(),
     founderMode: z.boolean(),
+    renderMode: RenderModeSchema,
+    aiSummaryMode: AiSummaryModeSchema,
+    feedDensity: FeedDensitySchema,
+    resurfacingIntensity: ResurfacingIntensitySchema,
     updatedAt: z.string().datetime()
   })
   .strict();

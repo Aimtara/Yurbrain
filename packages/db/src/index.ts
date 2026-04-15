@@ -44,6 +44,10 @@ export type MessageRecord = {
 };
 
 export type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
+export type RenderMode = "focus" | "explore";
+export type AiSummaryMode = "concise" | "balanced" | "detailed";
+export type FeedDensity = "comfortable" | "compact";
+export type ResurfacingIntensity = "gentle" | "balanced" | "active";
 
 export type FeedCardRecord = {
   id: string;
@@ -96,6 +100,10 @@ export type UserPreferenceRecord = {
   defaultLens: FeedLens;
   cleanFocusMode: boolean;
   founderMode: boolean;
+  renderMode: RenderMode;
+  aiSummaryMode: AiSummaryMode;
+  feedDensity: FeedDensity;
+  resurfacingIntensity: ResurfacingIntensity;
   updatedAt: string;
 };
 
@@ -146,7 +154,12 @@ export type DbRepository = {
   getUserPreference: (userId: string) => Promise<UserPreferenceRecord | null>;
   upsertUserPreference: (
     userId: string,
-    updates: Partial<Pick<UserPreferenceRecord, "defaultLens" | "cleanFocusMode" | "founderMode">>
+    updates: Partial<
+      Pick<
+        UserPreferenceRecord,
+        "defaultLens" | "cleanFocusMode" | "founderMode" | "renderMode" | "aiSummaryMode" | "feedDensity" | "resurfacingIntensity"
+      >
+    >
   ) => Promise<UserPreferenceRecord>;
 };
 
@@ -259,6 +272,10 @@ function toUserPreferenceRecord(row: typeof schema.userPreferences.$inferSelect)
     defaultLens: row.defaultLens as FeedLens,
     cleanFocusMode: row.cleanFocusMode,
     founderMode: row.founderMode,
+    renderMode: row.renderMode as RenderMode,
+    aiSummaryMode: row.aiSummaryMode as AiSummaryMode,
+    feedDensity: row.feedDensity as FeedDensity,
+    resurfacingIntensity: row.resurfacingIntensity as ResurfacingIntensity,
     updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
   };
 }
@@ -687,6 +704,10 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
         if (updates.defaultLens !== undefined) updatePatch.defaultLens = updates.defaultLens;
         if (updates.cleanFocusMode !== undefined) updatePatch.cleanFocusMode = updates.cleanFocusMode;
         if (updates.founderMode !== undefined) updatePatch.founderMode = updates.founderMode;
+        if (updates.renderMode !== undefined) updatePatch.renderMode = updates.renderMode;
+        if (updates.aiSummaryMode !== undefined) updatePatch.aiSummaryMode = updates.aiSummaryMode;
+        if (updates.feedDensity !== undefined) updatePatch.feedDensity = updates.feedDensity;
+        if (updates.resurfacingIntensity !== undefined) updatePatch.resurfacingIntensity = updates.resurfacingIntensity;
 
         const [row] = await db
           .insert(schema.userPreferences)
@@ -695,6 +716,10 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             defaultLens: updates.defaultLens ?? "all",
             cleanFocusMode: updates.cleanFocusMode ?? true,
             founderMode: updates.founderMode ?? false,
+            renderMode: updates.renderMode ?? "focus",
+            aiSummaryMode: updates.aiSummaryMode ?? "balanced",
+            feedDensity: updates.feedDensity ?? "comfortable",
+            resurfacingIntensity: updates.resurfacingIntensity ?? "balanced",
             updatedAt: new Date()
           })
           .onConflictDoUpdate({

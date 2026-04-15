@@ -146,6 +146,10 @@ type UserPreferenceDto = {
   defaultLens: FeedLens;
   cleanFocusMode: boolean;
   founderMode: boolean;
+  renderMode: "focus" | "explore";
+  aiSummaryMode: "concise" | "balanced" | "detailed";
+  feedDensity: "comfortable" | "compact";
+  resurfacingIntensity: "gentle" | "balanced" | "active";
   updatedAt: string;
 };
 
@@ -232,6 +236,10 @@ const storageKeys = {
   selectedItemId: "yurbrain.selectedItemId",
   selectedTaskId: "yurbrain.selectedTaskId",
   founderMode: "yurbrain.founderMode",
+  renderMode: "yurbrain.renderMode",
+  aiSummaryMode: "yurbrain.aiSummaryMode",
+  feedDensity: "yurbrain.feedDensity",
+  resurfacingIntensity: "yurbrain.resurfacingIntensity",
   executionLens: "yurbrain.executionLens",
   activeSurface: "yurbrain.activeSurface",
   timeWindow: "yurbrain.timeWindow",
@@ -275,6 +283,15 @@ const timeWindowMinutes: Record<Exclude<TimeWindowOption, "custom">, number> = {
   "8h": 480,
   "24h": 1440
 };
+
+function deriveFeedRequestLimit(
+  feedDensity: UserPreferenceDto["feedDensity"],
+  resurfacingIntensity: UserPreferenceDto["resurfacingIntensity"]
+): number {
+  const densityBase = feedDensity === "compact" ? 12 : 9;
+  const intensityDelta = resurfacingIntensity === "gentle" ? -2 : resurfacingIntensity === "active" ? 2 : 0;
+  return Math.max(6, Math.min(16, densityBase + intensityDelta));
+}
 
 function deriveArtifactText(payload: Record<string, unknown>): string {
   if (typeof payload.content === "string" && payload.content.trim().length > 0) {
@@ -625,6 +642,10 @@ export default function Page() {
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
   const [executionLens, setExecutionLens] = useState<ExecutionLens>("all");
   const [founderMode, setFounderMode] = useState(false);
+  const [renderMode, setRenderMode] = useState<UserPreferenceDto["renderMode"]>("focus");
+  const [aiSummaryMode, setAiSummaryMode] = useState<UserPreferenceDto["aiSummaryMode"]>("balanced");
+  const [feedDensity, setFeedDensity] = useState<UserPreferenceDto["feedDensity"]>("comfortable");
+  const [resurfacingIntensity, setResurfacingIntensity] = useState<UserPreferenceDto["resurfacingIntensity"]>("balanced");
   const [activeSurface, setActiveSurface] = useState<Surface>("feed");
 
   const [captureDraft, setCaptureDraft] = useState("");
@@ -663,6 +684,7 @@ export default function Page() {
   const [pendingPostponeSheet, setPendingPostponeSheet] = useState<PostponeDraft | null>(null);
   const [pendingFinishRebalance, setPendingFinishRebalance] = useState<FinishRebalanceDraft | null>(null);
   const [timeActionNotice, setTimeActionNotice] = useState("");
+  const [personalizationNotice, setPersonalizationNotice] = useState("");
   const [lastAction, setLastAction] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
@@ -670,6 +692,10 @@ export default function Page() {
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
   const actionableTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
+  const feedLimit = useMemo(
+    () => deriveFeedRequestLimit(feedDensity, resurfacingIntensity),
+    [feedDensity, resurfacingIntensity]
+  );
   const windowMinutes = useMemo(() => resolveTimeWindowMinutes(timeWindow, customWindowMinutes), [customWindowMinutes, timeWindow]);
   const selectedItemTasks = useMemo(
     () => (selectedItem ? tasks.filter((task) => task.sourceItemId === selectedItem.id) : []),
@@ -913,6 +939,22 @@ export default function Page() {
 
     const storedFounderMode = window.localStorage.getItem(storageKeys.founderMode);
     setFounderMode(storedFounderMode === "1");
+    const storedRenderMode = window.localStorage.getItem(storageKeys.renderMode);
+    if (storedRenderMode === "focus" || storedRenderMode === "explore") {
+      setRenderMode(storedRenderMode);
+    }
+    const storedAiSummaryMode = window.localStorage.getItem(storageKeys.aiSummaryMode);
+    if (storedAiSummaryMode === "concise" || storedAiSummaryMode === "balanced" || storedAiSummaryMode === "detailed") {
+      setAiSummaryMode(storedAiSummaryMode);
+    }
+    const storedFeedDensity = window.localStorage.getItem(storageKeys.feedDensity);
+    if (storedFeedDensity === "comfortable" || storedFeedDensity === "compact") {
+      setFeedDensity(storedFeedDensity);
+    }
+    const storedResurfacingIntensity = window.localStorage.getItem(storageKeys.resurfacingIntensity);
+    if (storedResurfacingIntensity === "gentle" || storedResurfacingIntensity === "balanced" || storedResurfacingIntensity === "active") {
+      setResurfacingIntensity(storedResurfacingIntensity);
+    }
     setSelectedItemId(window.localStorage.getItem(storageKeys.selectedItemId) ?? "");
     setSelectedTaskId(window.localStorage.getItem(storageKeys.selectedTaskId) ?? "");
     const storedTimeWindow = window.localStorage.getItem(storageKeys.timeWindow);
@@ -945,6 +987,26 @@ export default function Page() {
     if (!hydrated) return;
     window.localStorage.setItem(storageKeys.founderMode, founderMode ? "1" : "0");
   }, [founderMode, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.renderMode, renderMode);
+  }, [hydrated, renderMode]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.aiSummaryMode, aiSummaryMode);
+  }, [aiSummaryMode, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.feedDensity, feedDensity);
+  }, [feedDensity, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.resurfacingIntensity, resurfacingIntensity);
+  }, [hydrated, resurfacingIntensity]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -986,7 +1048,7 @@ export default function Page() {
   useEffect(() => {
     if (!hydrated) return;
     void loadFeed(activeLens);
-  }, [activeLens, hydrated]);
+  }, [activeLens, feedLimit, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -1011,7 +1073,7 @@ export default function Page() {
   async function loadFeed(lens: FeedLens) {
     setFeedLoading(true);
     try {
-      const cards = await getFeed<FeedCardDto[]>({ userId, lens, limit: 10 });
+      const cards = await getFeed<FeedCardDto[]>({ userId, lens, limit: feedLimit });
       setFeedCards(cards);
       setFeedError("");
     } catch {
@@ -1112,13 +1174,21 @@ export default function Page() {
       const preferences = await getUserPreference<UserPreferenceDto>(userId);
       setActiveLens(preferences.defaultLens);
       setFounderMode(preferences.founderMode);
+      setRenderMode(preferences.renderMode);
+      setAiSummaryMode(preferences.aiSummaryMode);
+      setFeedDensity(preferences.feedDensity);
+      setResurfacingIntensity(preferences.resurfacingIntensity);
       return preferences.defaultLens;
     } catch {
       return null;
     }
   }
 
-  async function persistUserPreferences(updates: Partial<Pick<UserPreferenceDto, "defaultLens" | "founderMode">>) {
+  async function persistUserPreferences(
+    updates: Partial<
+      Pick<UserPreferenceDto, "defaultLens" | "founderMode" | "renderMode" | "aiSummaryMode" | "feedDensity" | "resurfacingIntensity">
+    >
+  ) {
     try {
       await updateUserPreference<UserPreferenceDto>(userId, updates);
     } catch {
@@ -1137,6 +1207,38 @@ export default function Page() {
     setFounderMode(enabled);
     if (hydrated) {
       void persistUserPreferences({ founderMode: enabled });
+    }
+  }
+
+  function handleRenderModeChange(nextMode: UserPreferenceDto["renderMode"]) {
+    setRenderMode(nextMode);
+    setPersonalizationNotice(nextMode === "focus" ? "Focus mode stays the default surface." : "Explore mode preference saved for future rendering.");
+    if (hydrated) {
+      void persistUserPreferences({ renderMode: nextMode });
+    }
+  }
+
+  function handleAiSummaryModeChange(nextMode: UserPreferenceDto["aiSummaryMode"]) {
+    setAiSummaryMode(nextMode);
+    setPersonalizationNotice(`AI summary mode set to ${nextMode}.`);
+    if (hydrated) {
+      void persistUserPreferences({ aiSummaryMode: nextMode });
+    }
+  }
+
+  function handleFeedDensityChange(nextDensity: UserPreferenceDto["feedDensity"]) {
+    setFeedDensity(nextDensity);
+    setPersonalizationNotice(`Feed density set to ${nextDensity}.`);
+    if (hydrated) {
+      void persistUserPreferences({ feedDensity: nextDensity });
+    }
+  }
+
+  function handleResurfacingIntensityChange(nextIntensity: UserPreferenceDto["resurfacingIntensity"]) {
+    setResurfacingIntensity(nextIntensity);
+    setPersonalizationNotice(`Resurfacing intensity set to ${nextIntensity}.`);
+    if (hydrated) {
+      void persistUserPreferences({ resurfacingIntensity: nextIntensity });
     }
   }
 
@@ -1968,6 +2070,53 @@ export default function Page() {
                 <strong>Top insight:</strong> {meInsights.topInsight}
               </p>
             </div>
+
+            <section style={{ borderRadius: "14px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "12px", display: "grid", gap: "10px" }}>
+              <h3 style={{ margin: 0, fontSize: "17px", lineHeight: "22px" }}>Personalization</h3>
+              <p style={{ margin: 0, color: "#475569" }}>Shape continuity defaults without changing the core loop.</p>
+              <div style={{ display: "grid", gap: "10px" }}>
+                <label style={{ display: "grid", gap: "4px" }}>
+                  <span style={{ fontWeight: 700 }}>Render mode</span>
+                  <select value={renderMode} onChange={(event) => handleRenderModeChange(event.target.value as UserPreferenceDto["renderMode"])}>
+                    <option value="focus">Focus (default)</option>
+                    <option value="explore">Explore (saved for future view)</option>
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: "4px" }}>
+                  <span style={{ fontWeight: 700 }}>AI summary mode</span>
+                  <select
+                    value={aiSummaryMode}
+                    onChange={(event) => handleAiSummaryModeChange(event.target.value as UserPreferenceDto["aiSummaryMode"])}
+                  >
+                    <option value="concise">Concise</option>
+                    <option value="balanced">Balanced</option>
+                    <option value="detailed">Detailed</option>
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: "4px" }}>
+                  <span style={{ fontWeight: 700 }}>Feed density</span>
+                  <select value={feedDensity} onChange={(event) => handleFeedDensityChange(event.target.value as UserPreferenceDto["feedDensity"])}>
+                    <option value="comfortable">Comfortable</option>
+                    <option value="compact">Compact</option>
+                  </select>
+                </label>
+                <label style={{ display: "grid", gap: "4px" }}>
+                  <span style={{ fontWeight: 700 }}>Resurfacing intensity</span>
+                  <select
+                    value={resurfacingIntensity}
+                    onChange={(event) => handleResurfacingIntensityChange(event.target.value as UserPreferenceDto["resurfacingIntensity"])}
+                  >
+                    <option value="gentle">Gentle</option>
+                    <option value="balanced">Balanced</option>
+                    <option value="active">Active</option>
+                  </select>
+                </label>
+              </div>
+              <p style={{ margin: 0, color: "#475569" }}>
+                Current feed target: up to {feedLimit} cards ({feedDensity} + {resurfacingIntensity} intensity).
+              </p>
+              {personalizationNotice ? <p style={{ margin: 0 }}>{personalizationNotice}</p> : null}
+            </section>
 
             <div style={{ display: "grid", gap: "10px" }}>
               <article style={{ borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "12px" }}>

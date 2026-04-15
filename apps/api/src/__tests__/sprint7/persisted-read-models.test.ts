@@ -100,33 +100,72 @@ test("GET /sessions supports task and user filters", async () => {
   assert.ok(userSessions.some((entry) => entry.id === session.id));
 });
 
-test("preferences routes persist founder mode and lens", async () => {
+test("preferences routes persist personalization preferences", async () => {
   const userId = "68686868-6868-4686-8686-686868686868";
   const initial = await app.inject({
     method: "GET",
     url: `/preferences/${userId}`
   });
   assert.equal(initial.statusCode, 200);
-  assert.equal(initial.json<{ founderMode: boolean; defaultLens: string }>().founderMode, false);
+  const initialBody = initial.json<{
+    founderMode: boolean;
+    defaultLens: string;
+    renderMode: string;
+    aiSummaryMode: string;
+    feedDensity: string;
+    resurfacingIntensity: string;
+  }>();
+  assert.equal(initialBody.founderMode, false);
+  assert.equal(initialBody.renderMode, "focus");
+  assert.equal(initialBody.aiSummaryMode, "balanced");
+  assert.equal(initialBody.feedDensity, "comfortable");
+  assert.equal(initialBody.resurfacingIntensity, "balanced");
 
   const updated = await app.inject({
     method: "PUT",
     url: `/preferences/${userId}`,
     payload: {
       defaultLens: "open_loops",
-      founderMode: true
+      founderMode: true,
+      renderMode: "explore",
+      aiSummaryMode: "concise",
+      feedDensity: "compact",
+      resurfacingIntensity: "active"
     }
   });
   assert.equal(updated.statusCode, 200);
-  assert.equal(updated.json<{ founderMode: boolean; defaultLens: string }>().defaultLens, "open_loops");
-  assert.equal(updated.json<{ founderMode: boolean; defaultLens: string }>().founderMode, true);
+  const updatedBody = updated.json<{
+    founderMode: boolean;
+    defaultLens: string;
+    renderMode: string;
+    aiSummaryMode: string;
+    feedDensity: string;
+    resurfacingIntensity: string;
+  }>();
+  assert.equal(updatedBody.defaultLens, "open_loops");
+  assert.equal(updatedBody.founderMode, true);
+  assert.equal(updatedBody.renderMode, "explore");
+  assert.equal(updatedBody.aiSummaryMode, "concise");
+  assert.equal(updatedBody.feedDensity, "compact");
+  assert.equal(updatedBody.resurfacingIntensity, "active");
 
   const persisted = await app.inject({
     method: "GET",
     url: `/preferences/${userId}`
   });
   assert.equal(persisted.statusCode, 200);
-  const body = persisted.json<{ founderMode: boolean; defaultLens: string }>();
+  const body = persisted.json<{
+    founderMode: boolean;
+    defaultLens: string;
+    renderMode: string;
+    aiSummaryMode: string;
+    feedDensity: string;
+    resurfacingIntensity: string;
+  }>();
   assert.equal(body.defaultLens, "open_loops");
   assert.equal(body.founderMode, true);
+  assert.equal(body.renderMode, "explore");
+  assert.equal(body.aiSummaryMode, "concise");
+  assert.equal(body.feedDensity, "compact");
+  assert.equal(body.resurfacingIntensity, "active");
 });

@@ -19,6 +19,10 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
         defaultLens: "all",
         cleanFocusMode: true,
         founderMode: false,
+        renderMode: "focus",
+        aiSummaryMode: "balanced",
+        feedDensity: "comfortable",
+        resurfacingIntensity: "balanced",
         updatedAt: new Date().toISOString()
       }
     );

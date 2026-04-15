@@ -158,6 +158,10 @@ export const userPreferences = pgTable(
     defaultLens: text("default_lens").default("all").notNull(),
     cleanFocusMode: boolean("clean_focus_mode").default(true).notNull(),
     founderMode: boolean("founder_mode").default(false).notNull(),
+    renderMode: text("render_mode").default("focus").notNull(),
+    aiSummaryMode: text("ai_summary_mode").default("balanced").notNull(),
+    feedDensity: text("feed_density").default("comfortable").notNull(),
+    resurfacingIntensity: text("resurfacing_intensity").default("balanced").notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
   },
   (t) => ({

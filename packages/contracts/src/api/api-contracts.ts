@@ -1,12 +1,16 @@
 import { z } from "zod";
 import {
+  AiSummaryModeSchema,
   ArtifactTypeSchema,
   BrainItemSchema,
   BrainItemTypeSchema,
+  FeedDensitySchema,
   FeedCardSchema,
   FeedLensSchema,
   ItemArtifactSchema,
   ItemThreadSchema,
+  RenderModeSchema,
+  ResurfacingIntensitySchema,
   SessionSchema,
   SessionStateSchema,
   TaskSchema,
@@ -197,7 +201,11 @@ export const UpdateUserPreferenceRequestSchema = z
   .object({
     defaultLens: FeedLensSchema.optional(),
     cleanFocusMode: z.boolean().optional(),
-    founderMode: z.boolean().optional()
+    founderMode: z.boolean().optional(),
+    renderMode: RenderModeSchema.optional(),
+    aiSummaryMode: AiSummaryModeSchema.optional(),
+    feedDensity: FeedDensitySchema.optional(),
+    resurfacingIntensity: ResurfacingIntensitySchema.optional()
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: "At least one field must be provided" });
