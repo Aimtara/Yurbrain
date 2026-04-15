@@ -13,15 +13,27 @@ const lensLabels: Record<FeedLens, string> = {
 
 export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens[]; activeLens: FeedLens; onChange: (lens: FeedLens) => void }) {
   return (
-    <div>
-      <nav aria-label="Feed lenses">
+    <div style={{ marginBottom: "10px" }}>
+      <nav aria-label="Feed lenses" style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
         {lenses.map((lens) => (
-          <button key={lens} type="button" onClick={() => onChange(lens)} aria-pressed={activeLens === lens}>
+          <button
+            key={lens}
+            type="button"
+            onClick={() => onChange(lens)}
+            aria-pressed={activeLens === lens}
+            style={{
+              border: "1px solid #d9d9df",
+              borderRadius: "999px",
+              padding: "6px 10px",
+              background: activeLens === lens ? "#f1f4ff" : "#fff",
+              fontWeight: activeLens === lens ? 600 : 500
+            }}
+          >
             {lensLabels[lens]}
           </button>
         ))}
       </nav>
-      <p>
+      <p style={{ margin: "8px 0 0", color: "#5a6072" }}>
         <small>{lensHints[activeLens]}</small>
       </p>
     </div>

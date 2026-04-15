@@ -11,6 +11,7 @@ export function FeedCard({
   onContinue,
   onComment,
   onConvertToTask,
+  onStartSession,
   onDismiss,
   onSnooze,
   onRefresh
@@ -25,6 +26,7 @@ export function FeedCard({
   onContinue?: () => void;
   onComment?: (value: string) => void;
   onConvertToTask?: () => void;
+  onStartSession?: () => void;
   onDismiss?: () => void;
   onSnooze?: (minutes: number) => void;
   onRefresh?: () => void;
@@ -35,32 +37,43 @@ export function FeedCard({
   const timeLabel = formatTimeSignal(lastRefreshedAt ?? undefined, createdAt);
 
   return (
-    <article>
+    <article
+      style={{
+        border: "1px solid #d9d9df",
+        borderRadius: "12px",
+        padding: "14px",
+        marginBottom: "12px",
+        background: "#fff"
+      }}
+    >
       {cardTypeLabel || lensLabel ? (
-        <p>
+        <p style={{ margin: "0 0 6px", fontSize: "12px", color: "#5a6072" }}>
           {cardTypeLabel ? <strong>{cardTypeLabel}</strong> : null}
           {cardTypeLabel && lensLabel ? " · " : null}
           {lensLabel ? <span>{lensLabel}</span> : null}
         </p>
       ) : null}
-      <h3>{title}</h3>
-      <p>{body}</p>
+      <h3 style={{ margin: "0 0 6px", fontSize: "18px", lineHeight: "1.25" }}>{title}</h3>
+      <p style={{ margin: "0 0 10px", color: "#222", lineHeight: "1.4" }}>{body}</p>
       {whyShownSummary ? (
-        <p>
+        <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#40455a" }}>
           <strong>Why shown:</strong> {whyShownSummary}
         </p>
       ) : null}
       {timeLabel ? (
-        <p>
+        <p style={{ margin: "0 0 10px" }}>
           <small>{timeLabel}</small>
         </p>
       ) : null}
-      {onComment ? <button onClick={() => onComment("Noted for follow-up.")}>Add update</button> : null}
-      {onContinue ? <button onClick={onContinue}>Continue</button> : null}
-      {onConvertToTask ? <button onClick={onConvertToTask}>Plan this</button> : null}
-      {onSnooze ? <button onClick={() => onSnooze(120)}>Revisit later</button> : null}
-      {onRefresh ? <button onClick={onRefresh}>Keep in focus</button> : null}
-      {onDismiss ? <button onClick={onDismiss}>Dismiss</button> : null}
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        {onComment ? <button onClick={() => onComment("Noted for follow-up.")}>Add update</button> : null}
+        {onContinue ? <button onClick={onContinue}>Continue</button> : null}
+        {onConvertToTask ? <button onClick={onConvertToTask}>Plan this</button> : null}
+        {onStartSession ? <button onClick={onStartSession}>Start session</button> : null}
+        {onSnooze ? <button onClick={() => onSnooze(120)}>Revisit later</button> : null}
+        {onRefresh ? <button onClick={onRefresh}>Keep in focus</button> : null}
+        {onDismiss ? <button onClick={onDismiss}>Dismiss</button> : null}
+      </div>
     </article>
   );
 }

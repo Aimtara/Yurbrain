@@ -424,7 +424,7 @@ export default function Page() {
     }
   }
 
-  async function runConvert(input: { itemId: string; content: string; sourceMessageId?: string }) {
+  async function runConvert(input: { itemId: string; content: string; sourceMessageId?: string }): Promise<TaskDto | null> {
     setConversionNotice("");
     setTaskError("");
     try {
@@ -439,14 +439,48 @@ export default function Page() {
         setTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
         setSelectedTaskId(result.task.id);
         setConversionNotice(`Task created: ${result.task.title}`);
+        await loadTasks();
+        return result.task;
       } else if (result.outcome === "mini_plan") {
         setConversionNotice(`AI suggested a mini plan (${result.steps.length} steps) instead of a task.`);
       } else {
         setConversionNotice(`Task conversion skipped: ${result.reason}`);
       }
       await loadTasks();
+      return null;
     } catch {
       setTaskError("Could not convert to task.");
+      return null;
+    }
+  }
+
+  async function startSessionFromFeedCard(card: FeedCardDto) {
+    if (!card.itemId) return;
+
+    setTaskError("");
+    setSelectedItemId(card.itemId);
+
+    const existingTask = tasks.find((task) => task.sourceItemId === card.itemId && task.status !== "done");
+    const nextTask =
+      existingTask ??
+      (await runConvert({
+        itemId: card.itemId,
+        content: card.body
+      }));
+
+    if (!nextTask) {
+      setTaskError("Could not start a session from this card yet.");
+      return;
+    }
+
+    try {
+      const session = await startTaskSession<SessionDto>(nextTask.id);
+      setActiveSession(session);
+      setSelectedTaskId(nextTask.id);
+      setConversionNotice(`Session started: ${nextTask.title}`);
+      await loadTasks();
+    } catch {
+      setTaskError("Could not start a session right now.");
     }
   }
 
@@ -579,6 +613,7 @@ export default function Page() {
             if (!card.itemId) return;
             await runConvert({ itemId: card.itemId, content: card.body });
           }}
+          onStartSession={card.itemId ? async () => startSessionFromFeedCard(card) : undefined}
           onDismiss={async () => {
             await dismissFeedCard<{ ok: boolean }>(card.id);
             await loadFeed(activeLens);
