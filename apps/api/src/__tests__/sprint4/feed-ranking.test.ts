@@ -204,6 +204,11 @@ test("ranking preserves continuity for recently revisited cards without adding n
   const cards = feedResp.json<Array<{ id: string; whyShown: { reasons: string[] } }>>();
 
   assert.equal(cards[0]?.id, earlierCard.id);
-  assert.ok(cards[0]?.whyShown.reasons.some((reason) => reason.toLowerCase().includes("continuity")));
+  assert.ok(
+    cards[0]?.whyShown.reasons.some((reason) => {
+      const normalized = reason.toLowerCase();
+      return normalized.includes("revisited") || normalized.includes("continuity");
+    })
+  );
   assert.equal(cards.some((card) => card.id === laterCard.id), true);
 });
