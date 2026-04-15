@@ -175,6 +175,11 @@ pnpm reseed
 - Feed contract now includes source linkage/action semantics:
   - `taskId`, `availableActions`, `stateFlags`, `whyShown`
 - Founder mode + default lens preference is persisted via `GET/PUT /preferences/:userId` (`user_preferences` table), not only browser local storage.
+- Capture now runs through a sheet/modal surface in web with:
+  - autofocus + autosizing input
+  - Save / Save + Plan / Save + Remind Later actions
+  - attachment + voice placeholders (voice is a stub)
+  - subtle save micro-state before auto-dismiss
 - Item detail continuation now uses one inline composer with mode toggle (`Comment` / `Ask Yurbrain`), and both comment + ask interactions append to the same continuity timeline with explicit role labels (`You`, `Yurbrain`).
 
 ## 8) Fast sanity loop
