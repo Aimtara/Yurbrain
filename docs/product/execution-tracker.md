@@ -108,7 +108,7 @@ Use this sequence for lower rework when running Cursor bots:
 | YB-205 | Finish / Rebalance sheet | UX / Frontend Agent + AI Behavior Agent | M | YB-204 | Done |
 | YB-206 | Postpone / Reschedule sheet | UX / Frontend Agent + Backend / Persistence Agent | S/M | YB-204 | Done |
 | YB-301 | Me tab insights surface | Backend / Persistence Agent + UX / Frontend Agent | M | YB-204, YB-205 | Done |
-| YB-302 | Personalization settings | UX / Frontend Agent + Backend / Persistence Agent | S/M | None | Planned |
+| YB-302 | Personalization settings | UX / Frontend Agent + Backend / Persistence Agent | S/M | None | Done |
 | YB-303 | Explore Mode data contract only | Backend / Persistence Agent | S | YB-102 | Planned |
 
 ### Shared-ticket ownership rule

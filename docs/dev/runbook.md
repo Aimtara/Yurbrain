@@ -187,6 +187,11 @@ pnpm reseed
 - Finishing a session now opens a supportive Finish/Rebalance sheet with planned vs actual timing, reclaimed/overflow delta, and next-step actions (Continue plan, Rebalance day, Take a break, Schedule rest later).
 - Feed postpone now opens a lightweight Postpone/Reschedule sheet with one-tap actions (Later today, Tomorrow, Suggest a slot, Break into smaller step), optional custom datetime slot, and persisted postpone count metadata for future ranking influence.
 - Me surface now provides lightweight insights (top insight, estimation accuracy, carry-forward pattern, postponement pattern, recommendation) computed deterministically from persisted tasks/sessions/feed data.
+- Personalization settings now persist through `GET/PUT /preferences/:userId` with values:
+  - `renderMode`: `focus` | `explore` (Focus remains default; Explore is preference-only for now)
+  - `aiSummaryMode`: `concise` | `balanced` | `detailed`
+  - `feedDensity`: `comfortable` | `compact`
+  - `resurfacingIntensity`: `gentle` | `balanced` | `active`
 - Focus mode now uses the active session screen as an execution surface with:
   - task hero and live session timer
   - pause and finish controls wired to real session routes

@@ -62,6 +62,7 @@ Not used for runtime truth:
 - Web execution now includes an Active Task / Focus Mode surface with a large task hero, live session timer, reliable pause/finish controls, and an in-place source context peek that can reopen the linked item without leaving the execution flow.
 - Feed postpone now uses a dedicated Postpone/Reschedule sheet with one-tap actions (`Later today`, `Tomorrow`, `Suggest a slot`, `Break into smaller step`) plus optional custom datetime; postpone metadata (`postponeCount`, `lastPostponedAt`) is persisted and contributes a mild ranking penalty so repeated postpones can influence resurfacing deterministically.
 - Web now includes a lightweight `Me` surface with supportive reflection blocks: top insight card, estimation accuracy summary, carry-forward pattern, postponement pattern, and recommendation block derived deterministically from existing task/session/feed data.
+- Personalization settings are now persisted and restored through `/preferences/:userId` for render mode (`focus`/`explore`), AI summary mode (`concise`/`balanced`/`detailed`), feed density (`comfortable`/`compact`), and resurfacing intensity (`gentle`/`balanced`/`active`); Focus remains the default while Explore is a saved placeholder preference.
 
 ### Feed semantics and contract (real)
 - Feed ranking is deterministic with diversity/recency/actionability penalties/boosts.
