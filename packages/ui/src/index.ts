@@ -11,6 +11,7 @@ export * from "./components/brain/ItemChatPanel";
 export * from "./components/brain/ItemDetailScreen";
 export * from "./components/tasks/TaskDetailCard";
 export * from "./components/tasks/ActiveSessionScreen";
+export * from "./components/tasks/TimeWindowSelector";
 export * from "./components/founder/FounderModeToggle";
 export * from "./components/founder/ExecutionLensBar";
 export * from "./components/founder/FounderSummarySurface";
