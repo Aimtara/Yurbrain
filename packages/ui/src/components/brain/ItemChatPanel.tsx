@@ -9,9 +9,10 @@ type ItemChatPanelProps = {
   fallbackNotice?: string;
   errorMessage?: string;
   onRetry?: () => void;
+  hideComposer?: boolean;
 };
 
-export function ItemChatPanel({ messages, onSend, mode = "standard", fallbackNotice, errorMessage, onRetry }: ItemChatPanelProps) {
+export function ItemChatPanel({ messages, onSend, mode = "standard", fallbackNotice, errorMessage, onRetry, hideComposer = false }: ItemChatPanelProps) {
   return (
     <section aria-label="Item chat panel" style={{ borderRadius: "16px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "10px" }}>
       {mode === "ai_query" ? <p aria-label="chat-mode" style={{ margin: 0, fontSize: "13px", color: "#475569" }}>AI query mode</p> : null}
@@ -24,7 +25,7 @@ export function ItemChatPanel({ messages, onSend, mode = "standard", fallbackNot
           <li key={`${m}-${index}`}>{m}</li>
         ))}
       </ul>
-      <CommentComposer onSend={onSend} />
+      {!hideComposer ? <CommentComposer onSend={onSend} /> : null}
     </section>
   );
 }

@@ -913,15 +913,38 @@ export default function Page() {
     setActiveSurface("session");
   }
 
-  const timelineEntries = useMemo(
-    () =>
-      commentMessages.map((message) => ({
+  const timelineEntries = useMemo(() => {
+    const merged = [
+      ...commentMessages.map((message) => ({
         id: message.id,
-        label: message.content,
-        timestamp: formatRelative(message.createdAt)
+        role: "user" as const,
+        content: message.content,
+        createdAt: message.createdAt
       })),
-    [commentMessages]
-  );
+      ...chatMessages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt
+      }))
+    ];
+
+    merged.sort((left, right) => {
+      const leftTime = new Date(left.createdAt).getTime();
+      const rightTime = new Date(right.createdAt).getTime();
+      if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) {
+        return leftTime - rightTime;
+      }
+      return left.createdAt.localeCompare(right.createdAt);
+    });
+
+    return merged.map((entry) => ({
+      id: entry.id,
+      label: entry.content,
+      role: entry.role,
+      timestamp: formatRelative(entry.createdAt)
+    }));
+  }, [chatMessages, commentMessages]);
 
   const chatLines = useMemo(
     () =>
@@ -1075,6 +1098,9 @@ export default function Page() {
                   setActiveSurface("session");
                 })();
               }}
+              onAskYurbrain={(question) => {
+                void runAiQuery(question);
+              }}
               chatPanel={
                 <ItemChatPanel
                   onSend={(question) => void runAiQuery(question)}
@@ -1083,6 +1109,7 @@ export default function Page() {
                   fallbackNotice={chatFallbackNotice}
                   errorMessage={chatError}
                   onRetry={lastQuestion ? () => void runAiQuery(lastQuestion) : undefined}
+                  hideComposer
                 />
               }
               artifactHistory={

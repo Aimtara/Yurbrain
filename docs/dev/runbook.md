@@ -175,6 +175,7 @@ pnpm reseed
 - Feed contract now includes source linkage/action semantics:
   - `taskId`, `availableActions`, `stateFlags`, `whyShown`
 - Founder mode + default lens preference is persisted via `GET/PUT /preferences/:userId` (`user_preferences` table), not only browser local storage.
+- Item detail continuation now uses one inline composer with mode toggle (`Comment` / `Ask Yurbrain`), and both comment + ask interactions append to the same continuity timeline with explicit role labels (`You`, `Yurbrain`).
 
 ## 8) Fast sanity loop
 
