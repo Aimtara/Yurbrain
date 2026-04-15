@@ -90,6 +90,7 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       cardType: "item",
       lens: "all",
       itemId: null,
+      taskId: null,
       title: title ?? "Generated insight",
       body: body ?? "AI generated placeholder.",
       dismissed: false,

@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "./schema";
 import { getDefaultDatabasePath, getDefaultMigrationsPath } from "./paths";
@@ -51,6 +51,7 @@ export type FeedCardRecord = {
   cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
   lens: FeedLens;
   itemId: string | null;
+  taskId: string | null;
   title: string;
   body: string;
   dismissed: boolean;
@@ -82,10 +83,18 @@ export type SessionRecord = {
 export type ArtifactRecord = {
   id: string;
   itemId: string;
-  type: "summary" | "classification";
+  type: "summary" | "classification" | "relation" | "feed_card";
   payload: Record<string, unknown>;
   confidence: number;
   createdAt: string;
+};
+
+export type UserPreferenceRecord = {
+  userId: string;
+  defaultLens: FeedLens;
+  cleanFocusMode: boolean;
+  founderMode: boolean;
+  updatedAt: string;
 };
 
 type RepositoryContext = {
@@ -125,8 +134,16 @@ export type DbRepository = {
   createSession: (session: SessionRecord) => Promise<SessionRecord>;
   getSessionById: (id: string) => Promise<SessionRecord | null>;
   findActiveSessionByTaskId: (taskId: string) => Promise<SessionRecord | null>;
+  listSessions: (query: { taskId?: string; userId?: string; state?: SessionRecord["state"] }) => Promise<SessionRecord[]>;
   updateSession: (id: string, updates: Partial<Pick<SessionRecord, "state" | "endedAt">>) => Promise<SessionRecord | null>;
   createArtifact: (artifact: ArtifactRecord) => Promise<ArtifactRecord>;
+  getArtifactById: (id: string) => Promise<ArtifactRecord | null>;
+  listArtifactsByItem: (itemId: string, query?: { type?: ArtifactRecord["type"] }) => Promise<ArtifactRecord[]>;
+  getUserPreference: (userId: string) => Promise<UserPreferenceRecord | null>;
+  upsertUserPreference: (
+    userId: string,
+    updates: Partial<Pick<UserPreferenceRecord, "defaultLens" | "cleanFocusMode" | "founderMode">>
+  ) => Promise<UserPreferenceRecord>;
 };
 
 export type CreateRepositoryOptions = {
@@ -185,6 +202,7 @@ function toFeedCardRecord(row: typeof schema.feedCards.$inferSelect): FeedCardRe
     cardType: row.cardType,
     lens: row.lens as FeedLens,
     itemId: row.itemId,
+    taskId: row.taskId,
     title: row.title,
     body: row.body,
     dismissed: row.dismissed,
@@ -222,10 +240,20 @@ function toArtifactRecord(row: typeof schema.itemArtifacts.$inferSelect): Artifa
   return {
     id: row.id,
     itemId: row.itemId,
-    type: row.type as "summary" | "classification",
+    type: row.type as ArtifactRecord["type"],
     payload: row.payload as Record<string, unknown>,
     confidence: Number(row.confidence),
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString()
+  };
+}
+
+function toUserPreferenceRecord(row: typeof schema.userPreferences.$inferSelect): UserPreferenceRecord {
+  return {
+    userId: row.userId,
+    defaultLens: row.defaultLens as FeedLens,
+    cleanFocusMode: row.cleanFocusMode,
+    founderMode: row.founderMode,
+    updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
   };
 }
 
@@ -418,6 +446,7 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             cardType: card.cardType,
             lens: card.lens,
             itemId: card.itemId,
+            taskId: card.taskId,
             title: card.title,
             body: card.body,
             dismissed: card.dismissed,
@@ -445,14 +474,26 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
       }),
     updateFeedCard: (id, updates) =>
       withDb(async ({ db }) => {
+        const patch: Partial<typeof schema.feedCards.$inferInsert> = {};
+        if (updates.dismissed !== undefined) {
+          patch.dismissed = updates.dismissed;
+        }
+        if (updates.snoozedUntil !== undefined) {
+          patch.snoozedUntil = toDate(updates.snoozedUntil);
+        }
+        if (updates.refreshCount !== undefined) {
+          patch.refreshCount = updates.refreshCount;
+        }
+        if (updates.lastRefreshedAt !== undefined) {
+          patch.lastRefreshedAt = toDate(updates.lastRefreshedAt);
+        }
+        if (Object.keys(patch).length === 0) {
+          const [current] = await db.select().from(schema.feedCards).where(eq(schema.feedCards.id, id)).limit(1);
+          return current ? toFeedCardRecord(current) : null;
+        }
         const [row] = await db
           .update(schema.feedCards)
-          .set({
-            dismissed: updates.dismissed,
-            snoozedUntil: toDate(updates.snoozedUntil),
-            refreshCount: updates.refreshCount,
-            lastRefreshedAt: toDate(updates.lastRefreshedAt)
-          })
+          .set(patch)
           .where(eq(schema.feedCards.id, id))
           .returning();
         return row ? toFeedCardRecord(row) : null;
@@ -538,14 +579,48 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           .limit(1);
         return row ? toSessionRecord(row) : null;
       }),
+    listSessions: (query) =>
+      withDb(async ({ db }) => {
+        const clauses = [];
+        if (query.taskId) {
+          clauses.push(eq(schema.sessions.taskId, query.taskId));
+        }
+        if (query.state) {
+          clauses.push(eq(schema.sessions.state, query.state));
+        }
+        if (query.userId) {
+          const ownedTasks = await db.select({ id: schema.tasks.id }).from(schema.tasks).where(eq(schema.tasks.userId, query.userId));
+          if (ownedTasks.length === 0) {
+            return [];
+          }
+          clauses.push(inArray(schema.sessions.taskId, ownedTasks.map((task) => task.id)));
+        }
+        const rows =
+          clauses.length === 0
+            ? await db.select().from(schema.sessions).orderBy(desc(schema.sessions.startedAt), desc(schema.sessions.id))
+            : await db
+                .select()
+                .from(schema.sessions)
+                .where(and(...clauses))
+                .orderBy(desc(schema.sessions.startedAt), desc(schema.sessions.id));
+        return rows.map(toSessionRecord);
+      }),
     updateSession: (id, updates) =>
       withDb(async ({ db }) => {
+        const patch: Partial<typeof schema.sessions.$inferInsert> = {};
+        if (updates.state !== undefined) {
+          patch.state = updates.state;
+        }
+        if (updates.endedAt !== undefined) {
+          patch.endedAt = toDate(updates.endedAt);
+        }
+        if (Object.keys(patch).length === 0) {
+          const [current] = await db.select().from(schema.sessions).where(eq(schema.sessions.id, id)).limit(1);
+          return current ? toSessionRecord(current) : null;
+        }
         const [row] = await db
           .update(schema.sessions)
-          .set({
-            state: updates.state,
-            endedAt: toDate(updates.endedAt)
-          })
+          .set(patch)
           .where(eq(schema.sessions.id, id))
           .returning();
         return row ? toSessionRecord(row) : null;
@@ -564,6 +639,56 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           })
           .returning();
         return toArtifactRecord(row);
+      }),
+    getArtifactById: (id) =>
+      withDb(async ({ db }) => {
+        const [row] = await db.select().from(schema.itemArtifacts).where(eq(schema.itemArtifacts.id, id)).limit(1);
+        return row ? toArtifactRecord(row) : null;
+      }),
+    listArtifactsByItem: (itemId, query) =>
+      withDb(async ({ db }) => {
+        const rows = query?.type
+          ? await db
+              .select()
+              .from(schema.itemArtifacts)
+              .where(and(eq(schema.itemArtifacts.itemId, itemId), eq(schema.itemArtifacts.type, query.type)))
+              .orderBy(desc(schema.itemArtifacts.createdAt), desc(schema.itemArtifacts.id))
+          : await db
+              .select()
+              .from(schema.itemArtifacts)
+              .where(eq(schema.itemArtifacts.itemId, itemId))
+              .orderBy(desc(schema.itemArtifacts.createdAt), desc(schema.itemArtifacts.id));
+        return rows.map(toArtifactRecord);
+      }),
+    getUserPreference: (userId) =>
+      withDb(async ({ db }) => {
+        const [row] = await db.select().from(schema.userPreferences).where(eq(schema.userPreferences.userId, userId)).limit(1);
+        return row ? toUserPreferenceRecord(row) : null;
+      }),
+    upsertUserPreference: (userId, updates) =>
+      withDb(async ({ db }) => {
+        const updatePatch: Partial<typeof schema.userPreferences.$inferInsert> = {
+          updatedAt: new Date()
+        };
+        if (updates.defaultLens !== undefined) updatePatch.defaultLens = updates.defaultLens;
+        if (updates.cleanFocusMode !== undefined) updatePatch.cleanFocusMode = updates.cleanFocusMode;
+        if (updates.founderMode !== undefined) updatePatch.founderMode = updates.founderMode;
+
+        const [row] = await db
+          .insert(schema.userPreferences)
+          .values({
+            userId,
+            defaultLens: updates.defaultLens ?? "all",
+            cleanFocusMode: updates.cleanFocusMode ?? true,
+            founderMode: updates.founderMode ?? false,
+            updatedAt: new Date()
+          })
+          .onConflictDoUpdate({
+            target: schema.userPreferences.userId,
+            set: updatePatch
+          })
+          .returning();
+        return toUserPreferenceRecord(row);
       })
   };
 }

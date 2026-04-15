@@ -111,6 +111,15 @@ export function useYurbrainApi() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
-      })
+      }),
+    getUserPreference: <T>(userId: string) => apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`),
+    updateUserPreference: <T>(userId: string, payload: unknown) =>
+      apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    listBrainItemArtifacts: <T>(itemId: string, type?: "summary" | "classification" | "relation" | "feed_card") =>
+      apiClient<T>(`${endpoints.brainItems}/${itemId}/artifacts${type ? `?type=${encodeURIComponent(type)}` : ""}`)
   };
 }

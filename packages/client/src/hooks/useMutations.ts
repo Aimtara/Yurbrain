@@ -89,6 +89,15 @@ export async function finishSession<T>(sessionId: string) {
   return postJson<T>(`/sessions/${sessionId}/finish`, {});
 }
 
+export async function listSessions<T>(query: { taskId?: string; userId?: string; state?: "running" | "paused" | "finished" }) {
+  const params = new URLSearchParams();
+  if (query.taskId) params.set("taskId", query.taskId);
+  if (query.userId) params.set("userId", query.userId);
+  if (query.state) params.set("state", query.state);
+  const rendered = params.toString();
+  return withNormalizedErrors(() => apiClient<T>(`${endpoints.sessions}${rendered ? `?${rendered}` : ""}`));
+}
+
 export async function summarizeItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiSummarize, payload);
 }
@@ -99,6 +108,20 @@ export async function classifyItem<T>(payload: unknown) {
 
 export async function queryItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiQuery, payload);
+}
+
+export async function getUserPreference<T>(userId: string) {
+  return withNormalizedErrors(() => apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`));
+}
+
+export async function updateUserPreference<T>(userId: string, payload: unknown) {
+  return withNormalizedErrors(() =>
+    apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+  );
 }
 
 export async function dismissFeedCard<T>(id: string) {

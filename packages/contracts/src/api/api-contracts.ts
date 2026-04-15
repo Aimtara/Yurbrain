@@ -1,15 +1,18 @@
 import { z } from "zod";
 import {
+  ArtifactTypeSchema,
   BrainItemSchema,
   BrainItemTypeSchema,
   FeedCardSchema,
+  FeedLensSchema,
   ItemArtifactSchema,
   ItemThreadSchema,
   SessionSchema,
   SessionStateSchema,
   TaskSchema,
   TaskStatusSchema,
-  ThreadMessageSchema
+  ThreadMessageSchema,
+  UserPreferenceSchema
 } from "../domain/domain";
 
 export const CreateBrainItemRequestSchema = z
@@ -165,10 +168,33 @@ export const QueryItemResponseSchema = z
 
 export const BrainItemResponseSchema = BrainItemSchema;
 export const BrainItemListResponseSchema = z.array(BrainItemSchema);
+export const ListItemArtifactsQuerySchema = z
+  .object({
+    type: ArtifactTypeSchema.optional()
+  })
+  .strict();
+export const ItemArtifactListResponseSchema = z.array(ItemArtifactSchema);
 export const FeedCardResponseSchema = FeedCardSchema;
 export const FeedListResponseSchema = z.array(FeedCardResponseSchema);
 export const ManualConvertTaskResponseSchema = TaskSchema;
-export const SessionListResponseSchema = z.array(SessionSchema.extend({ state: SessionStateSchema }));
+export const ListSessionsQuerySchema = z
+  .object({
+    taskId: z.string().uuid().optional(),
+    userId: z.string().uuid().optional(),
+    state: SessionStateSchema.optional()
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, { message: "At least one filter must be provided" });
+export const SessionListResponseSchema = z.array(SessionSchema);
+export const UserPreferenceResponseSchema = UserPreferenceSchema;
+export const UpdateUserPreferenceRequestSchema = z
+  .object({
+    defaultLens: FeedLensSchema.optional(),
+    cleanFocusMode: z.boolean().optional(),
+    founderMode: z.boolean().optional()
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, { message: "At least one field must be provided" });
 
 export type CreateBrainItemRequest = z.infer<typeof CreateBrainItemRequestSchema>;
 export type UpdateBrainItemRequest = z.infer<typeof UpdateBrainItemRequestSchema>;
@@ -184,13 +210,18 @@ export type AiConvertResponse = z.infer<typeof AiConvertResponseSchema>;
 export type SummarizeItemRequest = z.infer<typeof SummarizeItemRequestSchema>;
 export type ClassifyItemRequest = z.infer<typeof ClassifyItemRequestSchema>;
 export type QueryItemRequest = z.infer<typeof QueryItemRequestSchema>;
+export type ListItemArtifactsQuery = z.infer<typeof ListItemArtifactsQuerySchema>;
 export type BrainItemResponse = z.infer<typeof BrainItemResponseSchema>;
 export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;
+export type ItemArtifactListResponse = z.infer<typeof ItemArtifactListResponseSchema>;
 export type FeedCardResponse = z.infer<typeof FeedCardResponseSchema>;
 export type FeedListResponse = z.infer<typeof FeedListResponseSchema>;
 export type ManualConvertTaskResponse = z.infer<typeof ManualConvertTaskResponseSchema>;
 export type TaskResponse = z.infer<typeof TaskResponseSchema>;
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
+export type ListSessionsQuery = z.infer<typeof ListSessionsQuerySchema>;
 export type AiArtifactResponse = z.infer<typeof AiArtifactResponseSchema>;
 export type QueryItemResponse = z.infer<typeof QueryItemResponseSchema>;
+export type UserPreferenceResponse = z.infer<typeof UserPreferenceResponseSchema>;
+export type UpdateUserPreferenceRequest = z.infer<typeof UpdateUserPreferenceRequestSchema>;

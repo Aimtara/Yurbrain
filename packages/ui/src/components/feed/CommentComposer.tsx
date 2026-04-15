@@ -27,19 +27,21 @@ export function CommentComposer({ onSend, onConfirmConvertToTask }: CommentCompo
   };
 
   return (
-    <div>
+    <div style={{ display: "grid", gap: "8px" }}>
       <input
         value={value}
-        placeholder="Add a comment"
+        placeholder="Add a continuation note"
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key !== "Enter") return;
           send();
         }}
+        style={{ borderRadius: "12px", border: "1px solid #cbd5e1", padding: "10px 12px" }}
       />
-      <button type="button" onClick={send}>
-        Send
-      </button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        <button type="button" onClick={send}>
+          Send
+        </button>
       {onConfirmConvertToTask ? (
         <>
           <button
@@ -51,7 +53,7 @@ export function CommentComposer({ onSend, onConfirmConvertToTask }: CommentCompo
             Convert to task
           </button>
           {showConvertConfirm ? (
-            <div role="dialog" aria-label="Confirm comment to task conversion">
+            <div role="dialog" aria-label="Confirm comment to task conversion" style={{ border: "1px solid #cbd5e1", borderRadius: "12px", padding: "12px" }}>
               <p>Convert this comment into a task with source linkage?</p>
               <button type="button" onClick={confirmConvert}>
                 Confirm convert
@@ -63,6 +65,7 @@ export function CommentComposer({ onSend, onConfirmConvertToTask }: CommentCompo
           ) : null}
         </>
       ) : null}
+      </div>
     </div>
   );
 }

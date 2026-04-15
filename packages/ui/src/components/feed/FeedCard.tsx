@@ -1,14 +1,28 @@
 import React, { useId } from "react";
 import { tokens } from "../../design/tokens";
 
+export type FeedCardVariant = "default" | "execution" | "blocked" | "done" | "resume";
+export type FeedCardAction = "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh";
+type FeedCardType = "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
+
 export function FeedCard({
-  title,
-  body,
+  variant = "default",
+  badge,
   cardType,
   lens,
+  title,
+  body,
   createdAt,
   lastRefreshedAt,
   whyShown,
+  lastTouched,
+  continuityNote,
+  nextStep,
+  whereLeftOff,
+  availableActions,
+  primaryActionLabel,
+  onOpen,
   onContinue,
   onComment,
   onConvertToTask,
@@ -17,13 +31,22 @@ export function FeedCard({
   onSnooze,
   onRefresh
 }: {
+  variant?: FeedCardVariant;
+  badge?: string;
+  cardType?: FeedCardType | string;
+  lens?: FeedLens;
   title: string;
   body: string;
-  cardType?: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
-  lens?: "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
   createdAt?: string;
   lastRefreshedAt?: string | null;
   whyShown?: { summary: string; reasons: string[] } | string;
+  lastTouched?: string;
+  continuityNote?: string;
+  nextStep?: string;
+  whereLeftOff?: string;
+  availableActions?: FeedCardAction[];
+  primaryActionLabel?: string;
+  onOpen?: () => void;
   onContinue?: () => void;
   onComment?: (value: string) => void;
   onConvertToTask?: () => void;
@@ -36,14 +59,24 @@ export function FeedCard({
   const titleId = `${idBase}-title`;
   const whyShownId = `${idBase}-why`;
   const whyShownSecondaryId = `${idBase}-why-secondary`;
+  const continuityId = `${idBase}-continuity`;
   const timeId = `${idBase}-time`;
+
   const whyShownSummary = typeof whyShown === "string" ? whyShown : whyShown?.summary;
-  const whyShownSecondary = typeof whyShown === "string" ? null : whyShown?.reasons?.[1] ?? null;
+  const whyShownReasons = typeof whyShown === "string" ? [] : whyShown?.reasons ?? [];
+  const whyShownSecondary = whyShownReasons[0] ?? null;
   const showWhyShownSecondary = Boolean(whyShownSecondary && whyShownSecondary !== whyShownSummary);
+  const timeLabel = lastTouched ?? formatTimeSignal(lastRefreshedAt ?? undefined, createdAt);
+  const cardTypeLabel = cardType ? normalizeCardTypeLabel(cardType) : null;
   const lensLabel = lens ? lensLabels[lens] : null;
-  const cardTypeLabel = cardType ? cardTypeLabels[cardType] : null;
-  const timeLabel = formatTimeSignal(lastRefreshedAt ?? undefined, createdAt);
-  const describedByIds = [whyShownSummary ? whyShownId : "", showWhyShownSecondary ? whyShownSecondaryId : "", timeLabel ? timeId : ""]
+  const hasContinuityDetails = Boolean(lastTouched || whereLeftOff || continuityNote || nextStep);
+  const canUseAction = (action: FeedCardAction) => !availableActions || availableActions.includes(action);
+  const describedByIds = [
+    whyShownSummary ? whyShownId : "",
+    showWhyShownSecondary ? whyShownSecondaryId : "",
+    hasContinuityDetails ? continuityId : "",
+    timeLabel ? timeId : ""
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -52,77 +85,110 @@ export function FeedCard({
       aria-labelledby={titleId}
       aria-describedby={describedByIds || undefined}
       style={{
-        border: `1px solid ${feedPalette.border}`,
-        borderRadius: `${tokens.radius.md}px`,
-        padding: `${tokens.space.md}px`,
-        marginBottom: `${tokens.space.sm + tokens.space.xs}px`,
-        background: feedPalette.cardBackground,
-        boxShadow: "0 1px 2px rgba(12, 17, 29, 0.04)"
+        borderRadius: `${tokens.radius.lg}px`,
+        border: `1px solid ${variantStyles[variant].border}`,
+        background: variantStyles[variant].background,
+        padding: `${tokens.space.md + 4}px`,
+        display: "grid",
+        gap: `${tokens.space.sm}px`
       }}
     >
-      {cardTypeLabel || lensLabel ? (
-        <p style={{ margin: `0 0 ${tokens.space.xs + 2}px`, fontSize: "12px", color: feedPalette.mutedText }}>
-          {cardTypeLabel ? <strong>{cardTypeLabel}</strong> : null}
-          {cardTypeLabel && lensLabel ? " · " : null}
-          {lensLabel ? <span>{lensLabel}</span> : null}
-        </p>
-      ) : null}
-      <h3 id={titleId} style={{ margin: `0 0 ${tokens.space.xs + 2}px`, fontSize: "18px", lineHeight: "1.25" }}>
-        {title}
-      </h3>
-      <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, color: feedPalette.mainText, lineHeight: "1.4" }}>{body}</p>
+      <div style={{ display: "flex", gap: `${tokens.space.xs + 2}px`, flexWrap: "wrap" }}>
+        {badge ? <span style={chipStyles.default}>{badge}</span> : null}
+        {cardTypeLabel ? <span style={{ ...chipStyles.default, color: "#475569" }}>{cardTypeLabel}</span> : null}
+        {lensLabel ? <span style={chipStyles.default}>{lensLabel}</span> : null}
+      </div>
+
+      <div>
+        <h3 id={titleId} style={{ margin: 0, fontSize: "20px", lineHeight: "26px", color: "#0f172a" }}>
+          {title}
+        </h3>
+        <p style={{ margin: `${tokens.space.xs + 2}px 0 0`, color: "#334155", lineHeight: "1.45" }}>{body}</p>
+      </div>
+
       {whyShownSummary ? (
-        <p id={whyShownId} style={{ margin: `0 0 ${tokens.space.xs}px`, fontSize: "13px", color: feedPalette.secondaryText }}>
-          <strong>Why shown:</strong> {whyShownSummary}
-        </p>
+        <div style={{ borderRadius: `${tokens.radius.md}px`, background: "#f8fafc", border: "1px solid #e2e8f0", padding: `${tokens.space.sm}px` }}>
+          <p id={whyShownId} style={{ margin: 0, textTransform: "uppercase", letterSpacing: "0.04em", fontSize: "12px", fontWeight: 700, color: "#475569" }}>
+            Why shown
+          </p>
+          <p style={{ margin: `${tokens.space.xs + 2}px 0 0`, color: "#1e293b" }}>{whyShownSummary}</p>
+          {showWhyShownSecondary ? (
+            <p id={whyShownSecondaryId} style={{ margin: `${tokens.space.xs + 2}px 0 0`, color: "#475569", fontSize: "13px" }}>
+              {whyShownSecondary}
+            </p>
+          ) : null}
+        </div>
       ) : null}
-      {showWhyShownSecondary ? (
-        <p id={whyShownSecondaryId} style={{ margin: `0 0 ${tokens.space.sm + 2}px`, fontSize: "12px", color: feedPalette.mutedText }}>
-          {whyShownSecondary}
-        </p>
+
+      {hasContinuityDetails ? (
+        <div id={continuityId} style={{ display: "grid", gap: "6px", color: "#475569", fontSize: "14px" }}>
+          {lastTouched ? (
+            <p style={{ margin: 0 }}>
+              <strong>Last touched:</strong> {lastTouched}
+            </p>
+          ) : null}
+          {whereLeftOff ? (
+            <p style={{ margin: 0 }}>
+              <strong>Where you left off:</strong> {whereLeftOff}
+            </p>
+          ) : null}
+          {continuityNote ? (
+            <p style={{ margin: 0 }}>
+              <strong>Since then:</strong> {continuityNote}
+            </p>
+          ) : null}
+          {nextStep ? (
+            <p style={{ margin: 0 }}>
+              <strong>Next move:</strong> {nextStep}
+            </p>
+          ) : null}
+        </div>
       ) : null}
+
       {timeLabel ? (
-        <p id={timeId} style={{ margin: `0 0 ${tokens.space.sm + 2}px`, color: feedPalette.mutedText }}>
-          <small>{timeLabel}</small>
+        <p id={timeId} style={{ margin: 0, color: "#64748b", fontSize: "12px" }}>
+          {timeLabel}
         </p>
       ) : null}
-      <div
-        style={{ display: "flex", gap: `${tokens.space.sm}px`, flexWrap: "wrap" }}
-        role="group"
-        aria-label={`Actions for ${title}`}
-      >
-        {onComment ? (
-          <button type="button" aria-label={`Add update to ${title}`} style={actionButtonStyles.secondary} onClick={() => onComment("Noted for follow-up.")}>
-            Add Update
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: `${tokens.space.xs + 2}px` }} role="group" aria-label={`Actions for ${title}`}>
+        {onOpen && (canUseAction("open_item") || canUseAction("open_task") || canUseAction("start_session")) ? (
+          <button type="button" onClick={onOpen} style={actionButtonStyles.primary} aria-label={`${primaryActionLabel ?? "Open continuity"} for ${title}`}>
+            {primaryActionLabel ?? "Open continuity"}
           </button>
         ) : null}
-        {onContinue ? (
-          <button type="button" aria-label={`Continue from ${title}`} style={actionButtonStyles.primary} onClick={onContinue}>
+        {onContinue && canUseAction("open_item") ? (
+          <button type="button" onClick={onContinue} style={actionButtonStyles.primary} aria-label={`Continue from ${title}`}>
             Continue
           </button>
         ) : null}
-        {onConvertToTask ? (
-          <button type="button" aria-label={`Plan from ${title}`} style={actionButtonStyles.primary} onClick={onConvertToTask}>
-            Plan This
+        {onComment && canUseAction("comment") ? (
+          <button type="button" onClick={() => onComment("Noted for follow-up.")} style={actionButtonStyles.secondary} aria-label={`Add update to ${title}`}>
+            Add update
           </button>
         ) : null}
-        {onStartSession ? (
-          <button type="button" aria-label={`Start session for ${title}`} style={actionButtonStyles.primary} onClick={onStartSession}>
-            Start Session
+        {onConvertToTask && canUseAction("convert_to_task") ? (
+          <button type="button" onClick={onConvertToTask} style={actionButtonStyles.primary} aria-label={`Plan next step for ${title}`}>
+            Plan this
           </button>
         ) : null}
-        {onSnooze ? (
-          <button type="button" aria-label={`Revisit ${title} later`} style={actionButtonStyles.secondary} onClick={() => onSnooze(120)}>
-            Revisit Later
+        {onStartSession && canUseAction("start_session") ? (
+          <button type="button" onClick={onStartSession} style={actionButtonStyles.primary} aria-label={`Start session for ${title}`}>
+            Start session
           </button>
         ) : null}
-        {onRefresh ? (
-          <button type="button" aria-label={`Keep ${title} in focus`} style={actionButtonStyles.secondary} onClick={onRefresh}>
-            Keep in Focus
+        {onSnooze && canUseAction("snooze") ? (
+          <button type="button" onClick={() => onSnooze(120)} style={actionButtonStyles.secondary} aria-label={`Snooze ${title} for two hours`}>
+            Revisit later
           </button>
         ) : null}
-        {onDismiss ? (
-          <button type="button" aria-label={`Dismiss ${title}`} style={actionButtonStyles.tertiary} onClick={onDismiss}>
+        {onRefresh && canUseAction("refresh") ? (
+          <button type="button" onClick={onRefresh} style={actionButtonStyles.secondary} aria-label={`Re-score ${title}`}>
+            Keep in focus
+          </button>
+        ) : null}
+        {onDismiss && canUseAction("dismiss") ? (
+          <button type="button" onClick={onDismiss} style={actionButtonStyles.tertiary} aria-label={`Dismiss ${title}`}>
             Dismiss
           </button>
         ) : null}
@@ -131,30 +197,22 @@ export function FeedCard({
   );
 }
 
-const lensLabels: Record<NonNullable<Parameters<typeof FeedCard>[0]["lens"]>, string> = {
-  all: "All focus",
-  keep_in_mind: "Keep in mind",
-  open_loops: "Open loops",
-  learning: "Learning",
-  in_progress: "In progress",
-  recently_commented: "Recent comments"
+const variantStyles: Record<FeedCardVariant, { border: string; background: string }> = {
+  default: { border: "#e2e8f0", background: "#ffffff" },
+  execution: { border: "#c7d2fe", background: "#eef2ff" },
+  blocked: { border: "#fcd34d", background: "#fffbeb" },
+  done: { border: "#99f6e4", background: "#f0fdfa" },
+  resume: { border: "#bfdbfe", background: "#eff6ff" }
 };
 
-const cardTypeLabels: Record<NonNullable<Parameters<typeof FeedCard>[0]["cardType"]>, string> = {
-  item: "Memory",
-  digest: "Digest",
-  cluster: "Cluster",
-  opportunity: "Opportunity",
-  open_loop: "Open loop",
-  resume: "Resume point"
-};
-
-const feedPalette = {
-  border: "#d9d9df",
-  cardBackground: "#ffffff",
-  mainText: "#1d2130",
-  secondaryText: "#3e4458",
-  mutedText: "#5a6072"
+const chipStyles: Record<"default", React.CSSProperties> = {
+  default: {
+    borderRadius: "999px",
+    border: "1px solid #cbd5e1",
+    padding: "4px 10px",
+    fontSize: "12px",
+    fontWeight: 700
+  }
 };
 
 const actionButtonStyles: Record<"primary" | "secondary" | "tertiary", React.CSSProperties> = {
@@ -179,6 +237,31 @@ const actionButtonStyles: Record<"primary" | "secondary" | "tertiary", React.CSS
     padding: "6px 12px"
   }
 };
+
+const lensLabels: Record<FeedLens, string> = {
+  all: "All focus",
+  keep_in_mind: "Keep in mind",
+  open_loops: "Open loops",
+  learning: "Learning",
+  in_progress: "In progress",
+  recently_commented: "Recent comments"
+};
+
+const cardTypeLabels: Record<FeedCardType, string> = {
+  item: "Memory",
+  digest: "Digest",
+  cluster: "Cluster",
+  opportunity: "Opportunity",
+  open_loop: "Open loop",
+  resume: "Resume point"
+};
+
+function normalizeCardTypeLabel(cardType: string): string {
+  if (cardType in cardTypeLabels) {
+    return cardTypeLabels[cardType as FeedCardType];
+  }
+  return cardType.replaceAll("_", " ");
+}
 
 function formatTimeSignal(lastRefreshedAt?: string, createdAt?: string): string | null {
   if (lastRefreshedAt) {

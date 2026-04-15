@@ -21,6 +21,7 @@ export function generateCardFromItem(item: FeedSourceItem): StoredFeedCard {
     cardType: "item",
     lens,
     itemId: item.id,
+    taskId: null,
     title: item.title,
     body: summarizeRawContent(item.rawContent),
     dismissed: false,
