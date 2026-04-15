@@ -368,7 +368,6 @@ function formatDurationLabel(seconds: number): string {
   if (hours > 0) return `${hours}h ${minutes}m`;
   return `${Math.max(minutes, 1)}m`;
 }
-
 export default function Page() {
   const [hydrated, setHydrated] = useState(false);
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
