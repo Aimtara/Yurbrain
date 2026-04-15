@@ -184,6 +184,26 @@ const captureSuccessMessages: Record<CaptureSubmitIntent, string> = {
   save_and_remind: "Saved. Reminder stub captured for follow-up."
 };
 
+const promptStopWords = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "this",
+  "that",
+  "from",
+  "your",
+  "about",
+  "into",
+  "have",
+  "has",
+  "were",
+  "been",
+  "what",
+  "when",
+  "where"
+]);
+
 function deriveArtifactText(payload: Record<string, unknown>): string {
   if (typeof payload.content === "string" && payload.content.trim().length > 0) {
     return payload.content;
@@ -195,6 +215,53 @@ function deriveArtifactText(payload: Record<string, unknown>): string {
     return payload.rationale;
   }
   return JSON.stringify(payload);
+}
+
+function tokenizeForSimilarity(input: string): string[] {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !promptStopWords.has(token));
+}
+
+function buildRelatedItems(currentItem: BrainItemDto | null, items: BrainItemDto[]): Array<{ id: string; title: string; hint: string }> {
+  if (!currentItem) return [];
+
+  const currentTokens = new Set(tokenizeForSimilarity(`${currentItem.title} ${currentItem.rawContent}`));
+  const candidates = items
+    .filter((item) => item.id !== currentItem.id)
+    .map((item) => {
+      const tokens = tokenizeForSimilarity(`${item.title} ${item.rawContent}`);
+      const overlap = tokens.filter((token) => currentTokens.has(token));
+      return {
+        id: item.id,
+        title: item.title,
+        overlapCount: overlap.length,
+        hint: overlap[0] ? `Shares context around "${overlap[0]}"` : "Resurfaces adjacent thinking",
+        updatedAt: item.updatedAt
+      };
+    })
+    .sort((left, right) => {
+      if (right.overlapCount !== left.overlapCount) return right.overlapCount - left.overlapCount;
+      return right.updatedAt.localeCompare(left.updatedAt);
+    });
+
+  return candidates.slice(0, 3).map((candidate) => ({
+    id: candidate.id,
+    title: candidate.title,
+    hint: candidate.hint
+  }));
+}
+
+function buildSuggestedPrompts(item: BrainItemDto, nextStep?: string): string[] {
+  const prompts = [
+    `Summarize progress on "${item.title}".`,
+    `What should I do next on "${item.title}"?`,
+    nextStep ? `Can you sharpen this next move: ${nextStep}` : `What is one 10-minute action for "${item.title}"?`
+  ];
+
+  return Array.from(new Set(prompts)).slice(0, 3);
 }
 
 function selectActiveSession(sessions: SessionDto[]): SessionDto | null {
@@ -343,6 +410,7 @@ export default function Page() {
   const [taskError, setTaskError] = useState("");
   const [chatFallbackNotice, setChatFallbackNotice] = useState("");
   const [conversionNotice, setConversionNotice] = useState("");
+  const [itemActionNotice, setItemActionNotice] = useState("");
   const [lastAction, setLastAction] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
@@ -472,6 +540,12 @@ export default function Page() {
     if (lastAction) return `Last action: ${lastAction}.`;
     return "Everything starts here. Open a card, continue, and return.";
   }, [lastAction, selectedItem]);
+
+  const relatedItemsForDetail = useMemo(() => buildRelatedItems(selectedItem, items), [items, selectedItem]);
+  const suggestedPromptsForDetail = useMemo(() => {
+    if (!selectedItem) return [];
+    return buildSuggestedPrompts(selectedItem, derivedItemContinuity.nextStep);
+  }, [derivedItemContinuity.nextStep, selectedItem]);
 
   useEffect(() => {
     const storedLens = window.localStorage.getItem(storageKeys.activeLens);
@@ -682,6 +756,7 @@ export default function Page() {
 
   async function loadSelectedItemContext(itemId: string) {
     setItemContextLoading(true);
+    setItemActionNotice("");
     try {
       const [threads, artifacts] = await Promise.all([listThreadsByTarget<ThreadDto[]>(itemId), listBrainItemArtifacts<ItemArtifactDto[]>(itemId)]);
       const commentThread = threads.find((thread) => thread.kind === "item_comment") ?? null;
@@ -743,6 +818,7 @@ export default function Page() {
     const created = await sendMessage<MessageDto>({ threadId, role: "user", content: normalized });
     if (itemId === selectedItemId) {
       setCommentMessages((current) => [...current, created]);
+      setItemActionNotice("Comment added to continuity timeline.");
     }
     return created;
   }
@@ -927,6 +1003,7 @@ export default function Page() {
       });
       setChatMessages((current) => [...current, response.userMessage, response.message]);
       setChatFallbackNotice(response.fallbackUsed ? "AI fallback used for this response." : "");
+      setItemActionNotice("Asked Yurbrain in-context.");
     } catch {
       setChatError("Could not reach AI query. Retry your last question.");
       setChatFallbackNotice("AI query unavailable; using local echo fallback.");
@@ -941,7 +1018,19 @@ export default function Page() {
           createdAt: new Date().toISOString()
         }
       ]);
+      setItemActionNotice("Used local ask fallback.");
     }
+  }
+
+  function handleOpenRelatedItem(itemId: string) {
+    if (!itemId) return;
+    setSelectedItemId(itemId);
+    setSelectedContinuity(null);
+    setItemActionNotice("Opened a related item to continue context.");
+  }
+
+  function handleKeepInMind() {
+    setItemActionNotice("Marked as keep in mind. You can switch to that lens in feed anytime.");
   }
 
   function openItemFromModel(model: FeedCardModel) {
@@ -1152,6 +1241,9 @@ export default function Page() {
               timeline={timelineEntries}
               loading={itemContextLoading}
               errorMessage={chatError}
+              actionNotice={itemActionNotice}
+              suggestedPrompts={suggestedPromptsForDetail}
+              relatedItems={relatedItemsForDetail}
               onBackToFeed={() => setActiveSurface("feed")}
               onQuickAction={(action) => void runQuickAction(action)}
               onAddComment={(comment) => {
@@ -1168,6 +1260,8 @@ export default function Page() {
               onAskYurbrain={(question) => {
                 void runAiQuery(question);
               }}
+              onOpenRelatedItem={handleOpenRelatedItem}
+              onKeepInMind={handleKeepInMind}
               chatPanel={
                 <ItemChatPanel
                   onSend={(question) => void runAiQuery(question)}

@@ -5,6 +5,12 @@ import { CommentComposer } from "../feed/CommentComposer";
 
 type QuickAction = "summarize" | "classify" | "convert_to_task";
 
+type RelatedItem = {
+  id: string;
+  title: string;
+  hint?: string;
+};
+
 export type ContinuityTimelineEntry = {
   id: string;
   label: string;
@@ -28,13 +34,18 @@ type ItemDetailScreenProps = {
   timeline: ContinuityTimelineEntry[];
   loading?: boolean;
   errorMessage?: string;
+  actionNotice?: string;
   chatPanel?: React.ReactNode;
   artifactHistory?: React.ReactNode;
+  suggestedPrompts?: string[];
+  relatedItems?: RelatedItem[];
   onBackToFeed: () => void;
   onQuickAction: (action: QuickAction) => void;
   onAddComment: (comment: string) => void;
   onAskYurbrain?: (question: string) => void;
   onConvertCommentToTask?: (comment: string) => void;
+  onOpenRelatedItem?: (itemId: string) => void;
+  onKeepInMind?: () => void;
 };
 
 const styles = {
@@ -75,13 +86,18 @@ export function ItemDetailScreen({
   timeline,
   loading,
   errorMessage,
+  actionNotice,
   chatPanel,
   artifactHistory,
+  suggestedPrompts = [],
+  relatedItems = [],
   onBackToFeed,
   onQuickAction,
   onAddComment,
   onAskYurbrain,
-  onConvertCommentToTask
+  onConvertCommentToTask,
+  onOpenRelatedItem,
+  onKeepInMind
 }: ItemDetailScreenProps) {
   return (
     <section style={styles.shell} aria-label="Item detail continuity screen">
@@ -130,6 +146,7 @@ export function ItemDetailScreen({
 
       {loading ? <p style={{ margin: 0 }}>Loading continuity context...</p> : null}
       {errorMessage ? <p style={{ margin: 0 }}>{errorMessage}</p> : null}
+      {actionNotice ? <p style={{ margin: 0, color: "#1e40af" }}>{actionNotice}</p> : null}
 
       <BrainItemDetail
         title={item.title}
@@ -163,6 +180,23 @@ export function ItemDetailScreen({
 
       <div style={{ display: "grid", gap: "12px" }}>
         <h3 style={{ margin: 0 }}>Continue this item</h3>
+        {suggestedPrompts.length > 0 ? (
+          <div style={{ display: "grid", gap: "8px" }}>
+            <p style={{ margin: 0, fontSize: "13px", color: "#475569" }}>Suggested prompts</p>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {suggestedPrompts.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => onAskYurbrain?.(prompt)}
+                  style={{ borderRadius: "999px", border: "1px solid #cbd5e1", background: "#f8fafc", padding: "6px 12px" }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <CommentComposer
           onSend={(value) => {
             const normalized = value.trim();
@@ -188,13 +222,42 @@ export function ItemDetailScreen({
           <button type="button" onClick={() => onQuickAction("summarize")}>
             Summarize progress
           </button>
+          <button type="button" onClick={() => onQuickAction("convert_to_task")}>
+            Plan this
+          </button>
           <button type="button" onClick={() => onQuickAction("classify")}>
             Reframe
           </button>
-          <button type="button" onClick={() => onQuickAction("convert_to_task")}>
-            Plan smallest step
+          <button type="button" onClick={onKeepInMind}>
+            Keep in mind
+          </button>
+          <button type="button" onClick={() => onAddComment("Leaving a quick continuity note.")}>
+            Comment
+          </button>
+          <button type="button" onClick={() => onOpenRelatedItem?.(relatedItems[0]?.id ?? "")} disabled={relatedItems.length === 0}>
+            Similar items
           </button>
         </div>
+      </div>
+
+      <div style={{ display: "grid", gap: "8px" }}>
+        <h3 style={{ margin: 0 }}>Related items</h3>
+        {relatedItems.length === 0 ? <p style={{ margin: 0, color: "#475569" }}>No related items yet. Capture and comment history will surface links over time.</p> : null}
+        {relatedItems.length > 0 ? (
+          <div style={{ display: "grid", gap: "8px" }}>
+            {relatedItems.map((related) => (
+              <button
+                key={related.id}
+                type="button"
+                onClick={() => onOpenRelatedItem?.(related.id)}
+                style={{ textAlign: "left", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "10px 12px" }}
+              >
+                <strong>{related.title}</strong>
+                {related.hint ? <span style={{ color: "#475569" }}> — {related.hint}</span> : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {chatPanel}
