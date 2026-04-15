@@ -184,6 +184,10 @@ pnpm reseed
 - Item detail also includes suggested prompt chips and a related-items list so users can branch or return without leaving feed-centered continuity.
 - Convert `plan_suggested` outcomes now open a Plan Preview sheet in web with editable step durations, supportive capacity warning, and actions to accept plan or start first step (creating real tasks through existing task routes).
 - Time home now includes deterministic window planning (`2h`, `4h`, `6h`, `8h`, `24h`, `Custom`), session resume card, tasks-that-fit suggestions, and a start-without-planning action.
+- Focus mode now uses the active session screen as an execution surface with:
+  - task hero and live session timer
+  - pause and finish controls wired to real session routes
+  - context peek from the linked source item with quick-open back to item detail
 
 ## 8) Fast sanity loop
 
