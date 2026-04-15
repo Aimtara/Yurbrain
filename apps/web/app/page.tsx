@@ -5,6 +5,7 @@ import {
   apiClient,
   convertToTask,
   createBrainItem,
+  createTask,
   classifyBrainItem,
   createThread,
   dismissFeedCard,
@@ -454,6 +455,20 @@ export default function Page() {
     }
   }
 
+  async function createManualTaskFromFeedCard(card: FeedCardDto): Promise<TaskDto> {
+    const fallbackTitle = card.title.trim().slice(0, 200) || "Follow up on resurfaced memory";
+    const created = await createTask<TaskDto>({
+      userId,
+      title: fallbackTitle,
+      sourceItemId: card.itemId
+    });
+    setTasks((current) => [created, ...current.filter((task) => task.id !== created.id)]);
+    setSelectedTaskId(created.id);
+    setConversionNotice(`Task created: ${created.title}`);
+    await loadTasks();
+    return created;
+  }
+
   async function startSessionFromFeedCard(card: FeedCardDto) {
     if (!card.itemId) return;
 
@@ -468,16 +483,21 @@ export default function Page() {
         content: card.body
       }));
 
-    if (!nextTask) {
-      setTaskError("Could not start a session from this card yet.");
-      return;
+    let taskToStart = nextTask;
+    if (!taskToStart) {
+      try {
+        taskToStart = await createManualTaskFromFeedCard(card);
+      } catch {
+        setTaskError("Could not start a session from this card yet.");
+        return;
+      }
     }
 
     try {
-      const session = await startTaskSession<SessionDto>(nextTask.id);
+      const session = await startTaskSession<SessionDto>(taskToStart.id);
       setActiveSession(session);
-      setSelectedTaskId(nextTask.id);
-      setConversionNotice(`Session started: ${nextTask.title}`);
+      setSelectedTaskId(taskToStart.id);
+      setConversionNotice(`Session started: ${taskToStart.title}`);
       await loadTasks();
     } catch {
       setTaskError("Could not start a session right now.");
