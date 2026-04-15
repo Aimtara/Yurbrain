@@ -103,7 +103,7 @@ Use this sequence for lower rework when running Cursor bots:
 | YB-106 | Brain Item Detail surface | UX / Frontend Agent + AI Behavior Agent | M/L | YB-105 | Planned |
 | YB-201 | Plan Preview sheet | UX / Frontend Agent | M | YB-102 | Planned |
 | YB-202 | Convert flow refinement | AI Behavior Agent + Backend / Persistence Agent | M | YB-201 (optional) | Planned |
-| YB-203 | Time Tab + time-window selector | UX / Frontend Agent | M | YB-202 | Planned |
+| YB-203 | Time Tab + time-window selector | UX / Frontend Agent | M | YB-202 | Done |
 | YB-204 | Active Task / Focus Mode | UX / Frontend Agent | M | YB-203 | Planned |
 | YB-205 | Finish / Rebalance sheet | UX / Frontend Agent + AI Behavior Agent | M | YB-204 | Planned |
 | YB-206 | Postpone / Reschedule sheet | UX / Frontend Agent + Backend / Persistence Agent | S/M | YB-204 | Planned |

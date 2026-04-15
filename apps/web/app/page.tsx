@@ -1315,10 +1315,10 @@ export default function Page() {
 
             <div style={{ display: "grid", gap: "10px" }}>
               <h3 style={{ margin: 0, fontSize: "18px", lineHeight: "24px" }}>Tasks that fit {timeWindowLabel}</h3>
-              {timeSuggestedTasks.length === 0 ? (
+              {timeSuggestedTasks.tasks.length === 0 ? (
                 <p style={{ margin: 0, color: "#475569" }}>No queued tasks fit yet. Capture or convert one item, then return here.</p>
               ) : (
-                timeSuggestedTasks.map((entry) => (
+                timeSuggestedTasks.tasks.map((entry) => (
                   <div
                     key={entry.task.id}
                     style={{
