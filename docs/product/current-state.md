@@ -1,6 +1,6 @@
 # Yurbrain Current Implementation State
 
-_Last audited: April 14, 2026 (UTC)._
+_Last audited: April 15, 2026 (UTC)._
 
 This document is factual current state after code inspection plus command verification.
 
@@ -28,6 +28,7 @@ Not used for runtime truth:
   - Brain: `POST/GET/PATCH /brain-items`, `GET /brain-items/:id/artifacts`
   - Threads/messages: `POST /threads`, `GET /threads/:id`, `GET /threads/by-target`, `POST /messages`, `GET /threads/:id/messages`
   - Feed: `GET /feed`, `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh`
+  - Preferences: `GET /preferences/:userId`, `PUT /preferences/:userId`
   - Tasks/sessions: `POST/GET/PATCH /tasks`, `GET /tasks`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish`, `GET /sessions`
   - AI: `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query`, `POST /ai/convert`, `POST /ai/feed/generate-card`
 - Persistence across restart is covered by test (`apps/api/src/__tests__/sprint7/persistence.test.ts`).
@@ -41,6 +42,8 @@ Not used for runtime truth:
   - convert to task
   - start/finish sessions
   - refresh/reload continuity from DB-backed APIs
+- Feed and item detail continuity UI now explicitly surfaces: why shown, where you left off, what changed, and smallest next move.
+- Founder mode and default feed lens are now persisted in backend user preferences (`user_preferences`) and restored on reload.
 - Item AI summary/classification continuity now uses persisted artifacts from API (`GET /brain-items/:id/artifacts`) rather than local-only cache.
 - Task session continuity now uses persisted sessions from API (`GET /sessions?taskId=...`) rather than local-only session snapshots.
 
@@ -80,7 +83,7 @@ Not used for runtime truth:
 ## What is not wired through persistence
 
 - No critical core loop runtime path is currently blocked on in-memory state.
-- Non-critical UI preferences (selected tab/lens/item/task convenience) still use browser local storage for UX continuity.
+- Some non-critical UI conveniences (selected item/task/surface and execution lens) still use browser local storage for UX continuity.
 
 ## Known technical debt
 
