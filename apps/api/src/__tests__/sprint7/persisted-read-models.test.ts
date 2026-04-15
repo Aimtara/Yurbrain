@@ -130,3 +130,127 @@ test("preferences routes persist founder mode and lens", async () => {
   assert.equal(body.defaultLens, "open_loops");
   assert.equal(body.founderMode, true);
 });
+
+test("brain item execution metadata persists and powers continuity endpoints", async () => {
+  const userId = "69696969-6969-4696-8696-696969696969";
+  const createItem = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Execution metadata check",
+      rawContent: "Need a persisted execution hint and progress summary."
+    }
+  });
+  assert.equal(createItem.statusCode, 201);
+  const item = createItem.json<{ id: string }>();
+
+  const patch = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${item.id}`,
+    payload: {
+      execution: {
+        status: "blocked",
+        priority: "high",
+        nextStep: "Write one unblock note.",
+        progressSummary: "Blocked on missing integration evidence."
+      }
+    }
+  });
+  assert.equal(patch.statusCode, 200);
+
+  const fetched = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}`
+  });
+  assert.equal(fetched.statusCode, 200);
+  const fetchedBody = fetched.json<{ execution?: { status?: string; nextStep?: string } }>();
+  assert.equal(fetchedBody.execution?.status, "blocked");
+  assert.equal(fetchedBody.execution?.nextStep, "Write one unblock note.");
+
+  const progress = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/progress-summary`
+  });
+  assert.equal(progress.statusCode, 200);
+  const progressBody = progress.json<{ summary: string; signals: { executionStatus?: string } }>();
+  assert.equal(progressBody.signals.executionStatus, "blocked");
+  assert.match(progressBody.summary, /Blocked on missing integration evidence/i);
+
+  const nextStep = await app.inject({
+    method: "GET",
+    url: `/brain-items/${item.id}/next-step`
+  });
+  assert.equal(nextStep.statusCode, 200);
+  const nextStepBody = nextStep.json<{ source: string; nextStep: string }>();
+  assert.equal(nextStepBody.source, "execution_metadata");
+  assert.equal(nextStepBody.nextStep, "Write one unblock note.");
+});
+
+test("feed supports founder execution lens filtering", async () => {
+  const userId = "70707070-7070-4707-8707-707070707070";
+  const blockedItemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Blocked item",
+      rawContent: "This one is currently blocked."
+    }
+  });
+  assert.equal(blockedItemResp.statusCode, 201);
+  const blockedItem = blockedItemResp.json<{ id: string }>();
+
+  const plannedItemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Planned item",
+      rawContent: "This one is ready to move."
+    }
+  });
+  assert.equal(plannedItemResp.statusCode, 201);
+  const plannedItem = plannedItemResp.json<{ id: string }>();
+
+  await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${blockedItem.id}`,
+    payload: {
+      execution: {
+        status: "blocked",
+        nextStep: "Add one unblock note."
+      }
+    }
+  });
+  await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${plannedItem.id}`,
+    payload: {
+      execution: {
+        status: "planned",
+        nextStep: "Start a 10 minute kickoff session."
+      }
+    }
+  });
+
+  const blockedLensResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&founderMode=true&executionLens=needs_unblock`
+  });
+  assert.equal(blockedLensResp.statusCode, 200);
+  const blockedLensCards = blockedLensResp.json<Array<{ itemId: string | null }>>();
+  assert.ok(blockedLensCards.length >= 1);
+  assert.ok(blockedLensCards.every((card) => card.itemId === blockedItem.id));
+
+  const readyLensResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&founderMode=true&executionLens=ready_to_move`
+  });
+  assert.equal(readyLensResp.statusCode, 200);
+  const readyLensCards = readyLensResp.json<Array<{ itemId: string | null }>>();
+  assert.ok(readyLensCards.some((card) => card.itemId === plannedItem.id));
+});

@@ -30,6 +30,7 @@ export const brainItems = pgTable(
     title: text("title").notNull(),
     rawContent: text("raw_content").notNull(),
     status: brainItemStatusEnum("status").default("active").notNull(),
+    executionMetadata: jsonb("execution_metadata"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
   },

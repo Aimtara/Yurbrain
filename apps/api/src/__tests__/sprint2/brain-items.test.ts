@@ -42,9 +42,19 @@ test("brain-item CRUD + validation error mapping", async () => {
   const updated = await app.inject({
     method: "PATCH",
     url: `/brain-items/${item.id}`,
-    payload: { title: "Sprint 2 updated" }
+    payload: {
+      title: "Sprint 2 updated",
+      execution: {
+        status: "planned",
+        priority: "normal",
+        nextStep: "Open and convert this into one task."
+      }
+    }
   });
 
   assert.equal(updated.statusCode, 200);
   assert.equal(updated.json<{ title: string }>().title, "Sprint 2 updated");
+  const updatedBody = updated.json<{ execution?: { status: string; nextStep?: string } }>();
+  assert.equal(updatedBody.execution?.status, "planned");
+  assert.equal(updatedBody.execution?.nextStep, "Open and convert this into one task.");
 });

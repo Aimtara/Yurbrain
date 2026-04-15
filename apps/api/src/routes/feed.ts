@@ -1,19 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { FeedCardSchema, GenerateFeedCardRequestSchema } from "../../../../packages/contracts/src";
+import { FeedCardSchema, GenerateFeedCardRequestSchema, ListFeedQuerySchema } from "../../../../packages/contracts/src";
 import { gatherFeedCandidates } from "../services/feed/candidates";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import { rankFeedCards } from "../services/feed/rank";
 import type { FeedWhyShown, StoredFeedCard } from "../services/feed/static-feed";
 import { toFeedCardResponse } from "../services/feed/static-feed";
 import type { AppState } from "../state";
-
-function parseLimit(value?: string): number {
-  if (!value) return 20;
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed)) return 20;
-  return Math.max(1, Math.min(parsed, 50));
-}
 
 function parseSnoozeMinutes(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -26,6 +19,20 @@ function parseSnoozeMinutes(value: unknown): number {
     }
   }
   return 60;
+}
+
+function parseBooleanQuery(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return undefined;
+  return value === "true";
+}
+
+function parseLimitQuery(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value !== "string") return undefined;
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) return undefined;
+  return parsed;
 }
 
 function toFeedCardContract(card: StoredFeedCard, whyShown: FeedWhyShown) {
@@ -42,14 +49,15 @@ const generatedCardWhyShown: FeedWhyShown = {
 
 export async function registerFeedRoutes(app: FastifyInstance, state: AppState) {
   app.get("/feed", async (request) => {
-    const { userId, lens, includeSnoozed, limit } = request.query as {
-      userId?: string;
-      lens?: StoredFeedCard["lens"];
-      includeSnoozed?: string;
-      limit?: string;
-    };
+    const query = ListFeedQuerySchema.parse({
+      ...((request.query as Record<string, unknown>) ?? {}),
+      includeSnoozed: parseBooleanQuery((request.query as { includeSnoozed?: unknown }).includeSnoozed),
+      founderMode: parseBooleanQuery((request.query as { founderMode?: unknown }).founderMode),
+      limit: parseLimitQuery((request.query as { limit?: unknown }).limit)
+    });
+    const { userId, lens, includeSnoozed, limit, executionLens, founderMode } = query;
 
-    request.log.info({ event: "feed_request_started", userId, lens, includeSnoozed, limit }, "feed request started");
+    request.log.info({ event: "feed_request_started", userId, lens, includeSnoozed, limit, executionLens, founderMode }, "feed request started");
 
     if (userId) {
       const existingCards = await state.repo.listFeedCardsByUser(userId);
@@ -62,20 +70,41 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
     }
 
     const cards = userId ? await state.repo.listFeedCardsByUser(userId) : [];
+    const shouldApplyExecutionLens = founderMode === true && executionLens && executionLens !== "all";
+    const tasksById = new Map<string, "todo" | "in_progress" | "done">();
+    const itemExecutionById = new Map<string, "none" | "candidate" | "planned" | "in_progress" | "blocked" | "done">();
+    if (userId && shouldApplyExecutionLens) {
+      const [tasks, items] = await Promise.all([state.repo.listTasks({ userId }), state.repo.listBrainItemsByUser(userId)]);
+      for (const task of tasks) {
+        tasksById.set(task.id, task.status);
+      }
+      for (const item of items) {
+        if (item.execution?.status) {
+          itemExecutionById.set(item.id, item.execution.status);
+        }
+      }
+    }
+
     const candidates = gatherFeedCandidates(cards, {
       userId,
       lens,
-      includeSnoozed: includeSnoozed === "true"
+      includeSnoozed: includeSnoozed ?? false,
+      executionLens: shouldApplyExecutionLens ? executionLens : undefined,
+      taskStatusById: (taskId) => tasksById.get(taskId),
+      itemExecutionStatusById: (itemId) => itemExecutionById.get(itemId)
     });
 
-    request.log.info({ event: "feed_candidates_gathered", candidateCount: candidates.length, userId, lens }, "feed candidates gathered");
-    const ranked = rankFeedCards(candidates, { lens });
+    request.log.info(
+      { event: "feed_candidates_gathered", candidateCount: candidates.length, userId, lens, executionLens: shouldApplyExecutionLens ? executionLens : "all" },
+      "feed candidates gathered"
+    );
+    const ranked = rankFeedCards(candidates, { lens, executionLens: shouldApplyExecutionLens ? executionLens : "all" });
     request.log.info(
       { requestId: request.id, userId, lens, candidateCount: candidates.length, rankedCount: ranked.length },
       "feed_ranked"
     );
     const sliced = ranked
-      .slice(0, parseLimit(limit))
+      .slice(0, limit ?? 20)
       .map((rankedCard) => toFeedCardContract(rankedCard.card, rankedCard.whyShown));
     request.log.info({ event: "feed_rank_completed", returnedCount: sliced.length, userId, lens }, "feed rank completed");
     return sliced;

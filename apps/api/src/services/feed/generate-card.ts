@@ -7,13 +7,21 @@ export type FeedSourceItem = {
   userId: string;
   title: string;
   rawContent: string;
+  execution?: {
+    status: "none" | "candidate" | "planned" | "in_progress" | "blocked" | "done";
+  };
   createdAt: string;
 };
 
 const lensCycle: StoredFeedCard["lens"][] = ["keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"];
 
 export function generateCardFromItem(item: FeedSourceItem): StoredFeedCard {
-  const lens = lensCycle[item.title.length % lensCycle.length] ?? "keep_in_mind";
+  let lens = lensCycle[item.title.length % lensCycle.length] ?? "keep_in_mind";
+  if (item.execution?.status === "in_progress" || item.execution?.status === "done" || item.execution?.status === "planned") {
+    lens = "in_progress";
+  } else if (item.execution?.status === "blocked") {
+    lens = "open_loops";
+  }
 
   return {
     id: randomUUID(),

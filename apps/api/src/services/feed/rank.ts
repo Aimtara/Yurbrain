@@ -2,6 +2,7 @@ import type { FeedWhyShown, StoredFeedCard } from "./static-feed";
 
 type RankOptions = {
   lens?: StoredFeedCard["lens"];
+  executionLens?: "all" | "ready_to_move" | "needs_unblock" | "momentum";
   now?: Date;
 };
 
@@ -42,6 +43,7 @@ const lensLabels: Record<StoredFeedCard["lens"], string> = {
 export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}): RankedFeedCard[] {
   const now = options.now ?? new Date();
   const requestedLens = options.lens ?? "all";
+  const executionLens = options.executionLens ?? "all";
   const remaining = cards.map((card) => scoreCard(card, requestedLens, now));
   const selectedTypeCounts: Partial<Record<StoredFeedCard["cardType"], number>> = {};
   const selectedLensCounts: Partial<Record<StoredFeedCard["lens"], number>> = {};
@@ -66,7 +68,7 @@ export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}
     ranked.push({
       card: selected.card,
       score: bestScore.finalScore,
-      whyShown: buildWhyShown(bestScore, requestedLens)
+      whyShown: buildWhyShown(bestScore, requestedLens, executionLens)
     });
   }
 
@@ -136,11 +138,19 @@ function isHigherRank(candidate: ScoreBreakdown, currentBest: ScoreBreakdown): b
   return candidate.card.id.localeCompare(currentBest.card.id) < 0;
 }
 
-function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["lens"]): FeedWhyShown {
+function buildWhyShown(
+  score: ScoreBreakdown,
+  requestedLens: StoredFeedCard["lens"],
+  executionLens: "all" | "ready_to_move" | "needs_unblock" | "momentum"
+): FeedWhyShown {
   const reasons: string[] = [];
 
   if (requestedLens !== "all" && score.card.lens === requestedLens) {
     reasons.push(`Matches your ${lensLabels[requestedLens]} lens.`);
+  }
+
+  if (executionLens !== "all") {
+    reasons.push(`Matches founder execution lens: ${executionLens.replaceAll("_", " ")}.`);
   }
 
   if (score.recencyScore >= 48) {

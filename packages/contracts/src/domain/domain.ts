@@ -7,6 +7,7 @@ export const ThreadKindSchema = z.enum(["item_comment", "item_chat"]);
 export const MessageRoleSchema = z.enum(["user", "assistant", "system"]);
 export const FeedCardTypeSchema = z.enum(["item", "digest", "cluster", "opportunity", "open_loop", "resume"]);
 export const FeedLensSchema = z.enum(["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]);
+export const ExecutionLensSchema = z.enum(["all", "ready_to_move", "needs_unblock", "momentum"]);
 export const FeedActionSchema = z.enum([
   "open_item",
   "open_task",
@@ -21,10 +22,22 @@ export const FeedActionSchema = z.enum([
 export const TaskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export const SessionStateSchema = z.enum(["running", "paused", "finished"]);
 export const EventTypeSchema = z.enum(["brain_item_created", "brain_item_updated"]);
+export const ExecutionStatusSchema = z.enum(["none", "candidate", "planned", "in_progress", "blocked", "done"]);
+export const ExecutionPrioritySchema = z.enum(["low", "normal", "high"]);
 export const FeedWhyShownSchema = z
   .object({
     summary: z.string().min(1).max(160),
     reasons: z.array(z.string().min(1).max(160)).min(1).max(3)
+  })
+  .strict();
+export const BrainItemExecutionMetadataSchema = z
+  .object({
+    status: ExecutionStatusSchema,
+    priority: ExecutionPrioritySchema.optional(),
+    nextStep: z.string().min(1).max(280).optional(),
+    progressSummary: z.string().min(1).max(600).optional(),
+    relatedTaskId: z.string().uuid().nullable().optional(),
+    lastProgressAt: z.string().datetime().optional()
   })
   .strict();
 
@@ -36,6 +49,7 @@ export const BrainItemSchema = z
     title: z.string().min(1).max(200),
     rawContent: z.string().min(1),
     status: BrainItemStatusSchema,
+    execution: BrainItemExecutionMetadataSchema.optional(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime()
   })
@@ -152,3 +166,4 @@ export type Task = z.infer<typeof TaskSchema>;
 export type Session = z.infer<typeof SessionSchema>;
 export type Event = z.infer<typeof EventSchema>;
 export type UserPreference = z.infer<typeof UserPreferenceSchema>;
+export type BrainItemExecutionMetadata = z.infer<typeof BrainItemExecutionMetadataSchema>;

@@ -1,8 +1,11 @@
 import { z } from "zod";
 import {
   ArtifactTypeSchema,
+  BrainItemExecutionMetadataSchema,
   BrainItemSchema,
   BrainItemTypeSchema,
+  ExecutionStatusSchema,
+  ExecutionLensSchema,
   FeedCardSchema,
   FeedLensSchema,
   ItemArtifactSchema,
@@ -28,7 +31,8 @@ export const UpdateBrainItemRequestSchema = z
   .object({
     title: z.string().min(1).max(200).optional(),
     rawContent: z.string().min(1).optional(),
-    status: z.enum(["active", "archived"]).optional()
+    status: z.enum(["active", "archived"]).optional(),
+    execution: BrainItemExecutionMetadataSchema.optional()
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: "At least one field must be provided" });
@@ -176,6 +180,16 @@ export const ListItemArtifactsQuerySchema = z
 export const ItemArtifactListResponseSchema = z.array(ItemArtifactSchema);
 export const FeedCardResponseSchema = FeedCardSchema;
 export const FeedListResponseSchema = z.array(FeedCardResponseSchema);
+export const ListFeedQuerySchema = z
+  .object({
+    userId: z.string().uuid().optional(),
+    lens: FeedLensSchema.optional(),
+    executionLens: ExecutionLensSchema.optional(),
+    founderMode: z.boolean().optional(),
+    includeSnoozed: z.boolean().optional(),
+    limit: z.number().int().min(1).max(50).optional()
+  })
+  .strict();
 export const ManualConvertTaskResponseSchema = TaskSchema;
 export const ListSessionsQuerySchema = z
   .object({
@@ -186,6 +200,29 @@ export const ListSessionsQuerySchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: "At least one filter must be provided" });
 export const SessionListResponseSchema = z.array(SessionSchema);
+export const ProgressSummaryResponseSchema = z
+  .object({
+    itemId: z.string().uuid(),
+    summary: z.string().min(1),
+    signals: z
+      .object({
+        executionStatus: ExecutionStatusSchema.optional(),
+        linkedTaskStatus: TaskStatusSchema.optional(),
+        hasRunningSession: z.boolean(),
+        commentCount: z.number().int().min(0),
+        latestCommentAt: z.string().datetime().optional()
+      })
+      .strict()
+  })
+  .strict();
+export const NextStepResponseSchema = z
+  .object({
+    itemId: z.string().uuid(),
+    nextStep: z.string().min(1),
+    reason: z.string().min(1),
+    source: z.enum(["execution_metadata", "task", "thread", "fallback"])
+  })
+  .strict();
 export const UserPreferenceResponseSchema = UserPreferenceSchema;
 export const UpdateUserPreferenceRequestSchema = z
   .object({
@@ -216,11 +253,14 @@ export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;
 export type ItemArtifactListResponse = z.infer<typeof ItemArtifactListResponseSchema>;
 export type FeedCardResponse = z.infer<typeof FeedCardResponseSchema>;
 export type FeedListResponse = z.infer<typeof FeedListResponseSchema>;
+export type ListFeedQuery = z.infer<typeof ListFeedQuerySchema>;
 export type ManualConvertTaskResponse = z.infer<typeof ManualConvertTaskResponseSchema>;
 export type TaskResponse = z.infer<typeof TaskResponseSchema>;
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export type ListSessionsQuery = z.infer<typeof ListSessionsQuerySchema>;
+export type ProgressSummaryResponse = z.infer<typeof ProgressSummaryResponseSchema>;
+export type NextStepResponse = z.infer<typeof NextStepResponseSchema>;
 export type AiArtifactResponse = z.infer<typeof AiArtifactResponseSchema>;
 export type QueryItemResponse = z.infer<typeof QueryItemResponseSchema>;
 export type UserPreferenceResponse = z.infer<typeof UserPreferenceResponseSchema>;

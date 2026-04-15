@@ -14,16 +14,47 @@ async function main() {
   const repo = createDbRepository({ databasePath, migrationsPath });
   try {
     const seededItems = [
-      { type: "note" as const, title: "Capture standup commitments", rawContent: "Remember to send API reliability update and verify e2e route coverage.", status: "active" as const },
+      {
+        type: "note" as const,
+        title: "Capture standup commitments",
+        rawContent: "Remember to send API reliability update and verify e2e route coverage.",
+        status: "active" as const,
+        execution: {
+          status: "in_progress" as const,
+          priority: "high" as const,
+          nextStep: "Run API tests and confirm persistence expectations.",
+          progressSummary: "Reliability validation is underway with tests in progress."
+        }
+      },
       { type: "link" as const, title: "Review Cursor cloud setup guide", rawContent: "https://cursor.com/onboard", status: "active" as const },
       { type: "idea" as const, title: "AI-assisted weekly recap digest", rawContent: "Generate a Friday digest from high-confidence feed cards and completed tasks.", status: "archived" as const },
-      { type: "note" as const, title: "Draft onboarding fix rollout", rawContent: "List top 3 confusing steps and propose smallest fix per step.", status: "active" as const },
+      {
+        type: "note" as const,
+        title: "Draft onboarding fix rollout",
+        rawContent: "List top 3 confusing steps and propose smallest fix per step.",
+        status: "active" as const,
+        execution: {
+          status: "blocked" as const,
+          priority: "normal" as const,
+          nextStep: "Add one unblock note about missing QA evidence."
+        }
+      },
       { type: "quote" as const, title: "Momentum quote", rawContent: "Clarity reduces resistance; reduce resistance daily.", status: "active" as const },
       { type: "idea" as const, title: "Session-first execution flow", rawContent: "Use sessions as execution truth and tasks as intent memory.", status: "active" as const },
       { type: "note" as const, title: "Bug triage shortlist", rawContent: "Prioritize persistence bugs, feed regressions, and auth blockers.", status: "active" as const },
       { type: "link" as const, title: "Drizzle migration docs", rawContent: "https://orm.drizzle.team/docs/migrations", status: "active" as const },
       { type: "note" as const, title: "Support conversation summary", rawContent: "User asked for richer why-shown explanations in feed cards.", status: "active" as const },
-      { type: "idea" as const, title: "Manual QA script", rawContent: "Codify create item -> feed -> chat -> convert -> start/finish session journey.", status: "active" as const },
+      {
+        type: "idea" as const,
+        title: "Manual QA script",
+        rawContent: "Codify create item -> feed -> chat -> convert -> start/finish session journey.",
+        status: "active" as const,
+        execution: {
+          status: "candidate" as const,
+          priority: "normal" as const,
+          nextStep: "Convert this into one concrete test checklist task."
+        }
+      },
       { type: "file" as const, title: "Roadmap notes export", rawContent: "Quarterly roadmap export file reference placeholder for MVP.", status: "active" as const },
       { type: "note" as const, title: "Celebrate shipped loop", rawContent: "Write release note once the MVP loop is end-to-end persistent.", status: "active" as const }
     ];
@@ -40,6 +71,7 @@ async function main() {
           title: seed.title,
           rawContent: seed.rawContent,
           status: seed.status,
+          execution: seed.execution,
           createdAt,
           updatedAt
         });

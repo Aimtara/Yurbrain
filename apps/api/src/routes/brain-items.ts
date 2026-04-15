@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import {
   BrainItemResponseSchema,
+  NextStepResponseSchema,
+  ProgressSummaryResponseSchema,
   BrainItemSchema,
   BrainItemStatusSchema,
   BrainItemTypeSchema,
@@ -12,6 +14,20 @@ import {
   UpdateBrainItemRequestSchema
 } from "../../../../packages/contracts/src";
 import type { AppState } from "../state";
+
+type TaskCandidate = Awaited<ReturnType<AppState["repo"]["listTasksBySourceItem"]>>[number];
+type MessageCandidate = Awaited<ReturnType<AppState["repo"]["listMessagesByThread"]>>[number];
+
+function pickTaskForExecution(tasks: TaskCandidate[]): TaskCandidate | null {
+  if (tasks.length === 0) return null;
+  return tasks.find((task) => task.status === "in_progress") ?? tasks.find((task) => task.status === "todo") ?? tasks[0] ?? null;
+}
+
+function pickLatestComment(messages: MessageCandidate[]): MessageCandidate | null {
+  const comments = messages.filter((message) => message.role === "user");
+  if (comments.length === 0) return null;
+  return comments.reduce((latest, current) => (current.createdAt > latest.createdAt ? current : latest));
+}
 
 export async function registerBrainItemRoutes(app: FastifyInstance, state: AppState) {
   app.post("/brain-items", async (request, reply) => {
@@ -92,6 +108,7 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
       title: updated.title,
       rawContent: updated.rawContent,
       status: updated.status,
+      execution: updated.execution,
       updatedAt: updated.updatedAt
     });
     await state.repo.appendEvent({
@@ -103,5 +120,124 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
     });
 
     return reply.send(updated);
+  });
+
+  app.get("/brain-items/:id/progress-summary", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const item = await state.repo.getBrainItemById(id);
+    if (!item) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+
+    const linkedTasks = await state.repo.listTasksBySourceItem(item.id);
+    const activeTask = pickTaskForExecution(linkedTasks);
+    const runningSession =
+      activeTask
+        ? (await state.repo.listSessions({ taskId: activeTask.id, state: "running" }))[0] ?? null
+        : null;
+    const threads = await state.repo.listThreads(item.id);
+    const commentThreads = threads.filter((thread) => thread.kind === "item_comment");
+    const commentMessages = (await Promise.all(commentThreads.map((thread) => state.repo.listMessagesByThread(thread.id)))).flat();
+    const latestComment = pickLatestComment(commentMessages);
+
+    const generatedSummaryParts: string[] = [];
+    if (item.execution?.status && item.execution.status !== "none") {
+      generatedSummaryParts.push(`Execution status is ${item.execution.status.replaceAll("_", " ")}.`);
+    }
+    if (activeTask) {
+      generatedSummaryParts.push(`Linked task is ${activeTask.status.replaceAll("_", " ")}.`);
+    }
+    if (runningSession) {
+      generatedSummaryParts.push("A session is currently running.");
+    }
+    if (latestComment) {
+      generatedSummaryParts.push(`Latest continuation note: ${latestComment.content}`);
+    }
+
+    const summary = item.execution?.progressSummary?.trim()
+      ? item.execution.progressSummary
+      : generatedSummaryParts.join(" ").trim() || "No execution progress yet. Add one continuation note to restore momentum.";
+
+    return reply.send(
+      ProgressSummaryResponseSchema.parse({
+        itemId: item.id,
+        summary,
+        signals: {
+          executionStatus: item.execution?.status,
+          linkedTaskStatus: activeTask?.status,
+          hasRunningSession: Boolean(runningSession),
+          commentCount: commentMessages.length,
+          latestCommentAt: latestComment?.createdAt
+        }
+      })
+    );
+  });
+
+  app.get("/brain-items/:id/next-step", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const item = await state.repo.getBrainItemById(id);
+    if (!item) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+
+    const linkedTasks = await state.repo.listTasksBySourceItem(item.id);
+    const activeTask = pickTaskForExecution(linkedTasks);
+    const threads = await state.repo.listThreads(item.id);
+    const commentThreads = threads.filter((thread) => thread.kind === "item_comment");
+    const commentMessages = (await Promise.all(commentThreads.map((thread) => state.repo.listMessagesByThread(thread.id)))).flat();
+    const latestComment = pickLatestComment(commentMessages);
+
+    if (item.execution?.nextStep?.trim()) {
+      return reply.send(
+        NextStepResponseSchema.parse({
+          itemId: item.id,
+          nextStep: item.execution.nextStep,
+          reason: "Saved execution metadata already includes the smallest next step.",
+          source: "execution_metadata"
+        })
+      );
+    }
+
+    if (activeTask?.status === "in_progress") {
+      return reply.send(
+        NextStepResponseSchema.parse({
+          itemId: item.id,
+          nextStep: `Resume the active task: ${activeTask.title}.`,
+          reason: "Task status shows momentum is already underway.",
+          source: "task"
+        })
+      );
+    }
+
+    if (activeTask?.status === "todo") {
+      return reply.send(
+        NextStepResponseSchema.parse({
+          itemId: item.id,
+          nextStep: `Start a short session on: ${activeTask.title}.`,
+          reason: "A linked task is ready and waiting.",
+          source: "task"
+        })
+      );
+    }
+
+    if (latestComment) {
+      return reply.send(
+        NextStepResponseSchema.parse({
+          itemId: item.id,
+          nextStep: "Convert your latest continuation note into one lightweight action.",
+          reason: "Recent thread activity indicates clear context to act on.",
+          source: "thread"
+        })
+      );
+    }
+
+    return reply.send(
+      NextStepResponseSchema.parse({
+        itemId: item.id,
+        nextStep: "Add one continuation note, then choose the smallest action you can start in under 10 minutes.",
+        reason: "No active execution signal is available yet.",
+        source: "fallback"
+      })
+    );
   });
 }

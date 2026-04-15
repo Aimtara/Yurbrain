@@ -216,3 +216,254 @@ test("ranking preserves continuity for recently revisited cards without adding n
   assert.ok(cards[0]?.whyShown.reasons.some((reason) => reason.toLowerCase().includes("continuity")));
   assert.equal(cards.some((card) => card.id === laterCard.id), true);
 });
+
+test("founder execution lens filters to ready-to-move execution cards", async () => {
+  const userId = "77777777-7777-4777-8777-777777777777";
+  const plannedItem = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Planned execution item",
+      rawContent: "Needs a short task start"
+    }
+  });
+  assert.equal(plannedItem.statusCode, 201);
+  const plannedId = plannedItem.json<{ id: string }>().id;
+
+  const blockedItem = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Blocked execution item",
+      rawContent: "Waiting on upstream input"
+    }
+  });
+  assert.equal(blockedItem.statusCode, 201);
+  const blockedId = blockedItem.json<{ id: string }>().id;
+
+  const patchPlanned = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${plannedId}`,
+    payload: {
+      execution: {
+        status: "planned",
+        nextStep: "Start with one short session."
+      }
+    }
+  });
+  assert.equal(patchPlanned.statusCode, 200);
+
+  const patchBlocked = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${blockedId}`,
+    payload: {
+      execution: {
+        status: "blocked",
+        nextStep: "Capture unblock note."
+      }
+    }
+  });
+  assert.equal(patchBlocked.statusCode, 200);
+
+  const feedResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&founderMode=true&executionLens=ready_to_move&limit=20`
+  });
+  assert.equal(feedResp.statusCode, 200);
+  const cards = feedResp.json<Array<{ itemId: string | null }>>();
+  assert.equal(cards.some((card) => card.itemId === plannedId), true);
+  assert.equal(cards.some((card) => card.itemId === blockedId), false);
+});
+
+test("founder execution lens filters blocked cards when requested", async () => {
+  const userId = "78787878-7878-4787-8787-787878787878";
+  const blockedItem = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Blocked founder lens item",
+      rawContent: "This should appear only in needs_unblock lens."
+    }
+  });
+  assert.equal(blockedItem.statusCode, 201);
+  const blockedId = blockedItem.json<{ id: string }>().id;
+
+  const patchBlocked = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${blockedId}`,
+    payload: {
+      execution: {
+        status: "blocked",
+        nextStep: "Request missing dependency."
+      }
+    }
+  });
+  assert.equal(patchBlocked.statusCode, 200);
+
+  const feedResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&founderMode=true&executionLens=needs_unblock&limit=20`
+  });
+  assert.equal(feedResp.statusCode, 200);
+  const cards = feedResp.json<Array<{ itemId: string | null; whyShown: { reasons: string[] } }>>();
+  assert.equal(cards.some((card) => card.itemId === blockedId), true);
+  assert.ok(cards.some((card) => card.whyShown.reasons.some((reason) => reason.toLowerCase().includes("founder execution lens"))));
+});
+
+test("founder execution lens filters feed by execution metadata and linked task state", async () => {
+  const userId = "79797979-7979-4797-8797-797979797979";
+  const blockedItem = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Blocked item",
+      rawContent: "Needs unblock before moving.",
+    }
+  });
+  assert.equal(blockedItem.statusCode, 201);
+  const blockedItemId = blockedItem.json<{ id: string }>().id;
+
+  const candidateItem = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Candidate item",
+      rawContent: "Ready to be converted into a next step."
+    }
+  });
+  assert.equal(candidateItem.statusCode, 201);
+  const candidateItemId = candidateItem.json<{ id: string }>().id;
+
+  const activeTask = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: {
+      userId,
+      title: "Active linked task",
+      sourceItemId: candidateItemId
+    }
+  });
+  assert.equal(activeTask.statusCode, 201);
+  const activeTaskId = activeTask.json<{ id: string }>().id;
+  const setTaskInProgress = await app.inject({
+    method: "PATCH",
+    url: `/tasks/${activeTaskId}`,
+    payload: { status: "in_progress" }
+  });
+  assert.equal(setTaskInProgress.statusCode, 200);
+
+  const markBlocked = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${blockedItemId}`,
+    payload: {
+      execution: { status: "blocked", nextStep: "Write unblock note" }
+    }
+  });
+  assert.equal(markBlocked.statusCode, 200);
+
+  const markCandidate = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${candidateItemId}`,
+    payload: {
+      execution: { status: "candidate", nextStep: "Convert to task" }
+    }
+  });
+  assert.equal(markCandidate.statusCode, 200);
+
+  const ensureCards = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&limit=20`
+  });
+  assert.equal(ensureCards.statusCode, 200);
+
+  const blockedLens = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&founderMode=true&executionLens=needs_unblock&limit=20`
+  });
+  assert.equal(blockedLens.statusCode, 200);
+  const blockedCards = blockedLens.json<Array<{ itemId: string | null }>>();
+  assert.equal(blockedCards.some((card) => card.itemId === blockedItemId), true);
+  assert.equal(blockedCards.some((card) => card.itemId === candidateItemId), false);
+
+  const readyLens = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&founderMode=true&executionLens=ready_to_move&limit=20`
+  });
+  assert.equal(readyLens.statusCode, 200);
+  const readyCards = readyLens.json<Array<{ itemId: string | null }>>();
+  assert.equal(readyCards.some((card) => card.itemId === candidateItemId), true);
+});
+
+test("founder execution lens filters ready-to-move cards from persisted metadata", async () => {
+  const userId = "80808080-8080-4808-8808-808080808080";
+
+  const candidateItemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Ready candidate",
+      rawContent: "Should appear in ready-to-move execution lens"
+    }
+  });
+  assert.equal(candidateItemResp.statusCode, 201);
+  const candidateItem = candidateItemResp.json<{ id: string }>();
+  const candidatePatchResp = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${candidateItem.id}`,
+    payload: {
+      execution: {
+        status: "candidate",
+        nextStep: "Convert into one lightweight task."
+      }
+    }
+  });
+  assert.equal(candidatePatchResp.statusCode, 200);
+
+  const blockedItemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Blocked item",
+      rawContent: "Should not appear in ready-to-move execution lens"
+    }
+  });
+  assert.equal(blockedItemResp.statusCode, 201);
+  const blockedItem = blockedItemResp.json<{ id: string }>();
+  const blockedPatchResp = await app.inject({
+    method: "PATCH",
+    url: `/brain-items/${blockedItem.id}`,
+    payload: {
+      execution: {
+        status: "blocked",
+        nextStep: "Need unblock context first."
+      }
+    }
+  });
+  assert.equal(blockedPatchResp.statusCode, 200);
+
+  const feedResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&founderMode=true&executionLens=ready_to_move&limit=10`
+  });
+  assert.equal(feedResp.statusCode, 200);
+  const cards = feedResp.json<Array<{ itemId: string | null; whyShown: { reasons: string[] } }>>();
+
+  assert.ok(cards.length >= 1);
+  assert.ok(cards.some((card) => card.itemId === candidateItem.id));
+  assert.equal(cards.some((card) => card.itemId === blockedItem.id), false);
+  assert.ok(cards[0]?.whyShown.reasons.some((reason) => reason.includes("founder execution lens")));
+});

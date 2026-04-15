@@ -15,8 +15,18 @@ export type BrainItemRecord = {
   title: string;
   rawContent: string;
   status: "active" | "archived";
+  execution?: BrainItemExecutionMetadataRecord;
   createdAt: string;
   updatedAt: string;
+};
+
+export type BrainItemExecutionMetadataRecord = {
+  status: "none" | "candidate" | "planned" | "in_progress" | "blocked" | "done";
+  priority?: "low" | "normal" | "high";
+  nextStep?: string;
+  progressSummary?: string;
+  relatedTaskId?: string | null;
+  lastProgressAt?: string;
 };
 
 export type EventRecord = {
@@ -109,7 +119,7 @@ export type DbRepository = {
   listBrainItemsByUser: (userId: string) => Promise<BrainItemRecord[]>;
   updateBrainItem: (
     id: string,
-    updates: Partial<Pick<BrainItemRecord, "type" | "title" | "rawContent" | "status" | "updatedAt">>
+    updates: Partial<Pick<BrainItemRecord, "type" | "title" | "rawContent" | "status" | "execution" | "updatedAt">>
   ) => Promise<BrainItemRecord | null>;
   appendEvent: (event: EventRecord) => Promise<EventRecord>;
   createThread: (thread: ThreadRecord) => Promise<ThreadRecord>;
@@ -131,6 +141,7 @@ export type DbRepository = {
     updates: Partial<Pick<TaskRecord, "title" | "status" | "sourceItemId" | "sourceMessageId" | "updatedAt">>
   ) => Promise<TaskRecord | null>;
   listTasks: (query: { userId?: string; status?: TaskRecord["status"] }) => Promise<TaskRecord[]>;
+  listTasksBySourceItem: (sourceItemId: string) => Promise<TaskRecord[]>;
   createSession: (session: SessionRecord) => Promise<SessionRecord>;
   getSessionById: (id: string) => Promise<SessionRecord | null>;
   findActiveSessionByTaskId: (taskId: string) => Promise<SessionRecord | null>;
@@ -163,6 +174,7 @@ function toDate(value: string | null | undefined): Date | null {
 }
 
 function toBrainItemRecord(row: typeof schema.brainItems.$inferSelect): BrainItemRecord {
+  const executionMetadata = row.executionMetadata as BrainItemExecutionMetadataRecord | null;
   return {
     id: row.id,
     userId: row.userId,
@@ -170,6 +182,7 @@ function toBrainItemRecord(row: typeof schema.brainItems.$inferSelect): BrainIte
     title: row.title,
     rawContent: row.rawContent,
     status: row.status,
+    execution: executionMetadata ?? undefined,
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
   };
@@ -334,6 +347,7 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             title: item.title,
             rawContent: item.rawContent,
             status: item.status,
+            executionMetadata: item.execution ?? null,
             createdAt: toDate(item.createdAt) ?? undefined,
             updatedAt: toDate(item.updatedAt) ?? undefined
           })
@@ -366,6 +380,7 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             title: updates.title,
             rawContent: updates.rawContent,
             status: updates.status,
+            executionMetadata: updates.execution,
             updatedAt: toDate(updates.updatedAt) ?? undefined
           })
           .where(eq(schema.brainItems.id, id))
@@ -548,6 +563,15 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
                 .from(schema.tasks)
                 .where(and(...clauses))
                 .orderBy(desc(schema.tasks.createdAt), asc(schema.tasks.id));
+        return rows.map(toTaskRecord);
+      }),
+    listTasksBySourceItem: (sourceItemId) =>
+      withDb(async ({ db }) => {
+        const rows = await db
+          .select()
+          .from(schema.tasks)
+          .where(eq(schema.tasks.sourceItemId, sourceItemId))
+          .orderBy(desc(schema.tasks.updatedAt), desc(schema.tasks.id));
         return rows.map(toTaskRecord);
       }),
     createSession: (session) =>
