@@ -42,6 +42,8 @@ Not used for runtime truth:
   - convert to task
   - start/finish sessions
   - refresh/reload continuity from DB-backed APIs
+- Item detail continuation now uses one inline `CommentComposer` with mode toggle (`Comment` / `Ask Yurbrain`) so both flows share the same continuity surface.
+- Ask mode now appends both user question and assistant reply into the same continuity timeline with explicit role labels (`You`, `Yurbrain`) for recognition-first re-entry.
 - Feed and item detail continuity UI now explicitly surfaces: why shown, where you left off, what changed, and smallest next move.
 - Founder mode and default feed lens are now persisted in backend user preferences (`user_preferences`) and restored on reload.
 - Item AI summary/classification continuity now uses persisted artifacts from API (`GET /brain-items/:id/artifacts`) rather than local-only cache.

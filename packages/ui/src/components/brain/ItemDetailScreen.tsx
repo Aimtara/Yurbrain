@@ -9,6 +9,7 @@ export type ContinuityTimelineEntry = {
   id: string;
   label: string;
   timestamp?: string;
+  role?: "user" | "assistant" | "system";
 };
 
 type ItemDetailScreenProps = {
@@ -32,6 +33,7 @@ type ItemDetailScreenProps = {
   onBackToFeed: () => void;
   onQuickAction: (action: QuickAction) => void;
   onAddComment: (comment: string) => void;
+  onAskYurbrain?: (question: string) => void;
   onConvertCommentToTask?: (comment: string) => void;
 };
 
@@ -78,6 +80,7 @@ export function ItemDetailScreen({
   onBackToFeed,
   onQuickAction,
   onAddComment,
+  onAskYurbrain,
   onConvertCommentToTask
 }: ItemDetailScreenProps) {
   return (
@@ -149,6 +152,7 @@ export function ItemDetailScreen({
           <ul style={styles.timeline}>
             {timeline.map((entry) => (
               <li key={entry.id}>
+                {entry.role ? <strong>{roleLabels[entry.role]}: </strong> : null}
                 {entry.label}
                 {entry.timestamp ? <span style={{ color: "#64748b" }}> · {entry.timestamp}</span> : null}
               </li>
@@ -165,6 +169,13 @@ export function ItemDetailScreen({
             if (!normalized) return;
             onAddComment(normalized);
           }}
+          onAskYurbrain={(value) => {
+            if (!onAskYurbrain) return;
+            const normalized = value.trim();
+            if (!normalized) return;
+            onAskYurbrain(normalized);
+          }}
+          enableAskYurbrain={Boolean(onAskYurbrain)}
           onConfirmConvertToTask={
             onConvertCommentToTask
               ? (value) => {
@@ -191,3 +202,9 @@ export function ItemDetailScreen({
     </section>
   );
 }
+
+const roleLabels: Record<NonNullable<ContinuityTimelineEntry["role"]>, string> = {
+  user: "You",
+  assistant: "Yurbrain",
+  system: "System"
+};
