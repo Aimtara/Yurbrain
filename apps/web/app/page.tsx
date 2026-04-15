@@ -39,13 +39,15 @@ import {
   ItemDetailScreen,
   PlanPreviewSheet,
   TaskDetailCard,
+  TimeWindowSelector,
   type CaptureSubmitIntent,
   type ExecutionLens,
   type FeedCardVariant,
-  type FeedLens
+  type FeedLens,
+  type TimeWindowOption
 } from "@yurbrain/ui";
 
-type Surface = "feed" | "item" | "session";
+type Surface = "feed" | "item" | "session" | "time";
 
 type FeedCardDto = {
   id: string;
@@ -189,7 +191,9 @@ const storageKeys = {
   selectedTaskId: "yurbrain.selectedTaskId",
   founderMode: "yurbrain.founderMode",
   executionLens: "yurbrain.executionLens",
-  activeSurface: "yurbrain.activeSurface"
+  activeSurface: "yurbrain.activeSurface",
+  timeWindow: "yurbrain.timeWindow",
+  customWindowMinutes: "yurbrain.customWindowMinutes"
 } as const;
 
 const captureSuccessMessages: Record<CaptureSubmitIntent, string> = {
@@ -221,6 +225,14 @@ const promptStopWords = new Set([
   "when",
   "where"
 ]);
+
+const timeWindowMinutes: Record<Exclude<TimeWindowOption, "custom">, number> = {
+  "2h": 120,
+  "4h": 240,
+  "6h": 360,
+  "8h": 480,
+  "24h": 1440
+};
 
 function deriveArtifactText(payload: Record<string, unknown>): string {
   if (typeof payload.content === "string" && payload.content.trim().length > 0) {
@@ -393,12 +405,19 @@ function supportsAction(card: FeedCardDto, action: FeedAction): boolean {
   return card.availableActions.includes(action);
 }
 
-function buildPlanPreviewSteps(steps: string[]): Array<{ id: string; title: string; minutes: number }> {
-  return steps.map((step, index) => ({
-    id: `${index + 1}-${step.slice(0, 24)}`,
-    title: step,
-    minutes: normalizePlanStepMinutes(index)
-  }));
+function resolveTimeWindowMinutes(window: TimeWindowOption, customMinutes: number): number {
+  if (window === "custom") return Math.max(30, Math.min(1440, Math.trunc(customMinutes)));
+  return timeWindowMinutes[window];
+}
+
+function estimateTaskMinutes(task: TaskDto): number {
+  const tokenCount = task.title
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+  const base = 15 + tokenCount * 4;
+  const statusAdjustment = task.status === "in_progress" ? 10 : 0;
+  return Math.max(15, Math.min(180, base + statusAdjustment));
 }
 
 export default function Page() {
@@ -423,6 +442,8 @@ export default function Page() {
   const [artifactHistoryByItem, setArtifactHistoryByItem] = useState<Record<string, { summary: string[]; classification: string[] }>>({});
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [activeSession, setActiveSession] = useState<SessionDto | null>(null);
+  const [timeWindow, setTimeWindow] = useState<TimeWindowOption>("4h");
+  const [customWindowMinutes, setCustomWindowMinutes] = useState(180);
 
   const [captureLoading, setCaptureLoading] = useState(false);
   const [feedLoading, setFeedLoading] = useState(false);
@@ -438,12 +459,15 @@ export default function Page() {
   const [conversionNotice, setConversionNotice] = useState("");
   const [itemActionNotice, setItemActionNotice] = useState("");
   const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
+  const [timeActionNotice, setTimeActionNotice] = useState("");
   const [lastAction, setLastAction] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
+  const actionableTasks = useMemo(() => tasks.filter((task) => task.status !== "done"), [tasks]);
+  const windowMinutes = useMemo(() => resolveTimeWindowMinutes(timeWindow, customWindowMinutes), [customWindowMinutes, timeWindow]);
   const selectedItemTasks = useMemo(
     () => (selectedItem ? tasks.filter((task) => task.sourceItemId === selectedItem.id) : []),
     [selectedItem, tasks]
@@ -534,6 +558,48 @@ export default function Page() {
     return "Momentum is healthy. Pick one ready item, do a tiny session, then return to the feed.";
   }, [feedModels]);
 
+  const resumeSessionCard = useMemo(() => {
+    if (!activeSession || activeSession.state === "finished") return null;
+    const linkedTask = tasks.find((task) => task.id === activeSession.taskId);
+    if (!linkedTask) return null;
+    return {
+      taskId: linkedTask.id,
+      title: linkedTask.title,
+      state: activeSession.state
+    };
+  }, [activeSession, tasks]);
+
+  const timeSuggestedTasks = useMemo(() => {
+    const ranked = actionableTasks
+      .map((task) => ({
+        task,
+        minutes: estimateTaskMinutes(task)
+      }))
+      .sort((left, right) => {
+        if (left.task.status !== right.task.status) {
+          if (left.task.status === "in_progress") return -1;
+          if (right.task.status === "in_progress") return 1;
+        }
+        if (left.minutes !== right.minutes) return left.minutes - right.minutes;
+        return right.task.updatedAt.localeCompare(left.task.updatedAt);
+      });
+
+    const picked: Array<{ task: TaskDto; minutes: number }> = [];
+    let usedMinutes = 0;
+    for (const candidate of ranked) {
+      if (picked.length >= 5) break;
+      if (candidate.minutes + usedMinutes > windowMinutes && picked.length > 0) continue;
+      picked.push(candidate);
+      usedMinutes += candidate.minutes;
+    }
+    return {
+      tasks: picked,
+      usedMinutes
+    };
+  }, [actionableTasks, windowMinutes]);
+
+  const timeWindowLabel = timeWindow === "custom" ? `${windowMinutes}m` : timeWindow;
+
   const selectedItemSession =
     selectedItemTask && activeSession && activeSession.taskId === selectedItemTask.id ? activeSession : null;
   const latestComment = commentMessages.length > 0 ? commentMessages[commentMessages.length - 1] : null;
@@ -593,7 +659,7 @@ export default function Page() {
     }
 
     const storedSurface = window.localStorage.getItem(storageKeys.activeSurface);
-    if (storedSurface === "feed" || storedSurface === "item" || storedSurface === "session") {
+    if (storedSurface === "feed" || storedSurface === "item" || storedSurface === "session" || storedSurface === "time") {
       setActiveSurface(storedSurface);
     }
 
@@ -601,6 +667,14 @@ export default function Page() {
     setFounderMode(storedFounderMode === "1");
     setSelectedItemId(window.localStorage.getItem(storageKeys.selectedItemId) ?? "");
     setSelectedTaskId(window.localStorage.getItem(storageKeys.selectedTaskId) ?? "");
+    const storedTimeWindow = window.localStorage.getItem(storageKeys.timeWindow);
+    if (storedTimeWindow === "2h" || storedTimeWindow === "4h" || storedTimeWindow === "6h" || storedTimeWindow === "8h" || storedTimeWindow === "24h" || storedTimeWindow === "custom") {
+      setTimeWindow(storedTimeWindow);
+    }
+    const storedCustomWindowMinutes = Number.parseInt(window.localStorage.getItem(storageKeys.customWindowMinutes) ?? "", 10);
+    if (!Number.isNaN(storedCustomWindowMinutes)) {
+      setCustomWindowMinutes(Math.max(30, Math.min(1440, storedCustomWindowMinutes)));
+    }
     setHydrated(true);
   }, []);
 
@@ -623,6 +697,16 @@ export default function Page() {
     if (!hydrated) return;
     window.localStorage.setItem(storageKeys.founderMode, founderMode ? "1" : "0");
   }, [founderMode, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.timeWindow, timeWindow);
+  }, [hydrated, timeWindow]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(storageKeys.customWindowMinutes, String(customWindowMinutes));
+  }, [customWindowMinutes, hydrated]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -721,6 +805,17 @@ export default function Page() {
       }
       if (!nextTasks.some((task) => task.id === selectedTaskId)) {
         setSelectedTaskId(nextTasks[0].id);
+      }
+
+      if (!activeSession || !nextTasks.some((task) => task.id === activeSession.taskId)) {
+        const inProgressTask = nextTasks.find((task) => task.status === "in_progress");
+        if (inProgressTask) {
+          const sessions = await listSessions<SessionDto[]>({ taskId: inProgressTask.id });
+          const session = sessions.find((candidate) => candidate.state === "running" || candidate.state === "paused") ?? null;
+          setActiveSession(session);
+        } else {
+          setActiveSession(null);
+        }
       }
     } catch {
       setTaskError("Could not load execution tasks.");
@@ -1156,6 +1251,29 @@ export default function Page() {
     setActiveSurface("session");
   }
 
+  async function startTimeTask(taskId: string) {
+    try {
+      const session = await startTaskSession<SessionDto>(taskId);
+      setActiveSession(session);
+      setSelectedTaskId(taskId);
+      setTimeActionNotice("Session started from time window.");
+      setActiveSurface("session");
+      await loadTasks();
+      await loadSessionsForTask(taskId);
+    } catch {
+      setTaskError("Could not start this task from time planning.");
+    }
+  }
+
+  async function startWithoutPlanning() {
+    const candidate = tasks.find((task) => task.status === "todo") ?? tasks.find((task) => task.status === "in_progress") ?? null;
+    if (!candidate) {
+      setTimeActionNotice("No task is available yet. Capture something first.");
+      return;
+    }
+    await startTimeTask(candidate.id);
+  }
+
   const timelineEntries = useMemo(() => {
     const merged = [
       ...commentMessages.map((message) => ({
@@ -1220,9 +1338,14 @@ export default function Page() {
           <div style={{ display: "grid", gap: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
               <h2 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Capture</h2>
-              <button type="button" onClick={openCaptureSheet}>
-                Open capture sheet
-              </button>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button type="button" onClick={() => setActiveSurface("time")}>
+                  Open Time home
+                </button>
+                <button type="button" onClick={openCaptureSheet}>
+                  Open capture sheet
+                </button>
+              </div>
             </div>
             <p style={{ margin: 0, color: "#475569" }}>Capture first, then choose Save, Save + Plan, or Save + Remind Later.</p>
             {captureLoading ? <p style={{ margin: 0 }}>Saving capture...</p> : null}
@@ -1352,6 +1475,102 @@ export default function Page() {
             void startPlanFirstStep();
           }}
         />
+      ) : null}
+
+      {activeSurface === "time" ? (
+        <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
+          <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "12px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Time home</h2>
+                <p style={{ margin: "6px 0 0", color: "#475569" }}>Choose a horizon, then start one task that fits.</p>
+              </div>
+              <button type="button" onClick={() => setActiveSurface("feed")}>
+                Back to Focus Feed
+              </button>
+            </div>
+
+            <TimeWindowSelector
+              activeWindow={timeWindow}
+              customMinutes={customWindowMinutes}
+              onWindowChange={setTimeWindow}
+              onCustomMinutesChange={setCustomWindowMinutes}
+              disabled={tasksLoading}
+            />
+
+            <div style={{ borderRadius: "14px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "12px" }}>
+              <p style={{ margin: 0 }}>
+                <strong>Window:</strong> {timeWindowLabel} ({windowMinutes} minutes)
+              </p>
+              <p style={{ margin: "6px 0 0", color: "#475569" }}>
+                Suggested tasks are deterministic and based on task title length plus status.
+              </p>
+            </div>
+
+            {resumeSessionCard ? (
+              <div style={{ borderRadius: "14px", border: "1px solid #bfdbfe", background: "#eff6ff", padding: "12px", display: "grid", gap: "8px" }}>
+                <p style={{ margin: 0 }}>
+                  <strong>Resume in progress:</strong> {resumeSessionCard.title}
+                </p>
+                <p style={{ margin: 0, color: "#334155" }}>
+                  {resumeSessionCard.state === "running" ? "Session is running now." : "Session is paused and ready to resume."}
+                </p>
+                <div>
+                  <button type="button" onClick={() => void startTimeTask(resumeSessionCard.taskId)} disabled={tasksLoading}>
+                    Resume task
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div style={{ display: "grid", gap: "10px" }}>
+              <h3 style={{ margin: 0, fontSize: "18px", lineHeight: "24px" }}>Tasks that fit {timeWindowLabel}</h3>
+              {timeSuggestedTasks.tasks.length === 0 ? (
+                <p style={{ margin: 0, color: "#475569" }}>No queued tasks fit yet. Capture or convert one item, then return here.</p>
+              ) : (
+                timeSuggestedTasks.tasks.map((entry) => (
+                  <div
+                    key={entry.task.id}
+                    style={{
+                      borderRadius: "14px",
+                      border: "1px solid #e2e8f0",
+                      background: "#ffffff",
+                      padding: "12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "12px",
+                      flexWrap: "wrap"
+                    }}
+                  >
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700 }}>{entry.task.title}</p>
+                      <p style={{ margin: "4px 0 0", color: "#475569" }}>
+                        Estimated {entry.minutes} minutes · status {entry.task.status}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => void startTimeTask(entry.task.id)} disabled={tasksLoading}>
+                      Start
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => void startWithoutPlanning()}
+                disabled={tasksLoading}
+                style={{ background: "#0f172a", color: "#ffffff", border: "1px solid #0f172a", borderRadius: "10px", padding: "8px 12px" }}
+              >
+                Start without planning
+              </button>
+            </div>
+            {timeActionNotice ? <p style={{ margin: 0 }}>{timeActionNotice}</p> : null}
+            {taskError ? <p style={{ margin: 0 }}>{taskError}</p> : null}
+          </div>
+        </section>
       ) : null}
 
       {activeSurface === "item" ? (

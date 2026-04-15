@@ -56,6 +56,8 @@ Not used for runtime truth:
 - Founder mode and default feed lens are now persisted in backend user preferences (`user_preferences`) and restored on reload.
 - Item AI summary/classification continuity now uses persisted artifacts from API (`GET /brain-items/:id/artifacts`) rather than local-only cache.
 - Task session continuity now uses persisted sessions from API (`GET /sessions?taskId=...`) rather than local-only session snapshots.
+- Web now includes a dedicated Time home surface with deterministic time-window selection (`2h`, `4h`, `6h`, `8h`, `24h`, `custom`), a resume card for running/paused sessions, suggested tasks that fit the selected window, and a prominent "Start without planning" action.
+- Mobile Time tab now mirrors the same lightweight planning intent with window selection and start-without-planning guidance to keep parity with web without introducing heavy planning UX.
 
 ### Feed semantics and contract (real)
 - Feed ranking is deterministic with diversity/recency/actionability penalties/boosts.
