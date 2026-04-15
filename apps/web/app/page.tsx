@@ -362,6 +362,7 @@ function inferVariant(card: FeedCardDto, relatedTask?: TaskDto): FeedCardVariant
   if (relatedTask?.status === "done") return "done";
   if (relatedTask?.status === "in_progress" || card.cardType === "resume") return "execution";
   if (card.cardType === "open_loop") return "resume";
+  if ((card.postponeCount ?? 0) >= 2) return "blocked";
   const summary = card.whyShown.summary.toLowerCase();
   if (summary.includes("blocked") || summary.includes("stale") || summary.includes("waiting")) return "blocked";
   if (summary.includes("resume") || summary.includes("revisit") || summary.includes("return")) return "resume";
