@@ -1,5 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
+import { encodeGroundedAiContext } from "../../../../../packages/ai/src";
 import type { AppState } from "../../state";
+import { buildItemExecutionContext } from "./execution-context";
 import { createArtifact, resolveAiEnvelope } from "./shared";
 
 export async function summarizeItem(
@@ -8,9 +10,19 @@ export async function summarizeItem(
   log?: FastifyBaseLogger,
   correlationId?: string
 ) {
+  const executionContext = await buildItemExecutionContext(state, input.itemId);
   const { ai, fallbackUsed, fallbackReason } = await resolveAiEnvelope({
     task: "summarize",
-    content: input.rawContent,
+    content: encodeGroundedAiContext({
+      primaryText: input.rawContent,
+      context: {
+        itemTitle: executionContext.itemTitle,
+        changed: executionContext.changed,
+        done: executionContext.done,
+        blocked: executionContext.blocked,
+        nextMove: executionContext.nextMove
+      }
+    }),
     timeoutMs: input.timeoutMs,
     log,
     correlationId

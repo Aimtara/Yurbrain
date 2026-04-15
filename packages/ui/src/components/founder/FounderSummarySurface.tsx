@@ -12,13 +12,22 @@ type SuggestedFocus = {
   onOpen: () => void;
 };
 
+type BlockedContinuity = {
+  id: string;
+  title: string;
+  reason: string;
+  nextMove: string;
+  onOpen: () => void;
+};
+
 type FounderSummarySurfaceProps = {
   stats: FounderSummaryStat[];
   suggestedFocus: SuggestedFocus | null;
+  blockedItems?: BlockedContinuity[];
   summary: string;
 };
 
-export function FounderSummarySurface({ stats, suggestedFocus, summary }: FounderSummarySurfaceProps) {
+export function FounderSummarySurface({ stats, suggestedFocus, blockedItems = [], summary }: FounderSummarySurfaceProps) {
   return (
     <section aria-label="Founder summary surface" style={{ display: "grid", gap: "16px" }}>
       <header>
@@ -47,6 +56,31 @@ export function FounderSummarySurface({ stats, suggestedFocus, summary }: Founde
             <button type="button" onClick={suggestedFocus.onOpen}>
               Open in continuity
             </button>
+          </div>
+        </article>
+      ) : null}
+      {blockedItems.length > 0 ? (
+        <article style={{ borderRadius: "20px", border: "1px solid #fde68a", background: "#fffbeb", padding: "16px", display: "grid", gap: "10px" }}>
+          <p style={{ margin: 0, fontSize: "12px", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 700, color: "#92400e" }}>
+            Blocked and worth revisiting
+          </p>
+          <div style={{ display: "grid", gap: "8px" }}>
+            {blockedItems.slice(0, 2).map((blocked) => (
+              <div key={blocked.id} style={{ borderRadius: "14px", border: "1px solid #fcd34d", background: "#ffffff", padding: "10px", display: "grid", gap: "6px" }}>
+                <p style={{ margin: 0, fontWeight: 700 }}>{blocked.title}</p>
+                <p style={{ margin: 0, color: "#92400e" }}>
+                  <strong>Blocked:</strong> {blocked.reason}
+                </p>
+                <p style={{ margin: 0, color: "#78350f" }}>
+                  <strong>Next move:</strong> {blocked.nextMove}
+                </p>
+                <div>
+                  <button type="button" onClick={blocked.onOpen}>
+                    Revisit item
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </article>
       ) : null}

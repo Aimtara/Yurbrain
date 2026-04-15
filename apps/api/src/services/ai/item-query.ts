@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyBaseLogger } from "fastify";
+import { encodeGroundedAiContext } from "../../../../../packages/ai/src";
 import type { AppState } from "../../state";
+import { buildItemExecutionContext } from "./execution-context";
 import { resolveAiEnvelope } from "./shared";
 
 export async function queryItemAssistant(
@@ -22,9 +24,23 @@ export async function queryItemAssistant(
     content: input.question,
     createdAt: new Date().toISOString()
   };
+  const asksForNextMove = /what should i do next|what next|next step|do next|next move/i.test(input.question.toLowerCase());
+  const executionContext = await buildItemExecutionContext(state, thread.targetItemId);
   const { ai, fallbackUsed, fallbackReason } = await resolveAiEnvelope({
     task: "query",
-    content: input.question,
+    content: encodeGroundedAiContext({
+      primaryText: input.question,
+      context: {
+        intent: asksForNextMove ? "next_action" : "context_query",
+        itemTitle: executionContext.itemTitle,
+        changed: executionContext.changed,
+        done: executionContext.done,
+        blocked: executionContext.blocked,
+        recommendation: executionContext.recommendation,
+        reason: executionContext.reason,
+        nextMove: executionContext.nextMove
+      }
+    }),
     timeoutMs: input.timeoutMs,
     log,
     correlationId
