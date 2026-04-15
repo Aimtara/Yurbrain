@@ -38,6 +38,7 @@ import {
   ItemChatPanel,
   ItemDetailScreen,
   TaskDetailCard,
+  type CaptureSubmitIntent,
   type ExecutionLens,
   type FeedCardVariant,
   type FeedLens
@@ -177,6 +178,12 @@ const storageKeys = {
   activeSurface: "yurbrain.activeSurface"
 } as const;
 
+const captureSuccessMessages: Record<CaptureSubmitIntent, string> = {
+  save: "Saved. Returning you to the feed.",
+  save_and_plan: "Saved and routed into lightweight planning.",
+  save_and_remind: "Saved. Reminder stub captured for follow-up."
+};
+
 function deriveArtifactText(payload: Record<string, unknown>): string {
   if (typeof payload.content === "string" && payload.content.trim().length > 0) {
     return payload.content;
@@ -309,6 +316,7 @@ export default function Page() {
   const [activeSurface, setActiveSurface] = useState<Surface>("feed");
 
   const [captureDraft, setCaptureDraft] = useState("");
+  const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [items, setItems] = useState<BrainItemDto[]>([]);
   const [selectedItemId, setSelectedItemId] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
@@ -328,6 +336,8 @@ export default function Page() {
   const [itemContextLoading, setItemContextLoading] = useState(false);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [captureError, setCaptureError] = useState("");
+  const [captureStatusNotice, setCaptureStatusNotice] = useState("");
+  const [captureSuccessNotice, setCaptureSuccessNotice] = useState("");
   const [feedError, setFeedError] = useState("");
   const [chatError, setChatError] = useState("");
   const [taskError, setTaskError] = useState("");
@@ -737,11 +747,12 @@ export default function Page() {
     return created;
   }
 
-  async function captureItem() {
+  async function captureItem(intent: CaptureSubmitIntent = "save") {
     const normalized = captureDraft.trim();
     if (!normalized) return;
     setCaptureLoading(true);
     setCaptureError("");
+    setCaptureStatusNotice("");
     const normalizedTitle = normalized.replace(/\s+/g, " ").slice(0, 80);
     const title = normalizedTitle.length > 0 ? normalizedTitle : "Captured note";
 
@@ -752,11 +763,43 @@ export default function Page() {
       setSelectedItemId(created.id);
       setLastAction("Captured a new note.");
       await Promise.all([loadFeed(activeLens), loadTasks()]);
+
+      if (intent === "save_and_plan") {
+        const plannedTask = await runConvert({ itemId: created.id, content: created.rawContent });
+        if (plannedTask) {
+          setSelectedTaskId(plannedTask.id);
+          setActiveSurface("session");
+        } else {
+          setCaptureStatusNotice("Plan preview is currently lightweight. Review conversion guidance and continue from feed.");
+        }
+      }
+
+      if (intent === "save_and_remind") {
+        setCaptureStatusNotice("Remind Later flow is currently a stub. Your capture is saved and can be snoozed from the feed.");
+      }
+
+      const successMessage = captureSuccessMessages[intent];
+      setCaptureSuccessNotice(successMessage);
+      window.setTimeout(() => {
+        setCaptureSheetOpen(false);
+        setCaptureSuccessNotice("");
+      }, 750);
     } catch {
       setCaptureError("Capture failed. Retry.");
     } finally {
       setCaptureLoading(false);
     }
+  }
+
+  function openCaptureSheet() {
+    setCaptureError("");
+    setCaptureStatusNotice("");
+    setCaptureSuccessNotice("");
+    setCaptureSheetOpen(true);
+  }
+
+  function handleVoiceCaptureStub() {
+    setCaptureStatusNotice("Voice capture is a placeholder for now. Type your thought and save.");
   }
 
   async function runConvert(input: { itemId: string; content: string; sourceMessageId?: string }): Promise<TaskDto | null> {
@@ -975,10 +1018,34 @@ export default function Page() {
         executionLens={founderMode ? <ExecutionLensBar activeLens={executionLens} onChange={setExecutionLens} /> : undefined}
         captureComposer={
           <div style={{ display: "grid", gap: "12px" }}>
-            <h2 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Capture</h2>
-            <CaptureComposer value={captureDraft} onChange={setCaptureDraft} onSubmit={captureItem} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+              <h2 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Capture</h2>
+              <button type="button" onClick={openCaptureSheet}>
+                Open capture sheet
+              </button>
+            </div>
+            <p style={{ margin: 0, color: "#475569" }}>Capture first, then choose Save, Save + Plan, or Save + Remind Later.</p>
             {captureLoading ? <p style={{ margin: 0 }}>Saving capture...</p> : null}
-            {captureError ? <p style={{ margin: 0 }}>{captureError}</p> : null}
+            {captureStatusNotice ? <p style={{ margin: 0 }}>{captureStatusNotice}</p> : null}
+            <CaptureComposer
+              isOpen={captureSheetOpen}
+              value={captureDraft}
+              onChange={setCaptureDraft}
+              onSubmit={(intent) => {
+                void captureItem(intent);
+              }}
+              onClose={() => {
+                if (captureLoading) return;
+                setCaptureSheetOpen(false);
+                setCaptureError("");
+                setCaptureSuccessNotice("");
+              }}
+              isSubmitting={captureLoading}
+              errorMessage={captureError}
+              statusMessage={captureStatusNotice}
+              successMessage={captureSuccessNotice}
+              onVoiceStub={handleVoiceCaptureStub}
+            />
           </div>
         }
         founderSummary={

@@ -35,13 +35,17 @@ Not used for runtime truth:
 
 ### One coherent client loop (web, real)
 - Web app (`apps/web/app/page.tsx`) supports:
-  - capture brain item
+  - capture brain item through a bottom-sheet style capture surface
   - fetch resurfaced feed cards
   - open item detail
   - add comments and ask AI
   - convert to task
   - start/finish sessions
   - refresh/reload continuity from DB-backed APIs
+- Capture sheet now supports a mobile-first flow with autofocus and autosizing input, attachment/voice placeholders, and three actions:
+  - Save
+  - Save + Plan (routes to existing convert flow)
+  - Save + Remind Later (current lightweight stub notice without new domain objects)
 - Item detail continuation now uses one inline `CommentComposer` with mode toggle (`Comment` / `Ask Yurbrain`) so both flows share the same continuity surface.
 - Ask mode now appends both user question and assistant reply into the same continuity timeline with explicit role labels (`You`, `Yurbrain`) for recognition-first re-entry.
 - Feed and item detail continuity UI now explicitly surfaces: why shown, where you left off, what changed, and smallest next move.
