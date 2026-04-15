@@ -35,9 +35,13 @@ import {
 
 type FeedCardDto = {
   id: string;
+  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+  lens: FeedLens;
   itemId: string | null;
   title: string;
   body: string;
+  createdAt: string;
+  lastRefreshedAt: string | null;
   whyShown: {
     summary: string;
     reasons: string[];
@@ -273,7 +277,7 @@ export default function Page() {
       setFeedCards(cards);
       setFeedError("");
     } catch {
-      setFeedError("Feed is unavailable right now. You can retry.");
+      setFeedError("Focus needs a moment. Your memory is safe—try again shortly.");
       setFeedCards([]);
     } finally {
       setFeedLoading(false);
@@ -522,8 +526,8 @@ export default function Page() {
 
   return (
     <main>
-      <h1>Yurbrain Core Loop</h1>
-      <p>capture → feed → item → comment/AI → task → session → persistence</p>
+      <h1>Yurbrain</h1>
+      <p>Focus is your home for resurfacing, continuing, and planning from memory.</p>
 
       <section>
         <h2>Capture</h2>
@@ -535,29 +539,37 @@ export default function Page() {
       <hr />
 
       <section>
-        <h2>Feed</h2>
+        <h2>Focus Feed</h2>
+        <p>Window shop your mind: resurface what matters, then continue naturally.</p>
       <FeedLensBar
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
         activeLens={activeLens}
         onChange={setActiveLens}
       />
       <button type="button" onClick={() => void loadFeed(activeLens)}>
-        Reload feed
+        Refresh focus
       </button>
-      {feedLoading ? <p>Loading feed...</p> : null}
+      {feedLoading ? <p>Gathering the most relevant memories...</p> : null}
       {feedError ? (
         <div>
           <p>{feedError}</p>
-          <button onClick={() => void loadFeed(activeLens)}>Retry feed</button>
+          <button onClick={() => void loadFeed(activeLens)}>Try again</button>
         </div>
       ) : null}
-      {!feedError && feedCards.length === 0 ? <p>No cards for this lens yet.</p> : null}
+      {!feedError && feedCards.length === 0 ? (
+        <p>This lens is quiet right now. Capture something new or switch lenses to resurface more.</p>
+      ) : null}
       {feedCards.map((card) => (
         <FeedCard
           key={card.id}
+          cardType={card.cardType}
+          lens={card.lens}
           title={card.title}
           body={card.body}
+          createdAt={card.createdAt}
+          lastRefreshedAt={card.lastRefreshedAt}
           whyShown={card.whyShown}
+          onContinue={card.itemId ? () => setSelectedItemId(card.itemId ?? "") : undefined}
           onComment={async (comment) => {
             if (!card.itemId) return;
             setSelectedItemId(card.itemId);
@@ -581,13 +593,6 @@ export default function Page() {
           }}
         />
       ))}
-      {feedCards.map((card) =>
-        card.itemId ? (
-          <button key={`${card.id}-open`} type="button" onClick={() => setSelectedItemId(card.itemId ?? "")}>
-            Open item from card: {card.title}
-          </button>
-        ) : null
-      )}
       </section>
 
       <hr />

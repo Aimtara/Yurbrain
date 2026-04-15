@@ -7,6 +7,7 @@ type RankOptions = {
 
 type BaseScore = {
   card: StoredFeedCard;
+  ageHours: number;
   recencyScore: number;
   lensMatchBoost: number;
   actionabilityBoost: number;
@@ -37,6 +38,15 @@ const lensLabels: Record<StoredFeedCard["lens"], string> = {
   learning: "Learning",
   in_progress: "In progress",
   recently_commented: "Recently commented"
+};
+
+const cardTypeLabels: Record<StoredFeedCard["cardType"], string> = {
+  item: "Memory",
+  digest: "Digest",
+  cluster: "Cluster",
+  opportunity: "Opportunity",
+  open_loop: "Open loop",
+  resume: "Resume point"
 };
 
 export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}): RankedFeedCard[] {
@@ -85,6 +95,7 @@ function scoreCard(card: StoredFeedCard, requestedLens: StoredFeedCard["lens"], 
 
   return {
     card,
+    ageHours,
     recencyScore,
     lensMatchBoost,
     actionabilityBoost,
@@ -140,28 +151,29 @@ function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["len
   const reasons: string[] = [];
 
   if (requestedLens !== "all" && score.card.lens === requestedLens) {
-    reasons.push(`Matches your ${lensLabels[requestedLens]} lens.`);
+    reasons.push(`You're viewing ${lensLabels[requestedLens]}, and this card fits that lens.`);
   }
 
-  if (score.recencyScore >= 48) {
-    reasons.push("Recent activity makes this relevant right now.");
-  } else if (score.recencyScore >= 24) {
-    reasons.push("Still fresh enough to be useful.");
+  if (score.ageHours <= 24) {
+    reasons.push(`Updated ${formatRelativeAge(score.ageHours)}, so it is still top-of-mind.`);
+  } else if (score.ageHours <= 72) {
+    reasons.push(`Captured ${formatRelativeAge(score.ageHours)}, making it timely to revisit.`);
   }
 
   if (score.actionabilityBoost > 0) {
-    reasons.push("Action-oriented card to maintain momentum.");
+    reasons.push(`${cardTypeLabels[score.card.cardType]} cards often lead to a useful next step.`);
   }
 
   if (score.continuityBoost > 0) {
-    reasons.push("Keeps continuity with something you recently revisited.");
+    reasons.push("You revisited this recently, so it stays in your flow.");
   }
+
   if (requestedLens === "all" && score.typeDiversityPenalty === 0) {
-    reasons.push("Adds variety to keep this feed from feeling repetitive.");
+    reasons.push("Added for variety, so your feed does not repeat one theme.");
   }
 
   if (reasons.length === 0) {
-    reasons.push("Selected for a balance of relevance and feed quality.");
+    reasons.push("Still relevant based on recency, continuity, and feed balance.");
   }
 
   const summary = reasons[0];
@@ -169,4 +181,12 @@ function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["len
     summary,
     reasons: [summary, ...reasons.slice(1, 3)]
   };
+}
+
+function formatRelativeAge(ageHours: number): string {
+  if (ageHours < 1) return "less than an hour ago";
+  if (ageHours < 24) return `${Math.max(1, Math.floor(ageHours))}h ago`;
+  const days = Math.floor(ageHours / 24);
+  if (days === 1) return "1 day ago";
+  return `${days} days ago`;
 }
