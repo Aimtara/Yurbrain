@@ -27,6 +27,7 @@ export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens
               borderRadius: "999px",
               padding: `${tokens.space.xs + 2}px ${tokens.space.sm + 2}px`,
               background: activeLens === lens ? feedPalette.activeBackground : "#fff",
+              color: activeLens === lens ? feedPalette.activeText : feedPalette.defaultText,
               fontWeight: activeLens === lens ? 600 : 500
             }}
           >
@@ -53,5 +54,7 @@ const lensHints: Record<FeedLens, string> = {
 const feedPalette = {
   border: "#d9d9df",
   activeBackground: "#f1f4ff",
+  activeText: "#2f3650",
+  defaultText: "#3b4157",
   hintText: "#5a6072"
 };

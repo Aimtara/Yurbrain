@@ -34,6 +34,7 @@ export function FeedCard({
 }) {
   const whyShownSummary = typeof whyShown === "string" ? whyShown : whyShown?.summary;
   const whyShownSecondary = typeof whyShown === "string" ? null : whyShown?.reasons?.[1] ?? null;
+  const showWhyShownSecondary = Boolean(whyShownSecondary && whyShownSecondary !== whyShownSummary);
   const lensLabel = lens ? lensLabels[lens] : null;
   const cardTypeLabel = cardType ? cardTypeLabels[cardType] : null;
   const timeLabel = formatTimeSignal(lastRefreshedAt ?? undefined, createdAt);
@@ -46,7 +47,7 @@ export function FeedCard({
         padding: `${tokens.space.md}px`,
         marginBottom: `${tokens.space.sm + tokens.space.xs}px`,
         background: feedPalette.cardBackground,
-        boxShadow: "0 1px 2px rgba(12, 17, 29, 0.05)"
+        boxShadow: "0 1px 2px rgba(12, 17, 29, 0.04)"
       }}
     >
       {cardTypeLabel || lensLabel ? (
@@ -63,7 +64,7 @@ export function FeedCard({
           <strong>Why shown:</strong> {whyShownSummary}
         </p>
       ) : null}
-      {whyShownSecondary ? (
+      {showWhyShownSecondary ? (
         <p style={{ margin: `0 0 ${tokens.space.sm + 2}px`, fontSize: "12px", color: feedPalette.mutedText }}>{whyShownSecondary}</p>
       ) : null}
       {timeLabel ? (
@@ -71,14 +72,42 @@ export function FeedCard({
           <small>{timeLabel}</small>
         </p>
       ) : null}
-      <div style={{ display: "flex", gap: `${tokens.space.sm}px`, flexWrap: "wrap" }}>
-        {onComment ? <button onClick={() => onComment("Noted for follow-up.")}>Add update</button> : null}
-        {onContinue ? <button onClick={onContinue}>Continue</button> : null}
-        {onConvertToTask ? <button onClick={onConvertToTask}>Plan this</button> : null}
-        {onStartSession ? <button onClick={onStartSession}>Start session</button> : null}
-        {onSnooze ? <button onClick={() => onSnooze(120)}>Revisit later</button> : null}
-        {onRefresh ? <button onClick={onRefresh}>Keep in focus</button> : null}
-        {onDismiss ? <button onClick={onDismiss}>Dismiss</button> : null}
+      <div style={{ display: "flex", gap: `${tokens.space.sm}px`, flexWrap: "wrap" }} role="group" aria-label="Card actions">
+        {onComment ? (
+          <button style={actionButtonStyles.secondary} onClick={() => onComment("Noted for follow-up.")}>
+            Add Update
+          </button>
+        ) : null}
+        {onContinue ? (
+          <button style={actionButtonStyles.primary} onClick={onContinue}>
+            Continue
+          </button>
+        ) : null}
+        {onConvertToTask ? (
+          <button style={actionButtonStyles.primary} onClick={onConvertToTask}>
+            Plan This
+          </button>
+        ) : null}
+        {onStartSession ? (
+          <button style={actionButtonStyles.primary} onClick={onStartSession}>
+            Start Session
+          </button>
+        ) : null}
+        {onSnooze ? (
+          <button style={actionButtonStyles.secondary} onClick={() => onSnooze(120)}>
+            Revisit Later
+          </button>
+        ) : null}
+        {onRefresh ? (
+          <button style={actionButtonStyles.secondary} onClick={onRefresh}>
+            Keep in Focus
+          </button>
+        ) : null}
+        {onDismiss ? (
+          <button style={actionButtonStyles.tertiary} onClick={onDismiss}>
+            Dismiss
+          </button>
+        ) : null}
       </div>
     </article>
   );
@@ -108,6 +137,29 @@ const feedPalette = {
   mainText: "#1d2130",
   secondaryText: "#3e4458",
   mutedText: "#5a6072"
+};
+
+const actionButtonStyles: Record<"primary" | "secondary" | "tertiary", React.CSSProperties> = {
+  primary: {
+    border: "1px solid #bfc7dd",
+    background: "#f6f8ff",
+    borderRadius: "999px",
+    padding: "6px 12px",
+    fontWeight: 600
+  },
+  secondary: {
+    border: "1px solid #d0d5e3",
+    background: "#ffffff",
+    borderRadius: "999px",
+    padding: "6px 12px"
+  },
+  tertiary: {
+    border: "1px solid #d9d9df",
+    background: "#ffffff",
+    color: "#4d5368",
+    borderRadius: "999px",
+    padding: "6px 12px"
+  }
 };
 
 function formatTimeSignal(lastRefreshedAt?: string, createdAt?: string): string | null {

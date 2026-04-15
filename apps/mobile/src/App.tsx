@@ -58,23 +58,39 @@ export default function App() {
   );
 
   return (
-    <SafeAreaView>
-      <View>
-        <Text>Yurbrain</Text>
-        <View>{tabButtons}</View>
-        <Text>{activeTab}</Text>
-        <Text>Focus preview</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f6f7fb" }}>
+      <ScrollView contentContainerStyle={{ padding: 14 }}>
+        <Text style={{ fontSize: 22, fontWeight: "700", color: "#1d2130", marginBottom: 4 }}>Yurbrain</Text>
+        <Text style={{ color: "#4d5468", marginBottom: 12 }}>Focus is home for resurfacing and gentle momentum.</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>{tabButtons}</View>
+        <Text style={{ marginBottom: 10, color: "#4d5468" }}>Active tab: {activeTab}</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600", color: "#1d2130", marginBottom: 6 }}>Focus Feed</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
           {focusLenses.map((lens) => (
-            <TouchableOpacity key={lens} onPress={() => setActiveLens(lens)} accessibilityRole="button">
-              <Text>{activeLens === lens ? `[${lensLabels[lens]}]` : lensLabels[lens]}</Text>
+            <TouchableOpacity
+              key={lens}
+              onPress={() => setActiveLens(lens)}
+              accessibilityRole="button"
+              style={{
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "#d8dce8",
+                backgroundColor: activeLens === lens ? "#eef2ff" : "#ffffff"
+              }}
+            >
+              <Text style={{ fontWeight: activeLens === lens ? "700" : "500", color: "#2d3448" }}>{lensLabels[lens]}</Text>
             </TouchableOpacity>
           ))}
         </View>
-        {focusLoading ? <Text>Gathering memories to resurface...</Text> : null}
-        {!focusLoading && !feedFailed && focusCards.length === 0 ? <Text>No cards yet. Capture and Focus will start resurfacing.</Text> : null}
+        <Text style={{ color: "#5a6072", marginBottom: 8 }}>{lensHints[activeLens]}</Text>
+        {focusLoading ? <Text style={{ color: "#4d5468", marginBottom: 8 }}>Gathering memories worth resurfacing...</Text> : null}
+        {!focusLoading && !feedFailed && focusCards.length === 0 ? (
+          <Text style={{ color: "#4d5468", marginBottom: 8 }}>This lens is quiet right now. Capture and Focus will bring more back.</Text>
+        ) : null}
         {!feedFailed ? (
-          <ScrollView style={{ maxHeight: 260 }}>
+          <View style={{ marginBottom: 8 }}>
             {focusCards.map((card) => (
               <MobileFeedCard
                 key={card.id}
@@ -85,20 +101,24 @@ export default function App() {
                 }}
               />
             ))}
-          </ScrollView>
+          </View>
         ) : null}
         {feedFailed ? (
-          <View>
-            <Text>Focus is taking a breath. You can keep capturing while it catches up.</Text>
-            <TouchableOpacity onPress={() => loadFocusPreview(activeLens)} accessibilityRole="button">
-              <Text>Retry Focus</Text>
+          <View style={{ marginBottom: 10 }}>
+            <Text style={{ color: "#4d5468", marginBottom: 6 }}>Focus is taking a breath. Your captures are safe.</Text>
+            <TouchableOpacity
+              onPress={() => loadFocusPreview(activeLens)}
+              accessibilityRole="button"
+              style={{ alignSelf: "flex-start", paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: "#d8dce8", backgroundColor: "#ffffff" }}
+            >
+              <Text style={{ color: "#2d3448", fontWeight: "600" }}>Try again</Text>
             </TouchableOpacity>
           </View>
         ) : null}
-        {!feedFailed && focusActionNotice ? <Text>{focusActionNotice}</Text> : null}
-        <Text>Clean/focus mode is enabled by default.</Text>
+        {!feedFailed && focusActionNotice ? <Text style={{ color: "#374151", marginBottom: 8 }}>{focusActionNotice}</Text> : null}
+        <Text style={{ color: "#6b7280", marginBottom: 8 }}>Clean/focus mode is enabled by default.</Text>
         <TextInput placeholder="CaptureComposer" />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 
@@ -115,13 +135,13 @@ export default function App() {
         setFocusActionNotice("Dismissed. Focus will keep this out of your way.");
       } else if (action === "revisit_later") {
         await snoozeFeedCard<{ ok: boolean }>(card.id, 120);
-        setFocusActionNotice("Snoozed for later.");
+        setFocusActionNotice("Revisit later set for 2 hours.");
       } else if (action === "keep_in_focus") {
         await refreshFeedCard<{ ok: boolean }>(card.id);
         setFocusActionNotice("Kept in focus.");
       } else {
         setActiveTab("Brain");
-        setFocusActionNotice("Continue from Brain to keep momentum.");
+        setFocusActionNotice("Switched to Brain so you can continue from source context.");
       }
       await loadFocusPreview(activeLens);
     } catch {
@@ -142,6 +162,15 @@ const lensLabels: Record<FeedLens, string> = {
 };
 
 const focusLenses: FeedLens[] = ["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"];
+
+const lensHints: Record<FeedLens, string> = {
+  all: "A balanced mix of memories worth resurfacing now.",
+  keep_in_mind: "Gentle reminders to keep nearby while thinking.",
+  open_loops: "Unfinished threads that may need closure.",
+  learning: "Ideas and notes with reusable takeaways.",
+  in_progress: "Things already in motion so momentum stays intact.",
+  recently_commented: "Memories you recently discussed or updated."
+};
 
 const cardTypeLabels: Record<NonNullable<FeedCardDto["cardType"]>, string> = {
   item: "Memory",
@@ -178,28 +207,73 @@ function MobileFeedCard({
   onAction: (action: "dismiss" | "revisit_later" | "keep_in_focus" | "continue") => void;
 }) {
   return (
-    <View style={{ marginBottom: 10, paddingBottom: 10, borderBottomWidth: 1, borderColor: "#ddd" }}>
-      <Text>{card.title}</Text>
-      <Text numberOfLines={2}>{card.body ?? "Memory resurfaced for review."}</Text>
-      <Text>
+    <View
+      style={{
+        marginBottom: 10,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: "#d8dce8",
+        borderRadius: 12,
+        backgroundColor: "#ffffff"
+      }}
+    >
+      <Text style={{ fontSize: 16, fontWeight: "700", color: "#1f2937", marginBottom: 4 }}>{card.title}</Text>
+      <Text numberOfLines={2} style={{ color: "#374151", marginBottom: 6 }}>
+        {card.body ?? "Memory resurfaced for review."}
+      </Text>
+      <Text style={{ color: "#556079", marginBottom: 4 }}>
         {card.cardType ? cardTypeLabels[card.cardType] : "Memory"} · {card.lens ? lensLabels[card.lens] : lensLabels.all}
       </Text>
-      <Text>Why shown: {card.whyShown?.summary ?? "Resurfaced to support continuity."}</Text>
-      <Text>{formatMobileTimeSignal(card.lastRefreshedAt ?? null, card.createdAt)}</Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }}>
-        <TouchableOpacity onPress={() => onAction("continue")} accessibilityRole="button" disabled={isBusy}>
-          <Text>Continue</Text>
+      <Text style={{ color: "#374151", marginBottom: 4 }}>Why shown: {card.whyShown?.summary ?? "Resurfaced to support continuity."}</Text>
+      <Text style={{ color: "#6b7280", marginBottom: 8 }}>{formatMobileTimeSignal(card.lastRefreshedAt ?? null, card.createdAt)}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        <TouchableOpacity
+          onPress={() => onAction("continue")}
+          accessibilityRole="button"
+          disabled={isBusy}
+          style={mobileActionStyle}
+        >
+          <Text style={mobileActionTextStyle}>Continue</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onAction("keep_in_focus")} accessibilityRole="button" disabled={isBusy}>
-          <Text>Keep in focus</Text>
+        <TouchableOpacity
+          onPress={() => onAction("keep_in_focus")}
+          accessibilityRole="button"
+          disabled={isBusy}
+          style={mobileActionStyle}
+        >
+          <Text style={mobileActionTextStyle}>Keep in focus</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onAction("revisit_later")} accessibilityRole="button" disabled={isBusy}>
-          <Text>Revisit later</Text>
+        <TouchableOpacity
+          onPress={() => onAction("revisit_later")}
+          accessibilityRole="button"
+          disabled={isBusy}
+          style={mobileActionStyle}
+        >
+          <Text style={mobileActionTextStyle}>Revisit later</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => onAction("dismiss")} accessibilityRole="button" disabled={isBusy}>
-          <Text>Dismiss</Text>
+        <TouchableOpacity
+          onPress={() => onAction("dismiss")}
+          accessibilityRole="button"
+          disabled={isBusy}
+          style={mobileActionStyle}
+        >
+          <Text style={mobileActionTextStyle}>Dismiss</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+const mobileActionStyle = {
+  paddingVertical: 6,
+  paddingHorizontal: 10,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: "#d8dce8",
+  backgroundColor: "#ffffff"
+} as const;
+
+const mobileActionTextStyle = {
+  color: "#2d3448",
+  fontWeight: "600"
+} as const;

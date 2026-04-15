@@ -585,6 +585,7 @@ export default function Page() {
 
       <section>
         <h2>Capture</h2>
+        <p>Capture quickly now; Focus will resurface it when the moment is right.</p>
         <CaptureComposer value={captureDraft} onChange={setCaptureDraft} onSubmit={captureItem} />
         {captureLoading ? <p>Saving capture...</p> : null}
         {captureError ? <p>{captureError}</p> : null}
@@ -594,14 +595,14 @@ export default function Page() {
 
       <section>
         <h2>Focus Feed</h2>
-        <p>Window shop your mind: resurface what matters, then continue naturally.</p>
+        <p>Window shop your mind: notice what is back, why now, and what to do next.</p>
       <FeedLensBar
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
         activeLens={activeLens}
         onChange={setActiveLens}
       />
       <button type="button" onClick={() => void loadFeed(activeLens)}>
-        Refresh focus
+        Refresh Focus
       </button>
       {feedLoading ? <p>Gathering the most relevant memories...</p> : null}
       {feedError ? (
@@ -611,7 +612,7 @@ export default function Page() {
         </div>
       ) : null}
       {!feedError && feedCards.length === 0 ? (
-        <p>This lens is quiet right now. Capture something new or switch lenses to resurface more.</p>
+        <p>This lens is quiet right now. Try another lens, or capture something fresh for Focus to revisit later.</p>
       ) : null}
       {feedCards.map((card) => (
         <FeedCard
@@ -654,6 +655,7 @@ export default function Page() {
 
       <section>
         <h2>Items</h2>
+        <p>Browse the full set when you want deliberate review beyond Focus.</p>
         {items.length === 0 ? <p>No captured items yet.</p> : null}
         {items.map((item) => (
           <button key={item.id} type="button" onClick={() => setSelectedItemId(item.id)}>
@@ -666,7 +668,7 @@ export default function Page() {
 
       <section>
         <h2>Item</h2>
-        {!selectedItem ? <p>Select an item from feed or list.</p> : null}
+        {!selectedItem ? <p>Select something from Focus or Items to continue.</p> : null}
         {selectedItem ? (
           <>
             {itemContextLoading ? <p>Loading item context...</p> : null}
@@ -704,6 +706,7 @@ export default function Page() {
 
       <section>
         <h2>Task + Session</h2>
+        <p>When a memory becomes action, continue here without leaving context.</p>
         {tasksLoading ? <p>Loading tasks...</p> : null}
         {taskError ? <p>{taskError}</p> : null}
         {conversionNotice ? <p>{conversionNotice}</p> : null}
