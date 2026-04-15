@@ -49,7 +49,7 @@ import {
   type TimeWindowOption
 } from "@yurbrain/ui";
 
-type Surface = "feed" | "item" | "session" | "time";
+type Surface = "feed" | "item" | "session" | "time" | "me";
 
 type FeedCardDto = {
   id: string;
@@ -193,6 +193,23 @@ type FinishRebalanceDraft = {
   actualMinutes: number;
   deltaMinutes: number;
   suggestion: string;
+};
+
+type MeInsights = {
+  topInsight: string;
+  estimationAccuracy: {
+    label: string;
+    detail: string;
+  };
+  carryForward: {
+    label: string;
+    detail: string;
+  };
+  postponement: {
+    label: string;
+    detail: string;
+  };
+  recommendation: string;
 };
 
 type ContinuityContext = {
@@ -495,6 +512,114 @@ function buildRebalanceSuggestion(deltaMinutes: number): string {
   }
   return "Nice pacing. Keep the same rhythm for your next focused session.";
 }
+
+function classifyAccuracyRatio(ratio: number | null): { label: string; detail: string } {
+  if (ratio === null) {
+    return {
+      label: "Not enough finished sessions yet",
+      detail: "Complete a couple of focus sessions and this will calibrate your timing pattern."
+    };
+  }
+  if (ratio <= 0.85) {
+    return {
+      label: "You usually finish faster than planned",
+      detail: "Try slightly shorter estimates so your plan mirrors your natural pace."
+    };
+  }
+  if (ratio >= 1.2) {
+    return {
+      label: "Sessions often run longer than planned",
+      detail: "Protect momentum by splitting larger steps before starting."
+    };
+  }
+  return {
+    label: "Your estimates are close to reality",
+    detail: "Keep using this rhythm. Your planning and execution are aligned."
+  };
+}
+
+function buildMeInsights(input: {
+  tasks: TaskDto[];
+  sessions: SessionDto[];
+  feedCards: FeedCardDto[];
+}): MeInsights {
+  const doneTasks = input.tasks.filter((task) => task.status === "done");
+  const todoTasks = input.tasks.filter((task) => task.status === "todo");
+  const inProgressTasks = input.tasks.filter((task) => task.status === "in_progress");
+  const finishedSessions = input.sessions.filter((session) => session.state === "finished");
+  const postponeTotal = input.feedCards.reduce((sum, card) => sum + (card.postponeCount ?? 0), 0);
+
+  const ratios = finishedSessions
+    .map((session) => {
+      const task = input.tasks.find((candidate) => candidate.id === session.taskId);
+      const planned = calculatePlannedMinutesForSession(task ?? null);
+      const actual = Math.max(1, Math.floor(deriveSessionElapsedSeconds(session) / 60));
+      if (planned <= 0) return null;
+      return actual / planned;
+    })
+    .filter((value): value is number => value !== null);
+  const avgRatio = ratios.length > 0 ? ratios.reduce((sum, value) => sum + value, 0) / ratios.length : null;
+  const accuracy = classifyAccuracyRatio(avgRatio);
+
+  const carryForwardValue = todoTasks.length + inProgressTasks.length;
+  const carryForward =
+    carryForwardValue === 0
+      ? {
+          label: "Carry-forward load is light",
+          detail: "You have room to capture new ideas without overloading your next session."
+        }
+      : carryForwardValue <= 4
+        ? {
+            label: "Carry-forward is manageable",
+            detail: `${carryForwardValue} open tasks are waiting. Pick one and keep the next move tiny.`
+          }
+        : {
+            label: "Carry-forward is building",
+            detail: `${carryForwardValue} open tasks are stacked. A short rebalance can reduce context switching.`
+          };
+
+  const postponement =
+    postponeTotal === 0
+      ? {
+          label: "You are not leaning on postpones right now",
+          detail: "Great signal for momentum. Keep protecting focus windows."
+        }
+      : postponeTotal <= 5
+        ? {
+            label: "Some postponing, still healthy",
+            detail: `${postponeTotal} postpones recorded. Consider breaking one delayed card into a smaller next step.`
+          }
+        : {
+            label: "Postponement pattern is rising",
+            detail: `${postponeTotal} postpones recorded. A reset on scope may help you regain flow.`
+          };
+
+  const topInsight =
+    carryForwardValue > 4
+      ? "Most friction is coming from carry-forward load, not lack of effort."
+      : postponeTotal > 5
+        ? "Postpones are signaling scope pressure; shrinking the next step should help."
+        : doneTasks.length > 0
+          ? "Completion momentum is visible. Protect it with one clearly scoped next action."
+          : "Start with one tiny completed session to establish momentum.";
+
+  const recommendation =
+    carryForwardValue > 4
+      ? "Choose one in-progress task, postpone one non-urgent card, and run a 20-minute session."
+      : postponeTotal > 5
+        ? "Use 'Break into smaller step' on your next delayed card, then finish that smaller step today."
+        : avgRatio !== null && avgRatio >= 1.2
+          ? "Trim your next estimate and finish one shorter session before adding new work."
+          : "Keep your current rhythm and close one more lightweight loop before context switching.";
+
+  return {
+    topInsight,
+    estimationAccuracy: accuracy,
+    carryForward,
+    postponement,
+    recommendation
+  };
+}
 export default function Page() {
   const [hydrated, setHydrated] = useState(false);
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
@@ -517,6 +642,7 @@ export default function Page() {
   const [artifactHistoryByItem, setArtifactHistoryByItem] = useState<Record<string, { summary: string[]; classification: string[] }>>({});
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [activeSession, setActiveSession] = useState<SessionDto | null>(null);
+  const [sessionHistory, setSessionHistory] = useState<SessionDto[]>([]);
   const [timeWindow, setTimeWindow] = useState<TimeWindowOption>("4h");
   const [customWindowMinutes, setCustomWindowMinutes] = useState(180);
 
@@ -720,6 +846,36 @@ export default function Page() {
     [latestComment, selectedContinuity, selectedItem, selectedItemSession, selectedItemTask, syntheticDetailCard, syntheticDetailVariant]
   );
 
+  const allSessions = useMemo(() => {
+    const byTask = new Map<string, SessionDto>();
+    sessionHistory.forEach((session) => {
+      const existing = byTask.get(session.taskId);
+      if (!existing) {
+        byTask.set(session.taskId, session);
+        return;
+      }
+      const existingStartedAt = new Date(existing.startedAt).getTime();
+      const candidateStartedAt = new Date(session.startedAt).getTime();
+      if (candidateStartedAt > existingStartedAt) {
+        byTask.set(session.taskId, session);
+      }
+    });
+    if (activeSession) {
+      byTask.set(activeSession.taskId, activeSession);
+    }
+    return Array.from(byTask.values());
+  }, [activeSession, sessionHistory]);
+
+  const meInsights = useMemo(
+    () =>
+      buildMeInsights({
+        tasks,
+        sessions: allSessions,
+        feedCards
+      }),
+    [allSessions, feedCards, tasks]
+  );
+
   const reentryMessage = useMemo(() => {
     if (selectedItem) return `Last continuity touchpoint: ${selectedItem.title}.`;
     if (lastAction) return `Last action: ${lastAction}.`;
@@ -751,7 +907,7 @@ export default function Page() {
     }
 
     const storedSurface = window.localStorage.getItem(storageKeys.activeSurface);
-    if (storedSurface === "feed" || storedSurface === "item" || storedSurface === "session" || storedSurface === "time") {
+    if (storedSurface === "feed" || storedSurface === "item" || storedSurface === "session" || storedSurface === "time" || storedSurface === "me") {
       setActiveSurface(storedSurface);
     }
 
@@ -823,7 +979,7 @@ export default function Page() {
     void (async () => {
       const preferredLens = await loadUserPreferences();
       const lensForInitialLoad = preferredLens ?? activeLens;
-      await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks()]);
+      await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
     })();
   }, [hydrated]);
 
@@ -924,6 +1080,31 @@ export default function Page() {
       setTaskError("Could not load sessions for this task.");
       setActiveSession(null);
     }
+  }
+
+  async function loadAllSessionsForUser() {
+    try {
+      const sessions = await listSessions<SessionDto[]>({ userId });
+      setSessionHistory(
+        [...sessions].sort((left, right) => {
+          if (left.startedAt !== right.startedAt) {
+            return right.startedAt.localeCompare(left.startedAt);
+          }
+          return right.id.localeCompare(left.id);
+        })
+      );
+    } catch {
+      // Insights are supportive-only and should not block the core loop.
+      setSessionHistory([]);
+    }
+  }
+
+  async function refreshTaskAndSessionSignals() {
+    await Promise.all([loadTasks(), loadAllSessionsForUser()]);
+  }
+
+  async function refreshExecutionData() {
+    await Promise.all([loadTasks(), loadAllSessionsForUser()]);
   }
 
   async function loadUserPreferences() {
@@ -1106,7 +1287,7 @@ export default function Page() {
         setTasks((current) => [result.task, ...current.filter((task) => task.id !== result.task.id)]);
         setSelectedTaskId(result.task.id);
         setConversionNotice(`Task created: ${result.task.title}`);
-        await loadTasks();
+        await Promise.all([loadTasks(), loadAllSessionsForUser()]);
         return result.task;
       } else if (result.outcome === "plan_suggested") {
         openPlanPreview({
@@ -1119,7 +1300,7 @@ export default function Page() {
       } else {
         setConversionNotice(`Conversion skipped: ${result.reason}`);
       }
-      await loadTasks();
+      await Promise.all([loadTasks(), loadAllSessionsForUser()]);
       return null;
     } catch {
       setTaskError("Could not convert into execution step.");
@@ -1137,7 +1318,7 @@ export default function Page() {
     setTasks((current) => [created, ...current.filter((task) => task.id !== created.id)]);
     setSelectedTaskId(created.id);
     setConversionNotice(`Task created: ${created.title}`);
-    await loadTasks();
+    await Promise.all([loadTasks(), loadAllSessionsForUser()]);
     return created;
   }
 
@@ -1171,8 +1352,7 @@ export default function Page() {
       setSelectedTaskId(taskToStart.id);
       setConversionNotice(`Session started: ${taskToStart.title}`);
       setActiveSurface("session");
-      await loadTasks();
-      await loadSessionsForTask(taskToStart.id);
+      await Promise.all([loadTasks(), loadSessionsForTask(taskToStart.id), loadAllSessionsForUser()]);
     } catch {
       setTaskError("Could not start a session right now.");
     }
@@ -1314,12 +1494,12 @@ export default function Page() {
         setActiveSession(session);
         setActiveSurface("session");
         setConversionNotice(`Plan accepted (${createdTasks.length} tasks). Started first step.`);
-        await loadSessionsForTask(createdTasks[0].id);
+        await Promise.all([loadSessionsForTask(createdTasks[0].id), loadAllSessionsForUser()]);
       } else {
         setConversionNotice(`Plan accepted (${createdTasks.length} tasks). Continue from feed when ready.`);
       }
 
-      await loadTasks();
+      await Promise.all([loadTasks(), loadAllSessionsForUser()]);
     } catch {
       setTaskError("Could not accept this plan right now.");
     } finally {
@@ -1377,8 +1557,7 @@ export default function Page() {
       setSelectedTaskId(taskId);
       setTimeActionNotice("Session started from time window.");
       setActiveSurface("session");
-      await loadTasks();
-      await loadSessionsForTask(taskId);
+      await Promise.all([loadTasks(), loadSessionsForTask(taskId), loadAllSessionsForUser()]);
     } catch {
       setTaskError("Could not start this task from time planning.");
     }
@@ -1440,7 +1619,7 @@ export default function Page() {
       setPendingPostponeSheet(null);
       setConversionNotice("Created a smaller step and postponed the original card.");
       setActiveSurface("session");
-      await Promise.all([loadTasks(), loadFeed(activeLens)]);
+      await Promise.all([loadTasks(), loadFeed(activeLens), loadAllSessionsForUser()]);
     } catch {
       setTaskError("Could not split this into a smaller step yet.");
     } finally {
@@ -1515,6 +1694,9 @@ export default function Page() {
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 <button type="button" onClick={() => setActiveSurface("time")}>
                   Open Time home
+                </button>
+                <button type="button" onClick={() => setActiveSurface("me")}>
+                  Open Me
                 </button>
                 <button type="button" onClick={openCaptureSheet}>
                   Open capture sheet
@@ -1768,6 +1950,52 @@ export default function Page() {
         </section>
       ) : null}
 
+      {activeSurface === "me" ? (
+        <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
+          <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Me</h2>
+                <p style={{ margin: "6px 0 0", color: "#475569" }}>Supportive reflection from your recent flow.</p>
+              </div>
+              <button type="button" onClick={() => setActiveSurface("feed")}>
+                Back to Focus Feed
+              </button>
+            </div>
+
+            <div style={{ borderRadius: "14px", border: "1px solid #bfdbfe", background: "#eff6ff", padding: "12px" }}>
+              <p style={{ margin: 0, color: "#1e3a8a" }}>
+                <strong>Top insight:</strong> {meInsights.topInsight}
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gap: "10px" }}>
+              <article style={{ borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "12px" }}>
+                <p style={{ margin: 0, fontWeight: 700 }}>Estimation accuracy</p>
+                <p style={{ margin: "4px 0 0", color: "#334155" }}>{meInsights.estimationAccuracy.label}</p>
+                <p style={{ margin: "4px 0 0", color: "#475569" }}>{meInsights.estimationAccuracy.detail}</p>
+              </article>
+              <article style={{ borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "12px" }}>
+                <p style={{ margin: 0, fontWeight: 700 }}>Carry-forward pattern</p>
+                <p style={{ margin: "4px 0 0", color: "#334155" }}>{meInsights.carryForward.label}</p>
+                <p style={{ margin: "4px 0 0", color: "#475569" }}>{meInsights.carryForward.detail}</p>
+              </article>
+              <article style={{ borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "12px" }}>
+                <p style={{ margin: 0, fontWeight: 700 }}>Postponement pattern</p>
+                <p style={{ margin: "4px 0 0", color: "#334155" }}>{meInsights.postponement.label}</p>
+                <p style={{ margin: "4px 0 0", color: "#475569" }}>{meInsights.postponement.detail}</p>
+              </article>
+            </div>
+
+            <div style={{ borderRadius: "14px", border: "1px solid #d1fae5", background: "#ecfdf5", padding: "12px" }}>
+              <p style={{ margin: 0, color: "#065f46" }}>
+                <strong>Recommendation:</strong> {meInsights.recommendation}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {activeSurface === "item" ? (
         <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px" }}>
           {selectedItem ? (
@@ -1860,15 +2088,13 @@ export default function Page() {
                   void (async () => {
                     const session = await startTaskSession<SessionDto>(selectedTask.id);
                     setActiveSession(session);
-                    await loadTasks();
-                    await loadSessionsForTask(selectedTask.id);
+                    await Promise.all([loadTasks(), loadSessionsForTask(selectedTask.id), loadAllSessionsForUser()]);
                   })()
                 }
                 onMarkDone={() =>
                   void (async () => {
                     await updateTask<TaskDto>(selectedTask.id, { status: "done" });
-                    await loadTasks();
-                    await loadSessionsForTask(selectedTask.id);
+                    await Promise.all([loadTasks(), loadSessionsForTask(selectedTask.id), loadAllSessionsForUser()]);
                     setLastAction("Marked task done.");
                   })()
                 }
@@ -1896,8 +2122,7 @@ export default function Page() {
                 void (async () => {
                   const updated = await pauseSession<SessionDto>(selectedTaskSession.id);
                   setActiveSession(updated);
-                  await loadTasks();
-                  await loadSessionsForTask(selectedTask.id);
+                  await Promise.all([loadTasks(), loadSessionsForTask(selectedTask.id), loadAllSessionsForUser()]);
                 })()
               }
               onFinish={() =>
@@ -1907,8 +2132,7 @@ export default function Page() {
                   const actualMinutesValue = Math.max(1, Math.floor(deriveSessionElapsedSeconds(updated) / 60));
                   const deltaMinutes = actualMinutesValue - plannedMinutes;
                   setActiveSession(updated);
-                  await loadTasks();
-                  await loadSessionsForTask(selectedTask.id);
+                  await Promise.all([loadTasks(), loadSessionsForTask(selectedTask.id), loadAllSessionsForUser()]);
                   setLastAction("Finished a session.");
                   setPendingFinishRebalance({
                     taskTitle: selectedTask.title,
