@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
       { source: "/feed/:path*", destination: `${apiOrigin}/feed/:path*` },
       { source: "/threads/:path*", destination: `${apiOrigin}/threads/:path*` },
       { source: "/messages/:path*", destination: `${apiOrigin}/messages/:path*` },
+      { source: "/preferences/:path*", destination: `${apiOrigin}/preferences/:path*` },
       { source: "/tasks/:path*", destination: `${apiOrigin}/tasks/:path*` },
       { source: "/sessions/:path*", destination: `${apiOrigin}/sessions/:path*` },
       { source: "/ai/:path*", destination: `${apiOrigin}/ai/:path*` }
