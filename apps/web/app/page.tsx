@@ -37,6 +37,7 @@ import {
   FounderSummarySurface,
   ItemChatPanel,
   ItemDetailScreen,
+  PlanPreviewSheet,
   TaskDetailCard,
   type CaptureSubmitIntent,
   type ExecutionLens,
@@ -154,6 +155,13 @@ type ConvertResponse =
       reason: string;
     };
 
+type PlanPreviewDraft = {
+  sourceItemId: string;
+  title: string;
+  steps: Array<{ id: string; title: string; minutes: number }>;
+  confidence: number;
+};
+
 type ContinuityContext = {
   whyShown?: string;
   whereLeftOff?: string;
@@ -183,6 +191,10 @@ const captureSuccessMessages: Record<CaptureSubmitIntent, string> = {
   save_and_plan: "Saved and routed into lightweight planning.",
   save_and_remind: "Saved. Reminder stub captured for follow-up."
 };
+
+function normalizePlanStepMinutes(index: number): number {
+  return index === 0 ? 20 : 15;
+}
 
 const promptStopWords = new Set([
   "the",
@@ -375,6 +387,14 @@ function supportsAction(card: FeedCardDto, action: FeedAction): boolean {
   return card.availableActions.includes(action);
 }
 
+function buildPlanPreviewSteps(steps: string[]): Array<{ id: string; title: string; minutes: number }> {
+  return steps.map((step, index) => ({
+    id: `${index + 1}-${step.slice(0, 24)}`,
+    title: step,
+    minutes: normalizePlanStepMinutes(index)
+  }));
+}
+
 export default function Page() {
   const [hydrated, setHydrated] = useState(false);
   const [activeLens, setActiveLens] = useState<FeedLens>("all");
@@ -411,9 +431,11 @@ export default function Page() {
   const [chatFallbackNotice, setChatFallbackNotice] = useState("");
   const [conversionNotice, setConversionNotice] = useState("");
   const [itemActionNotice, setItemActionNotice] = useState("");
+  const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
   const [lastAction, setLastAction] = useState("");
   const [lastQuestion, setLastQuestion] = useState("");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
+  const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewState | null>(null);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
@@ -895,7 +917,13 @@ export default function Page() {
         await loadTasks();
         return result.task;
       } else if (result.outcome === "mini_plan") {
-        setConversionNotice(`AI suggested a mini plan (${result.steps.length} steps) to keep execution lightweight.`);
+        openPlanPreview({
+          sourceItemId: input.itemId,
+          title: result.title,
+          steps: result.steps,
+          confidence: result.confidence
+        });
+        setConversionNotice(`Plan preview ready (${result.steps.length} steps).`);
       } else {
         setConversionNotice(`Conversion skipped: ${result.reason}`);
       }
@@ -1031,6 +1059,84 @@ export default function Page() {
 
   function handleKeepInMind() {
     setItemActionNotice("Marked as keep in mind. You can switch to that lens in feed anytime.");
+  }
+
+  function openPlanPreview(input: { sourceItemId: string; title: string; steps: string[]; confidence: number }) {
+    const normalizedSteps = input.steps
+      .map((step, index) => ({
+        id: `${Date.now()}-${index}`,
+        title: step.trim(),
+        minutes: normalizePlanStepMinutes(index)
+      }))
+      .filter((step) => step.title.length > 0);
+    if (normalizedSteps.length === 0) return;
+
+    setPendingPlanPreview({
+      sourceItemId: input.sourceItemId,
+      title: input.title,
+      steps: normalizedSteps,
+      confidence: input.confidence
+    });
+  }
+
+  function updatePlanStepMinutes(stepId: string, minutes: number) {
+    setPendingPlanPreview((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        steps: current.steps.map((step) =>
+          step.id === stepId ? { ...step, minutes: Math.max(5, Math.min(120, Math.trunc(minutes || 0))) } : step
+        )
+      };
+    });
+  }
+
+  async function acceptPlanPreview(startFirstStep: boolean) {
+    if (!pendingPlanPreview) return;
+    setTaskError("");
+    setTasksLoading(true);
+
+    try {
+      const createdTasks: TaskDto[] = [];
+      for (const step of pendingPlanPreview.steps) {
+        const created = await createTask<TaskDto>({
+          userId,
+          title: step.title,
+          sourceItemId: pendingPlanPreview.sourceItemId
+        });
+        createdTasks.push(created);
+      }
+
+      setTasks((current) => {
+        const deduped = current.filter((task) => !createdTasks.some((created) => created.id === task.id));
+        return [...createdTasks, ...deduped];
+      });
+      setPendingPlanPreview(null);
+
+      if (createdTasks.length > 0) {
+        setSelectedTaskId(createdTasks[0].id);
+      }
+
+      if (startFirstStep && createdTasks.length > 0) {
+        const session = await startTaskSession<SessionDto>(createdTasks[0].id);
+        setActiveSession(session);
+        setActiveSurface("session");
+        setConversionNotice(`Plan accepted (${createdTasks.length} tasks). Started first step.`);
+        await loadSessionsForTask(createdTasks[0].id);
+      } else {
+        setConversionNotice(`Plan accepted (${createdTasks.length} tasks). Continue from feed when ready.`);
+      }
+
+      await loadTasks();
+    } catch {
+      setTaskError("Could not accept this plan right now.");
+    } finally {
+      setTasksLoading(false);
+    }
+  }
+
+  async function startPlanFirstStep() {
+    await acceptPlanPreview(true);
   }
 
   function openItemFromModel(model: FeedCardModel) {
@@ -1223,6 +1329,24 @@ export default function Page() {
           {conversionNotice ? <p style={{ margin: 0 }}>{conversionNotice}</p> : null}
           {taskError ? <p style={{ margin: 0 }}>{taskError}</p> : null}
         </section>
+      ) : null}
+
+      {pendingPlanPreview ? (
+        <PlanPreviewSheet
+          isOpen
+          title={pendingPlanPreview.title}
+          steps={pendingPlanPreview.steps}
+          isSubmitting={tasksLoading}
+          errorMessage={taskError}
+          onClose={() => setPendingPlanPreview(null)}
+          onUpdateStepMinutes={(stepId, minutes) => updatePlanStepMinutes(stepId, minutes)}
+          onAcceptPlan={() => {
+            void acceptPlanPreview();
+          }}
+          onStartFirstStep={() => {
+            void startPlanFirstStep();
+          }}
+        />
       ) : null}
 
       {activeSurface === "item" ? (
