@@ -27,6 +27,8 @@ export function generateCardFromItem(item: FeedSourceItem): StoredFeedCard {
     dismissed: false,
     snoozedUntil: null,
     refreshCount: 0,
+    postponeCount: 0,
+    lastPostponedAt: null,
     lastRefreshedAt: null,
     createdAt: item.createdAt
   };

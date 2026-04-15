@@ -39,6 +39,7 @@ import {
   ItemChatPanel,
   ItemDetailScreen,
   PlanPreviewSheet,
+  PostponeRescheduleSheet,
   TaskDetailCard,
   TimeWindowSelector,
   type CaptureSubmitIntent,
@@ -61,6 +62,8 @@ type FeedCardDto = {
   dismissed: boolean;
   snoozedUntil: string | null;
   refreshCount: number;
+  postponeCount: number;
+  lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
   availableActions: Array<"open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh">;
   stateFlags: {
@@ -175,6 +178,13 @@ type PlanPreviewDraft = {
   title: string;
   steps: Array<{ id: string; title: string; minutes: number }>;
   confidence: number;
+};
+
+type PostponeDraft = {
+  cardId: string;
+  title: string;
+  itemId: string | null;
+  postponeCount: number;
 };
 
 type FinishRebalanceDraft = {
@@ -392,6 +402,8 @@ function buildSyntheticDetailCard(item: BrainItemDto | null, task: TaskDto | nul
     dismissed: false,
     snoozedUntil: null,
     refreshCount: 0,
+    postponeCount: 0,
+    lastPostponedAt: null,
     lastRefreshedAt: null,
     availableActions: ["open_item", "comment", "convert_to_task", "dismiss", "snooze", "refresh"],
     stateFlags: {
@@ -522,6 +534,7 @@ export default function Page() {
   const [conversionNotice, setConversionNotice] = useState("");
   const [itemActionNotice, setItemActionNotice] = useState("");
   const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
+  const [pendingPostponeSheet, setPendingPostponeSheet] = useState<PostponeDraft | null>(null);
   const [pendingFinishRebalance, setPendingFinishRebalance] = useState<FinishRebalanceDraft | null>(null);
   const [timeActionNotice, setTimeActionNotice] = useState("");
   const [lastAction, setLastAction] = useState("");
@@ -1380,6 +1393,61 @@ export default function Page() {
     await startTimeTask(candidate.id);
   }
 
+  function openPostponeSheet(card: FeedCardDto) {
+    setPendingPostponeSheet({
+      cardId: card.id,
+      title: card.title,
+      itemId: card.itemId ?? null,
+      postponeCount: card.postponeCount ?? 0
+    });
+  }
+
+  async function applyPostponeMinutes(minutes: number, notice: string) {
+    if (!pendingPostponeSheet) return;
+    try {
+      await snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, minutes);
+      await loadFeed(activeLens);
+      setPendingPostponeSheet(null);
+      setConversionNotice(notice);
+      setTaskError("");
+    } catch {
+      setTaskError("Could not postpone this card right now.");
+    }
+  }
+
+  async function applyCustomPostpone(isoDateTime: string) {
+    const targetMs = new Date(isoDateTime).getTime();
+    if (!Number.isFinite(targetMs) || targetMs <= Date.now()) {
+      setTaskError("Choose a future time to reschedule.");
+      return;
+    }
+    const minutes = Math.max(5, Math.min(Math.ceil((targetMs - Date.now()) / 60_000), 60 * 24 * 7));
+    await applyPostponeMinutes(minutes, "Scheduled for a specific return slot.");
+  }
+
+  async function breakIntoSmallerStep() {
+    if (!pendingPostponeSheet) return;
+    setTasksLoading(true);
+    setTaskError("");
+    try {
+      const sourceItemId = pendingPostponeSheet.itemId;
+      const baseTitle = pendingPostponeSheet.title.trim() || "resurfaced idea";
+      const title = `Small step: ${baseTitle}`.slice(0, 200);
+      const created = await createTask<TaskDto>({ userId, title, sourceItemId });
+      await snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, 240);
+      setTasks((current) => [created, ...current.filter((task) => task.id !== created.id)]);
+      setSelectedTaskId(created.id);
+      setPendingPostponeSheet(null);
+      setConversionNotice("Created a smaller step and postponed the original card.");
+      setActiveSurface("session");
+      await Promise.all([loadTasks(), loadFeed(activeLens)]);
+    } catch {
+      setTaskError("Could not split this into a smaller step yet.");
+    } finally {
+      setTasksLoading(false);
+    }
+  }
+
   const timelineEntries = useMemo(() => {
     const merged = [
       ...commentMessages.map((message) => ({
@@ -1529,12 +1597,7 @@ export default function Page() {
                   await loadFeed(activeLens);
                 })()
               }
-              onSnooze={(minutes) =>
-                void (async () => {
-                  await snoozeFeedCard<{ ok: boolean }>(model.card.id, minutes);
-                  await loadFeed(activeLens);
-                })()
-              }
+              onSnooze={() => openPostponeSheet(model.card)}
               onRefresh={() =>
                 void (async () => {
                   await refreshFeedCard<{ ok: boolean }>(model.card.id);
@@ -1579,6 +1642,32 @@ export default function Page() {
           }}
           onStartFirstStep={() => {
             void startPlanFirstStep();
+          }}
+        />
+      ) : null}
+
+      {pendingPostponeSheet ? (
+        <PostponeRescheduleSheet
+          isOpen
+          title={pendingPostponeSheet.title}
+          postponeCount={pendingPostponeSheet.postponeCount}
+          isSubmitting={tasksLoading}
+          onClose={() => setPendingPostponeSheet(null)}
+          onLaterToday={() => {
+            void applyPostponeMinutes(180, "Postponed for later today.");
+          }}
+          onTomorrow={() => {
+            void applyPostponeMinutes(24 * 60, "Postponed for tomorrow.");
+          }}
+          onSuggestSlot={() => {
+            const suggestedMinutes = Math.min(12 * 60, 3 * 60 + pendingPostponeSheet.postponeCount * 60);
+            void applyPostponeMinutes(suggestedMinutes, `Scheduled in about ${Math.round(suggestedMinutes / 60)}h.`);
+          }}
+          onBreakIntoSmallerStep={() => {
+            void breakIntoSmallerStep();
+          }}
+          onApplyCustomDateTime={(isoDateTime) => {
+            void applyCustomPostpone(isoDateTime);
           }}
         />
       ) : null}

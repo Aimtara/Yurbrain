@@ -185,6 +185,7 @@ pnpm reseed
 - Convert `plan_suggested` outcomes now open a Plan Preview sheet in web with editable step durations, supportive capacity warning, and actions to accept plan or start first step (creating real tasks through existing task routes).
 - Time home now includes deterministic window planning (`2h`, `4h`, `6h`, `8h`, `24h`, `Custom`), session resume card, tasks-that-fit suggestions, and a start-without-planning action.
 - Finishing a session now opens a supportive Finish/Rebalance sheet with planned vs actual timing, reclaimed/overflow delta, and next-step actions (Continue plan, Rebalance day, Take a break, Schedule rest later).
+- Feed postpone now opens a lightweight Postpone/Reschedule sheet with one-tap actions (Later today, Tomorrow, Suggest a slot, Break into smaller step), optional custom datetime slot, and persisted postpone count metadata for future ranking influence.
 - Focus mode now uses the active session screen as an execution surface with:
   - task hero and live session timer
   - pause and finish controls wired to real session routes

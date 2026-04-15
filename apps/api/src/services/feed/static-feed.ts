@@ -10,6 +10,8 @@ export type StoredFeedCard = {
   dismissed: boolean;
   snoozedUntil?: string | null;
   refreshCount?: number;
+  postponeCount?: number;
+  lastPostponedAt?: string | null;
   lastRefreshedAt?: string | null;
   createdAt: string;
 };
@@ -22,6 +24,8 @@ export type FeedWhyShown = {
 export type FeedCardResponse = StoredFeedCard & {
   snoozedUntil: string | null;
   refreshCount: number;
+  postponeCount: number;
+  lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
   availableActions: Array<"open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh">;
   stateFlags: {
@@ -54,6 +58,8 @@ export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown)
     ...card,
     snoozedUntil,
     refreshCount: card.refreshCount ?? 0,
+    postponeCount: card.postponeCount ?? 0,
+    lastPostponedAt: card.lastPostponedAt ?? null,
     lastRefreshedAt: card.lastRefreshedAt ?? null,
     availableActions,
     stateFlags: {

@@ -6,6 +6,7 @@ export * from "./components/feed/FeedLensBar";
 export * from "./components/feed/CommentComposer";
 export * from "./components/feed/FeedCard";
 export * from "./components/feed/FocusFeedScreen";
+export * from "./components/feed/PostponeRescheduleSheet";
 export * from "./components/brain/BrainItemDetail";
 export * from "./components/brain/ItemChatPanel";
 export * from "./components/brain/ItemDetailScreen";

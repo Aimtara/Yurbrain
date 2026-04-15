@@ -60,6 +60,7 @@ Not used for runtime truth:
 - Mobile Time tab now mirrors the same lightweight planning intent with window selection and start-without-planning guidance to keep parity with web without introducing heavy planning UX.
 - Finishing a focus session now opens a supportive Finish/Rebalance sheet with planned-vs-actual time, reclaimed/overflow delta, and next moves (`Continue plan`, `Rebalance day`, `Take a break`, `Schedule rest later`) that route users back into feed/time surfaces without punitive language.
 - Web execution now includes an Active Task / Focus Mode surface with a large task hero, live session timer, reliable pause/finish controls, and an in-place source context peek that can reopen the linked item without leaving the execution flow.
+- Feed postpone now uses a dedicated Postpone/Reschedule sheet with one-tap actions (`Later today`, `Tomorrow`, `Suggest a slot`, `Break into smaller step`) plus optional custom datetime; postpone metadata (`postponeCount`, `lastPostponedAt`) is persisted and contributes a mild ranking penalty so repeated postpones can influence resurfacing deterministically.
 
 ### Feed semantics and contract (real)
 - Feed ranking is deterministic with diversity/recency/actionability penalties/boosts.

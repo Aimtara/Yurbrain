@@ -88,8 +88,60 @@ test("GET /feed excludes snoozed cards by default", async () => {
     url: "/feed?userId=33333333-3333-3333-3333-333333333333&includeSnoozed=true"
   });
   assert.equal(includeSnoozedResp.statusCode, 200);
-  const includeSnoozedCards = includeSnoozedResp.json<Array<{ id: string }>>();
+  const includeSnoozedCards = includeSnoozedResp.json<Array<{ id: string; postponeCount: number; lastPostponedAt: string | null }>>();
   assert.equal(includeSnoozedCards.some((feedCard) => feedCard.id === card.id), true);
+  const snoozedCard = includeSnoozedCards.find((feedCard) => feedCard.id === card.id);
+  assert.ok(snoozedCard);
+  assert.equal(snoozedCard.postponeCount, 1);
+  assert.ok(typeof snoozedCard.lastPostponedAt === "string");
+});
+
+test("ranking de-prioritizes repeatedly postponed cards when included", async () => {
+  const userId = "77777777-7777-4777-8777-777777777777";
+
+  const stableResp = await app.inject({
+    method: "POST",
+    url: "/ai/feed/generate-card",
+    payload: {
+      userId,
+      title: "Stable card",
+      body: "Should stay easier to pick than repeatedly postponed card."
+    }
+  });
+  assert.equal(stableResp.statusCode, 201);
+  const stableCard = stableResp.json<{ id: string }>();
+
+  const postponedResp = await app.inject({
+    method: "POST",
+    url: "/ai/feed/generate-card",
+    payload: {
+      userId,
+      title: "Postponed card",
+      body: "Will be postponed a few times."
+    }
+  });
+  assert.equal(postponedResp.statusCode, 201);
+  const postponedCard = postponedResp.json<{ id: string }>();
+
+  for (let index = 0; index < 3; index += 1) {
+    const snoozeResp = await app.inject({
+      method: "POST",
+      url: `/feed/${postponedCard.id}/snooze`,
+      payload: { minutes: 120 }
+    });
+    assert.equal(snoozeResp.statusCode, 200);
+  }
+
+  const feedResp = await app.inject({
+    method: "GET",
+    url: `/feed?userId=${userId}&includeSnoozed=true&limit=2`
+  });
+  assert.equal(feedResp.statusCode, 200);
+  const cards = feedResp.json<Array<{ id: string; postponeCount: number }>>();
+  assert.equal(cards[0]?.id, stableCard.id);
+  const postponedEntry = cards.find((card) => card.id === postponedCard.id);
+  assert.ok(postponedEntry);
+  assert.ok((postponedEntry?.postponeCount ?? 0) >= 3);
 });
 
 test("dismissed cards stay hidden and cannot be snoozed", async () => {
