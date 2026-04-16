@@ -72,7 +72,7 @@ export default function Page() {
   const [feedError, setFeedError] = useState("");
   const [chatError, setChatError] = useState("");
   const [taskError, setTaskError] = useState("");
-  const [chatFallbackNotice, setChatFallbackNotice] = useState("");
+  const [, setChatFallbackNotice] = useState("");
   const [conversionNotice, setConversionNotice] = useState("");
   const [itemActionNotice, setItemActionNotice] = useState("");
   const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
@@ -81,7 +81,7 @@ export default function Page() {
   const [timeActionNotice, setTimeActionNotice] = useState("");
   const [personalizationNotice, setPersonalizationNotice] = useState("");
   const [lastAction, setLastAction] = useState("");
-  const [lastQuestion, setLastQuestion] = useState("");
+  const [, setLastQuestion] = useState("");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
@@ -333,7 +333,7 @@ export default function Page() {
     loadTasks
   });
 
-  const { loadSelectedItemContext, createComment, runQuickAction, runAiQuery, handleOpenRelatedItem, handleKeepInMind } = useItemDetailController({
+  const { loadSelectedItemContext, createComment, runQuickAction, runAiQuery, handleOpenRelatedItem } = useItemDetailController({
     selectedItem,
     selectedItemId,
     chatThreadId,
@@ -416,16 +416,6 @@ export default function Page() {
       timestamp: formatRelative(entry.createdAt)
     }));
   }, [chatMessages, commentMessages]);
-
-  const chatLines = useMemo(
-    () =>
-      chatMessages.map((message) => {
-        if (message.role === "assistant") return `AI: ${message.content}`;
-        if (message.role === "system") return `System: ${message.content}`;
-        return `You: ${message.content}`;
-      }),
-    [chatMessages]
-  );
 
   return (
     <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
@@ -634,9 +624,7 @@ export default function Page() {
           suggestedPromptsForDetail={suggestedPromptsForDetail}
           relatedItemsForDetail={relatedItemsForDetail}
           timelineEntries={timelineEntries}
-          chatLines={chatLines}
-          chatFallbackNotice={chatFallbackNotice}
-          lastQuestion={lastQuestion}
+          canStartSession={Boolean(selectedItemTask)}
           onBackToFeed={() => setActiveSurface("feed")}
           onQuickAction={(action) => void runQuickAction(action)}
           onAddComment={(itemId, comment) => void createComment(itemId, comment)}
@@ -650,8 +638,18 @@ export default function Page() {
           }
           onAskYurbrain={(question) => void runAiQuery(question)}
           onOpenRelatedItem={handleOpenRelatedItem}
-          onKeepInMind={handleKeepInMind}
-          onRetryLastQuestion={() => void runAiQuery(lastQuestion)}
+          onStartSession={() =>
+            void (async () => {
+              if (!selectedItemTask) {
+                setItemActionNotice("Plan this item first, then start a session.");
+                return;
+              }
+              setSelectedTaskId(selectedItemTask.id);
+              setActiveSurface("session");
+              if (selectedItemSession && selectedItemSession.state !== "finished") return;
+              await startSelectedTaskSession(selectedItemTask);
+            })()
+          }
         />
       ) : null}
 

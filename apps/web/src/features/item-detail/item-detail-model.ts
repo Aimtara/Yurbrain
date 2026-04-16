@@ -60,7 +60,7 @@ export function buildRelatedItems(currentItem: BrainItemDto | null, items: Brain
         id: item.id,
         title: item.title,
         overlapCount: overlap.length,
-        hint: overlap[0] ? `Shares context around "${overlap[0]}"` : "Resurfaces adjacent thinking",
+        hint: overlap[0] ? `Shares ${overlap.length} theme${overlap.length > 1 ? "s" : ""}, including "${overlap[0]}"` : "Resurfaces adjacent thinking",
         updatedAt: item.updatedAt
       };
     })
@@ -69,7 +69,11 @@ export function buildRelatedItems(currentItem: BrainItemDto | null, items: Brain
       return right.updatedAt.localeCompare(left.updatedAt);
     });
 
-  return candidates.slice(0, 3).map((candidate) => ({
+  const overlapping = candidates.filter((candidate) => candidate.overlapCount > 0);
+  const adjacent = candidates.filter((candidate) => candidate.overlapCount === 0);
+  const ranked = [...overlapping, ...adjacent];
+
+  return ranked.slice(0, 5).map((candidate) => ({
     id: candidate.id,
     title: candidate.title,
     hint: candidate.hint

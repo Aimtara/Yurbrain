@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 export type CommentComposerMode = "comment" | "ask_yurbrain";
 
@@ -8,14 +8,37 @@ type CommentComposerProps = {
   onConfirmConvertToTask?: (value: string) => void;
   enableAskYurbrain?: boolean;
   defaultMode?: CommentComposerMode;
+  preferredMode?: CommentComposerMode;
+  focusSignal?: number;
 };
 
-export function CommentComposer({ onSend, onAskYurbrain, onConfirmConvertToTask, enableAskYurbrain = false, defaultMode = "comment" }: CommentComposerProps) {
+export function CommentComposer({
+  onSend,
+  onAskYurbrain,
+  onConfirmConvertToTask,
+  enableAskYurbrain = false,
+  defaultMode = "comment",
+  preferredMode,
+  focusSignal = 0
+}: CommentComposerProps) {
   const [value, setValue] = useState("");
   const [showConvertConfirm, setShowConvertConfirm] = useState(false);
   const canAskYurbrain = enableAskYurbrain && typeof onAskYurbrain === "function";
   const [mode, setMode] = useState<CommentComposerMode>(defaultMode === "ask_yurbrain" && canAskYurbrain ? "ask_yurbrain" : "comment");
   const isAskMode = mode === "ask_yurbrain";
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!preferredMode) return;
+    if (preferredMode === "ask_yurbrain" && !canAskYurbrain) return;
+    setMode(preferredMode);
+    setShowConvertConfirm(false);
+  }, [canAskYurbrain, preferredMode]);
+
+  useEffect(() => {
+    if (focusSignal <= 0) return;
+    textareaRef.current?.focus();
+  }, [focusSignal]);
 
   const send = () => {
     const normalized = value.trim();
@@ -69,6 +92,7 @@ export function CommentComposer({ onSend, onAskYurbrain, onConfirmConvertToTask,
         </div>
       ) : null}
       <textarea
+        ref={textareaRef}
         value={value}
         rows={rows}
         placeholder={isAskMode ? "Ask Yurbrain about this item..." : "Add a continuation note"}
