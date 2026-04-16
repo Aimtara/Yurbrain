@@ -30,21 +30,24 @@ export const CreateBrainItemRequestSchema = z
   .strict();
 
 const CaptureUrlSchema = z.string().trim().min(1).max(500);
+const CaptureSourceObjectSchema = z
+  .object({
+    app: z.string().min(1).max(80).optional(),
+    link: CaptureUrlSchema.optional()
+  })
+  .strict();
+const CaptureSourceSchema = z.union([z.string().min(1).max(500), CaptureSourceObjectSchema]);
 
 export const CaptureIntakeRequestSchema = z
   .object({
     userId: z.string().uuid(),
     type: CaptureContentTypeSchema.optional(),
+    content: z.string().min(1).max(10_000).optional(),
     text: z.string().min(1).max(10_000).optional(),
     link: CaptureUrlSchema.optional(),
     image: CaptureUrlSchema.optional(),
-    source: z
-      .object({
-        app: z.string().min(1).max(80).optional(),
-        link: CaptureUrlSchema.optional()
-      })
-      .strict()
-      .optional(),
+    source: CaptureSourceSchema.optional(),
+    note: z.string().min(1).max(500).optional(),
     preview: z
       .object({
         title: z.string().min(1).max(200).optional(),
@@ -58,8 +61,8 @@ export const CaptureIntakeRequestSchema = z
     execution: z.record(z.string(), z.unknown()).optional()
   })
   .strict()
-  .refine((value) => Boolean(value.text || value.link || value.image), {
-    message: "At least one of text, link, or image is required"
+  .refine((value) => Boolean(value.content || value.text || value.link || value.image), {
+    message: "At least one of content, text, link, or image is required"
   });
 
 export const CaptureRelatedItemSchema = z
@@ -74,6 +77,17 @@ export const CaptureRelatedItemSchema = z
 
 export const CaptureIntakeResponseSchema = z
   .object({
+    itemId: z.string().uuid(),
+    preview: z
+      .object({
+        title: z.string().min(1),
+        snippet: z.string().min(1),
+        contentType: CaptureContentTypeSchema,
+        topicGuess: z.string().nullable(),
+        source: z.string().nullable(),
+        note: z.string().nullable()
+      })
+      .strict(),
     item: BrainItemSchema,
     relatedItems: z.array(CaptureRelatedItemSchema),
     clusterCard: FeedCardSchema.nullable(),
@@ -217,6 +231,21 @@ export const QueryItemRequestSchema = z
   })
   .strict();
 
+export const AiSynthesisRequestSchema = z
+  .object({
+    itemIds: z.array(z.string().uuid()).min(1).max(24)
+  })
+  .strict();
+
+export const AiSynthesisResponseSchema = z
+  .object({
+    summary: z.string().min(1).max(1_200),
+    repeatedIdeas: z.array(z.string().min(1).max(180)).max(5).optional(),
+    suggestedNextAction: z.string().min(1).max(240),
+    reason: z.string().min(1).max(240)
+  })
+  .strict();
+
 export const AiArtifactResponseSchema = ItemArtifactSchema.extend({
   ai: AiEnvelopeSchema,
   fallbackUsed: z.boolean(),
@@ -283,6 +312,8 @@ export type AiConvertResponse = z.infer<typeof AiConvertResponseSchema>;
 export type SummarizeItemRequest = z.infer<typeof SummarizeItemRequestSchema>;
 export type ClassifyItemRequest = z.infer<typeof ClassifyItemRequestSchema>;
 export type QueryItemRequest = z.infer<typeof QueryItemRequestSchema>;
+export type AiSynthesisRequest = z.infer<typeof AiSynthesisRequestSchema>;
+export type AiSynthesisResponse = z.infer<typeof AiSynthesisResponseSchema>;
 export type ListItemArtifactsQuery = z.infer<typeof ListItemArtifactsQuerySchema>;
 export type BrainItemResponse = z.infer<typeof BrainItemResponseSchema>;
 export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;

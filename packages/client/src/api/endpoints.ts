@@ -9,7 +9,9 @@ export const endpoints = {
   sessions: "/sessions",
   manualConvertTask: "/tasks/manual-convert",
   aiSummarize: "/ai/summarize",
+  aiSummarizeCluster: "/ai/summarize-cluster",
   aiClassify: "/ai/classify",
   aiQuery: "/ai/query",
+  aiNextStep: "/ai/next-step",
   aiConvert: "/ai/convert"
 } as const;

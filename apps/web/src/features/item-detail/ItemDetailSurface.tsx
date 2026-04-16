@@ -22,7 +22,7 @@ type ItemDetailSurfaceProps = {
   timelineEntries: Array<{ id: string; label: string; role: "user" | "assistant" | "system"; timestamp?: string }>;
   canStartSession: boolean;
   onBackToFeed: () => void;
-  onQuickAction: (action: "summarize" | "classify" | "convert_to_task") => void;
+  onQuickAction: (action: "summarize_progress" | "next_step" | "classify" | "convert_to_task") => void;
   onAddComment: (itemId: string, comment: string) => void;
   onConvertCommentToTask: (itemId: string, comment: string) => void;
   onAskYurbrain: (question: string) => void;

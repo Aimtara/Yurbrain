@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { createBrainItem } from "@yurbrain/client";
+import { createCaptureIntake } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
 import type { BrainItemDto } from "../shared/types";
@@ -22,6 +22,16 @@ type UseCaptureControllerInput = {
   runConvert: (input: { itemId: string; content: string; sourceMessageId?: string }) => Promise<import("../shared/types").TaskDto | null>;
   loadFeed: (lens: import("@yurbrain/ui").FeedLens) => Promise<void>;
   loadTasks: () => Promise<void>;
+};
+
+type CaptureIntakeResponse = {
+  item: BrainItemDto;
+  preview: {
+    title: string;
+    snippet: string;
+    contentType: "text" | "link" | "image";
+  };
+  itemId: string;
 };
 
 export function useCaptureController({
@@ -49,11 +59,15 @@ export function useCaptureController({
       setCaptureLoading(true);
       setCaptureError("");
       setCaptureStatusNotice("");
-      const normalizedTitle = normalized.replace(/\s+/g, " ").slice(0, 80);
-      const title = normalizedTitle.length > 0 ? normalizedTitle : "Captured note";
 
       try {
-        const created = await createBrainItem<BrainItemDto>({ userId, type: "note", title, rawContent: normalized });
+        const intake = await createCaptureIntake<CaptureIntakeResponse>({
+          userId,
+          type: "text",
+          content: normalized,
+          source: "web_capture_sheet"
+        });
+        const created = intake.item;
         setCaptureDraft("");
         setItems((current) => [created, ...current.filter((item) => item.id !== created.id)]);
         setSelectedItemId(created.id);
@@ -71,7 +85,7 @@ export function useCaptureController({
         }
 
         if (intent === "save_and_remind") {
-          setCaptureStatusNotice("Remind Later flow is currently a stub. Your capture is saved and can be snoozed from the feed.");
+          setCaptureStatusNotice("Saved for deferred resurfacing. Yurbrain will bring this back with related context.");
         }
 
         const successMessage = captureSuccessMessages[intent];

@@ -163,6 +163,10 @@ export function buildSyntheticDetailCard(item: BrainItemDto | null, task: TaskDt
       summary: continuity?.whyShown ?? "Continue this item in one small step.",
       reasons: continuityReasons
     },
+    relatedCount: null,
+    clusterTopic: item?.topicGuess ?? null,
+    clusterItemIds: item ? [item.id] : null,
+    lastTouched: item?.updatedAt ?? null,
     createdAt: item?.createdAt ?? new Date().toISOString()
   };
 }

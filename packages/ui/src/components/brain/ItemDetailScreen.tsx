@@ -3,7 +3,7 @@ import React from "react";
 import { BrainItemDetail } from "./BrainItemDetail";
 import { CommentComposer, type CommentComposerMode } from "../feed/CommentComposer";
 
-type QuickAction = "summarize" | "classify" | "convert_to_task";
+type QuickAction = "summarize_progress" | "next_step" | "convert_to_task" | "classify";
 
 type RelatedItem = {
   id: string;
@@ -183,15 +183,8 @@ export function ItemDetailScreen({
 
   const timelineInReverse = React.useMemo(() => [...timeline].reverse(), [timeline]);
   const latestTimelineEntry = timelineInReverse[0];
-  const quickNextQuestion = `What should I do next on "${item.title}"? Give one recommendation, one reason, and one next move.`;
   const relatedItemsToShow = showAllRelated ? relatedItems : relatedItems.slice(0, 3);
   const canShowMoreRelated = relatedItems.length > 3;
-  const summarizeSimilarPrompt = relatedItems.length
-    ? `Summarize the shared continuity between "${item.title}" and these related items: ${relatedItems
-        .slice(0, 5)
-        .map((related) => `"${related.title}"`)
-        .join(", ")}. Focus on one connective theme and one next move.`
-    : `Summarize this item in continuity terms: one key theme and one next move.`;
 
   const focusComposer = (mode: CommentComposerMode) => {
     setPreferredComposerMode(mode);
@@ -287,23 +280,21 @@ export function ItemDetailScreen({
           <button
             type="button"
             onClick={() => {
-              if (onAskYurbrain) {
-                onAskYurbrain(summarizeSimilarPrompt);
-                return;
-              }
-              onQuickAction("summarize");
+              onQuickAction("summarize_progress");
             }}
             style={styles.secondaryAction}
           >
-            Summarize Similar
+            Summarize Progress
           </button>
           <button
             type="button"
-            onClick={() => onAskYurbrain?.(quickNextQuestion)}
-            disabled={!onAskYurbrain}
+            onClick={() => onQuickAction("next_step")}
             style={styles.secondaryAction}
           >
             What Should I Do Next?
+          </button>
+          <button type="button" onClick={() => setShowAllRelated(true)} style={styles.secondaryAction}>
+            Show related items
           </button>
         </div>
         {!canStartSession ? (

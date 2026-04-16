@@ -106,12 +106,20 @@ export async function summarizeItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiSummarize, payload);
 }
 
+export async function summarizeCluster<T>(payload: unknown) {
+  return postJson<T>(endpoints.aiSummarizeCluster, payload);
+}
+
 export async function classifyItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiClassify, payload);
 }
 
 export async function queryItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiQuery, payload);
+}
+
+export async function requestNextStep<T>(payload: unknown) {
+  return postJson<T>(endpoints.aiNextStep, payload);
 }
 
 export async function getUserPreference<T>(userId: string) {

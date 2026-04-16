@@ -1,5 +1,15 @@
 import { useCallback } from "react";
-import { classifyBrainItem, createThread, listBrainItemArtifacts, listThreadMessages, listThreadsByTarget, queryBrainItemThread, sendMessage, summarizeBrainItem } from "@yurbrain/client";
+import {
+  classifyBrainItem,
+  createThread,
+  listBrainItemArtifacts,
+  listThreadMessages,
+  listThreadsByTarget,
+  queryBrainItemThread,
+  requestNextStep,
+  sendMessage,
+  summarizeCluster
+} from "@yurbrain/client";
 
 import type { BrainItemDto, ContinuityContext, ItemArtifactDto, MessageDto, ThreadDto } from "../shared/types";
 import { deriveArtifactHistory } from "./item-detail-model";
@@ -8,6 +18,7 @@ type UseItemDetailControllerInput = {
   selectedItem: BrainItemDto | null;
   selectedItemId: string;
   chatThreadId: string;
+  relatedItemIds: string[];
   derivedItemContinuity: { nextStep?: string; blockedState?: string };
   setCommentThreadId: (threadId: string) => void;
   setChatThreadId: (threadId: string) => void;
@@ -33,6 +44,7 @@ export function useItemDetailController({
   selectedItem,
   selectedItemId,
   chatThreadId,
+  relatedItemIds,
   derivedItemContinuity,
   setCommentThreadId,
   setChatThreadId,
@@ -136,7 +148,7 @@ export function useItemDetailController({
   );
 
   const runQuickAction = useCallback(
-    async (action: "summarize" | "classify" | "convert_to_task") => {
+    async (action: "summarize_progress" | "next_step" | "classify" | "convert_to_task") => {
       if (!selectedItem) return;
       setLastAction(action);
       if (action === "convert_to_task") {
@@ -144,17 +156,36 @@ export function useItemDetailController({
         return;
       }
 
+      const synthesisItemIds = Array.from(new Set([selectedItem.id, ...relatedItemIds]));
       try {
-        if (action === "summarize") {
-          const response = await summarizeBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
+        if (action === "summarize_progress") {
+          const response = await summarizeCluster<{
+            summary: string;
+            repeatedIdeas?: string[];
+            suggestedNextAction: string;
+            reason: string;
+          }>({ itemIds: synthesisItemIds });
           setArtifactHistoryByItem((current) => {
             const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
             return {
               ...current,
-              [selectedItem.id]: { summary: [response.ai.content, ...existing.summary], classification: existing.classification }
+              [selectedItem.id]: { summary: [response.summary, ...existing.summary], classification: existing.classification }
             };
           });
-          setItemActionNotice("Summarized recent progress for faster re-entry.");
+          const repeatedIdeas = response.repeatedIdeas?.slice(0, 3).join(", ");
+          setItemActionNotice(
+            repeatedIdeas
+              ? `Progress summary ready. Repeated ideas: ${repeatedIdeas}. Next: ${response.suggestedNextAction}`
+              : `Progress summary ready. Next: ${response.suggestedNextAction}`
+          );
+        } else if (action === "next_step") {
+          const response = await requestNextStep<{
+            summary: string;
+            repeatedIdeas?: string[];
+            suggestedNextAction: string;
+            reason: string;
+          }>({ itemIds: synthesisItemIds });
+          setItemActionNotice(`Next step: ${response.suggestedNextAction} Reason: ${response.reason}`);
         } else {
           const response = await classifyBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
           setArtifactHistoryByItem((current) => {
@@ -170,7 +201,7 @@ export function useItemDetailController({
         setLastAction(`${action}_failed`);
       }
     },
-    [runConvert, selectedItem, setArtifactHistoryByItem, setItemActionNotice, setLastAction]
+    [relatedItemIds, runConvert, selectedItem, setArtifactHistoryByItem, setItemActionNotice, setLastAction]
   );
 
   const runAiQuery = useCallback(

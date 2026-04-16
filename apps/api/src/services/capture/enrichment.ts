@@ -11,6 +11,7 @@ type EnrichmentResult = {
   previewImageUrl: string | null;
   topicGuess: string | null;
   clusterKey: string | null;
+  recencyWeight: number;
   fallbackUsed: boolean;
   warnings: string[];
 };
@@ -62,13 +63,15 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
   let fallbackUsed = false;
 
   const contentType = resolveContentType(payload);
-  const sourceLink = payload.source?.link?.trim() || payload.link?.trim() || null;
-  const sourceApp = normalizeText(payload.source?.app) ?? inferSourceApp(sourceLink);
+  const sourceFromPayload = parseSourcePayload(payload.source);
+  const sourceLink = sourceFromPayload.sourceLink ?? payload.link?.trim() ?? (contentType === "link" ? normalizeText(payload.content) : null);
+  const sourceApp = sourceFromPayload.sourceApp ?? inferSourceApp(sourceLink);
 
-  const textContent = normalizeText(payload.text);
-  const imageContent = normalizeText(payload.image);
+  const normalizedContent = normalizeText(payload.content);
+  const textContent = normalizeText(payload.text) ?? (contentType === "text" ? normalizedContent : null);
+  const imageContent = normalizeText(payload.image) ?? (contentType === "image" ? normalizedContent : null);
   const rawContent = textContent ?? sourceLink ?? imageContent ?? "(empty capture)";
-  const rawForInference = [textContent, sourceLink, payload.preview?.title, payload.preview?.description].filter(Boolean).join(" ");
+  const rawForInference = [textContent, sourceLink, payload.preview?.title, payload.preview?.description, payload.note].filter(Boolean).join(" ");
 
   let previewTitle = normalizeText(payload.preview?.title);
   let previewDescription = normalizeText(payload.preview?.description);
@@ -93,6 +96,7 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
 
   const topicGuess = normalizeText(payload.topicGuess) ?? inferTopicGuess(rawForInference);
   const clusterKey = topicGuess ? toClusterKey(topicGuess) : null;
+  const recencyWeight = 1;
   const title = buildCaptureTitle({
     contentType,
     text: textContent,
@@ -112,6 +116,7 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
     previewImageUrl,
     topicGuess,
     clusterKey,
+    recencyWeight,
     fallbackUsed,
     warnings
   };
@@ -119,9 +124,29 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
 
 function resolveContentType(payload: CaptureIntakeRequest): "text" | "link" | "image" {
   if (payload.type) return payload.type;
+  if (payload.content) {
+    const normalized = payload.content.trim();
+    if (/^https?:\/\//i.test(normalized)) return "link";
+  }
   if (payload.image) return "image";
   if (payload.link) return "link";
   return "text";
+}
+
+function parseSourcePayload(source: CaptureIntakeRequest["source"]): { sourceApp: string | null; sourceLink: string | null } {
+  if (!source) return { sourceApp: null, sourceLink: null };
+  if (typeof source === "string") {
+    const normalized = source.trim();
+    if (!normalized) return { sourceApp: null, sourceLink: null };
+    if (/^https?:\/\//i.test(normalized)) {
+      return { sourceApp: null, sourceLink: normalized };
+    }
+    return { sourceApp: normalized, sourceLink: null };
+  }
+  return {
+    sourceApp: normalizeText(source.app),
+    sourceLink: source.link?.trim() ?? null
+  };
 }
 
 function buildCaptureTitle(input: {

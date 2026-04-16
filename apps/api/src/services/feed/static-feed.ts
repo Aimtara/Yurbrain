@@ -36,13 +36,24 @@ export type FeedCardResponse = StoredFeedCard & {
     hasSourceTask: boolean;
   };
   whyShown: FeedWhyShown;
+  relatedCount: number | null;
+  clusterTopic: string | null;
+  clusterItemIds: string[] | null;
+  lastTouched: string | null;
+};
+
+export type FeedCardMeta = {
+  relatedCount?: number | null;
+  clusterTopic?: string | null;
+  clusterItemIds?: string[] | null;
+  lastTouched?: string | null;
 };
 
 export function isCardSnoozed(card: StoredFeedCard, now = new Date()): boolean {
   return Boolean(card.snoozedUntil && new Date(card.snoozedUntil).getTime() > now.getTime());
 }
 
-export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown): FeedCardResponse {
+export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown, meta: FeedCardMeta = {}): FeedCardResponse {
   const snoozedUntil = card.snoozedUntil ?? null;
   const hasSourceItem = Boolean(card.itemId);
   const hasSourceTask = Boolean(card.taskId);
@@ -69,7 +80,11 @@ export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown)
       hasSourceItem,
       hasSourceTask
     },
-    whyShown
+    whyShown,
+    relatedCount: meta.relatedCount ?? null,
+    clusterTopic: meta.clusterTopic ?? null,
+    clusterItemIds: meta.clusterItemIds ?? null,
+    lastTouched: meta.lastTouched ?? card.lastRefreshedAt ?? card.lastPostponedAt ?? card.createdAt
   };
 }
 

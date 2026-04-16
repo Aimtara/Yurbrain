@@ -147,7 +147,7 @@ export default function Page() {
             changedSince: inferContinuityNote(card, variant, linkedTask, linkedSession, linkedItem),
             blockedState: variant === "blocked" ? inferBlockedState(card, linkedTask, linkedSession) : undefined,
             nextStep: inferNextStep(card, variant, linkedTask, linkedSession, linkedItem),
-            lastTouched: formatRelative(linkedItem?.updatedAt ?? linkedTask?.updatedAt ?? linkedSession?.startedAt),
+            lastTouched: formatRelative(card.lastTouched ?? linkedItem?.updatedAt ?? linkedTask?.updatedAt ?? linkedSession?.startedAt),
             sourceItemId,
             sourceItemTitle: linkedItem?.title
           }
@@ -337,6 +337,7 @@ export default function Page() {
     selectedItem,
     selectedItemId,
     chatThreadId,
+    relatedItemIds: relatedItemsForDetail.map((item) => item.id),
     derivedItemContinuity,
     setCommentThreadId,
     setChatThreadId,

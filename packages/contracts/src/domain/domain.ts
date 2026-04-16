@@ -145,6 +145,10 @@ export const FeedCardSchema = z
       })
       .strict(),
     whyShown: FeedWhyShownSchema,
+    relatedCount: z.number().int().min(0).nullable().default(null),
+    clusterTopic: z.string().min(1).max(120).nullable().default(null),
+    clusterItemIds: z.array(z.string().uuid()).max(24).nullable().default(null),
+    lastTouched: z.string().datetime().nullable().default(null),
     createdAt: z.string().datetime()
   })
   .strict();

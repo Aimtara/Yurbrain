@@ -2,7 +2,7 @@ import React, { useId } from "react";
 
 import { tokens } from "../../design/tokens";
 
-type ClusterCardAction = "see_highlights" | "compare" | "try_one_today" | "keep_in_mind";
+type ClusterCardAction = "see_highlights" | "compare" | "try_one_today" | "dismiss";
 
 type ClusterCardProps = {
   title: string;
@@ -14,7 +14,7 @@ type ClusterCardProps = {
   onSeeHighlights?: () => void;
   onCompare?: () => void;
   onTryOneToday?: () => void;
-  onKeepInMind?: () => void;
+  onDismiss?: () => void;
   availableActions?: ClusterCardAction[];
 };
 
@@ -28,7 +28,7 @@ export function ClusterCard({
   onSeeHighlights,
   onCompare,
   onTryOneToday,
-  onKeepInMind,
+  onDismiss,
   availableActions
 }: ClusterCardProps) {
   const idBase = useId();
@@ -94,9 +94,9 @@ export function ClusterCard({
             Try One Today
           </button>
         ) : null}
-        {onKeepInMind && canUse("keep_in_mind") ? (
-          <button type="button" onClick={onKeepInMind} style={actionStyles.secondary}>
-            Keep In Mind
+        {onDismiss && canUse("dismiss") ? (
+          <button type="button" onClick={onDismiss} style={actionStyles.secondary}>
+            Dismiss
           </button>
         ) : null}
       </div>

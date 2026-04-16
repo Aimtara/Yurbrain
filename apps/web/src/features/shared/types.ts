@@ -30,6 +30,10 @@ export type FeedCardDto = {
     summary: string;
     reasons: string[];
   };
+  relatedCount: number | null;
+  clusterTopic: string | null;
+  clusterItemIds: string[] | null;
+  lastTouched: string | null;
   createdAt: string;
 };
 
@@ -46,8 +50,12 @@ export type BrainItemDto = {
   id: string;
   userId: string;
   type: "note" | "link" | "idea" | "quote" | "file";
+  contentType?: "text" | "link" | "image";
   title: string;
   rawContent: string;
+  topicGuess?: string | null;
+  sourceApp?: string | null;
+  sourceLink?: string | null;
   status: "active" | "archived";
   createdAt: string;
   updatedAt: string;

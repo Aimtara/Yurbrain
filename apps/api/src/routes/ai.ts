@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import {
   AiArtifactResponseSchema,
+  AiSynthesisRequestSchema,
+  AiSynthesisResponseSchema,
   ClassifyItemRequestSchema,
   QueryItemRequestSchema,
   QueryItemResponseSchema,
@@ -9,6 +11,7 @@ import {
 import { classifyItem } from "../services/ai/classify";
 import { queryItemAssistant } from "../services/ai/item-query";
 import { summarizeItem } from "../services/ai/summarize";
+import { synthesizeFromItems } from "../services/ai/synthesis";
 import type { AppState } from "../state";
 
 export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
@@ -46,5 +49,25 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
     );
 
     return reply.code(201).send(QueryItemResponseSchema.parse(result));
+  });
+
+  app.post("/ai/summarize-cluster", async (request, reply) => {
+    const payload = AiSynthesisRequestSchema.parse(request.body);
+    const result = await synthesizeFromItems(state.repo, payload.itemIds, "cluster_summary");
+    request.log.info(
+      { requestId: request.id, task: "summarize_cluster", itemCount: payload.itemIds.length },
+      "ai_synthesis_completed"
+    );
+    return reply.code(201).send(AiSynthesisResponseSchema.parse(result));
+  });
+
+  app.post("/ai/next-step", async (request, reply) => {
+    const payload = AiSynthesisRequestSchema.parse(request.body);
+    const result = await synthesizeFromItems(state.repo, payload.itemIds, "next_step");
+    request.log.info(
+      { requestId: request.id, task: "next_step", itemCount: payload.itemIds.length },
+      "ai_synthesis_completed"
+    );
+    return reply.code(201).send(AiSynthesisResponseSchema.parse(result));
   });
 }

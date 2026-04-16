@@ -56,11 +56,19 @@ export function buildRelatedItems(currentItem: BrainItemDto | null, items: Brain
     .map((item) => {
       const tokens = tokenizeForSimilarity(`${item.title} ${item.rawContent}`);
       const overlap = tokens.filter((token) => currentTokens.has(token));
+      const topicMatch =
+        Boolean(currentItem.topicGuess) &&
+        Boolean(item.topicGuess) &&
+        currentItem.topicGuess?.trim().toLowerCase() === item.topicGuess?.trim().toLowerCase();
       return {
         id: item.id,
         title: item.title,
-        overlapCount: overlap.length,
-        hint: overlap[0] ? `Shares ${overlap.length} theme${overlap.length > 1 ? "s" : ""}, including "${overlap[0]}"` : "Resurfaces adjacent thinking",
+        overlapCount: overlap.length + (topicMatch ? 2 : 0),
+        hint: topicMatch
+          ? `Same topic: ${item.topicGuess}`
+          : overlap[0]
+            ? `Shares ${overlap.length} theme${overlap.length > 1 ? "s" : ""}, including "${overlap[0]}"`
+            : "Resurfaces adjacent thinking",
         updatedAt: item.updatedAt
       };
     })
