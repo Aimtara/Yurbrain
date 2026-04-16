@@ -25,10 +25,40 @@ export const RenderModeSchema = z.enum(["focus", "explore"]);
 export const AiSummaryModeSchema = z.enum(["concise", "balanced", "detailed"]);
 export const FeedDensitySchema = z.enum(["comfortable", "compact"]);
 export const ResurfacingIntensitySchema = z.enum(["gentle", "balanced", "active"]);
+export const ExploreRelationKindSchema = z.enum(["related", "depends_on", "contrasts", "expands"]);
 export const FeedWhyShownSchema = z
   .object({
     summary: z.string().min(1).max(160),
     reasons: z.array(z.string().min(1).max(160)).min(1).max(3)
+  })
+  .strict();
+export const ExploreNodePositionSchema = z
+  .object({
+    x: z.number().finite(),
+    y: z.number().finite()
+  })
+  .strict();
+export const ExploreNodeGroupingSchema = z
+  .object({
+    autoGroupId: z.string().min(1).max(120).nullable(),
+    manualGroupId: z.string().min(1).max(120).nullable(),
+    manualGroupLabel: z.string().min(1).max(80).nullable()
+  })
+  .strict();
+export const ExploreNodeRelationshipSchema = z
+  .object({
+    targetItemId: z.string().uuid(),
+    kind: ExploreRelationKindSchema,
+    weight: z.number().min(0).max(1)
+  })
+  .strict();
+export const ExploreNodeSchema = z
+  .object({
+    clusterId: z.string().min(1).max(120),
+    position: ExploreNodePositionSchema,
+    salience: z.number().min(0).max(1),
+    grouping: ExploreNodeGroupingSchema,
+    relationships: z.array(ExploreNodeRelationshipSchema).max(24)
   })
   .strict();
 
@@ -93,6 +123,7 @@ export const FeedCardSchema = z
     lastPostponedAt: z.string().datetime().nullable(),
     lastRefreshedAt: z.string().datetime().nullable(),
     availableActions: z.array(FeedActionSchema).min(1),
+    explore: ExploreNodeSchema.optional(),
     stateFlags: z
       .object({
         dismissed: z.boolean(),

@@ -192,6 +192,7 @@ pnpm reseed
   - `aiSummaryMode`: `concise` | `balanced` | `detailed`
   - `feedDensity`: `comfortable` | `compact`
   - `resurfacingIntensity`: `gentle` | `balanced` | `active`
+- Explore contract scaffolding is now available via optional `feed.explore` metadata (`clusterId`, `position`, `salience`, `relationships`, grouping fields); this is contract-only and does not alter Focus-mode rendering.
 - Focus mode now uses the active session screen as an execution surface with:
   - task hero and live session timer
   - pause and finish controls wired to real session routes
