@@ -1,0 +1,245 @@
+import { useCallback } from "react";
+import { classifyBrainItem, createThread, listBrainItemArtifacts, listThreadMessages, listThreadsByTarget, queryBrainItemThread, sendMessage, summarizeBrainItem } from "@yurbrain/client";
+
+import type { BrainItemDto, ContinuityContext, ItemArtifactDto, MessageDto, ThreadDto } from "../shared/types";
+import { deriveArtifactHistory } from "./item-detail-model";
+
+type UseItemDetailControllerInput = {
+  selectedItem: BrainItemDto | null;
+  selectedItemId: string;
+  chatThreadId: string;
+  derivedItemContinuity: { nextStep?: string; blockedState?: string };
+  setCommentThreadId: (threadId: string) => void;
+  setChatThreadId: (threadId: string) => void;
+  setCommentMessages: (updater: MessageDto[] | ((current: MessageDto[]) => MessageDto[])) => void;
+  setChatMessages: (updater: MessageDto[] | ((current: MessageDto[]) => MessageDto[])) => void;
+  setItemActionNotice: (notice: string) => void;
+  setItemContextLoading: (loading: boolean) => void;
+  setChatError: (error: string) => void;
+  setChatFallbackNotice: (notice: string) => void;
+  setLastQuestion: (question: string) => void;
+  setLastAction: (action: string) => void;
+  setArtifactHistoryByItem: (
+    updater:
+      | Record<string, { summary: string[]; classification: string[] }>
+      | ((current: Record<string, { summary: string[]; classification: string[] }>) => Record<string, { summary: string[]; classification: string[] }>)
+  ) => void;
+  setSelectedItemId: (itemId: string) => void;
+  setSelectedContinuity: (continuity: ContinuityContext | null) => void;
+  runConvert: (input: { itemId: string; content: string; sourceMessageId?: string }) => Promise<unknown>;
+};
+
+export function useItemDetailController({
+  selectedItem,
+  selectedItemId,
+  chatThreadId,
+  derivedItemContinuity,
+  setCommentThreadId,
+  setChatThreadId,
+  setCommentMessages,
+  setChatMessages,
+  setItemActionNotice,
+  setItemContextLoading,
+  setChatError,
+  setChatFallbackNotice,
+  setLastQuestion,
+  setLastAction,
+  setArtifactHistoryByItem,
+  setSelectedItemId,
+  setSelectedContinuity,
+  runConvert
+}: UseItemDetailControllerInput) {
+  const syncItemArtifacts = useCallback(
+    (itemId: string, artifacts: ItemArtifactDto[]) => {
+      const { summary, classification } = deriveArtifactHistory(artifacts);
+      setArtifactHistoryByItem((current) => ({
+        ...current,
+        [itemId]: { summary, classification }
+      }));
+    },
+    [setArtifactHistoryByItem]
+  );
+
+  const loadSelectedItemContext = useCallback(
+    async (itemId: string) => {
+      setItemContextLoading(true);
+      setItemActionNotice("");
+      try {
+        const [threads, artifacts] = await Promise.all([listThreadsByTarget<ThreadDto[]>(itemId), listBrainItemArtifacts<ItemArtifactDto[]>(itemId)]);
+        const commentThread = threads.find((thread) => thread.kind === "item_comment") ?? null;
+        const chatThread = threads.find((thread) => thread.kind === "item_chat") ?? null;
+        setCommentThreadId(commentThread?.id ?? "");
+        setChatThreadId(chatThread?.id ?? "");
+
+        if (commentThread) {
+          const comments = await listThreadMessages<MessageDto[]>(commentThread.id);
+          setCommentMessages(comments.filter((message) => message.role === "user"));
+        } else {
+          setCommentMessages([]);
+        }
+
+        if (chatThread) {
+          const messages = await listThreadMessages<MessageDto[]>(chatThread.id);
+          setChatMessages(messages);
+        } else {
+          setChatMessages([]);
+        }
+
+        syncItemArtifacts(itemId, artifacts);
+        setChatError("");
+      } catch {
+        setChatError("Could not load continuity context for this item.");
+        setCommentMessages([]);
+        setChatMessages([]);
+      } finally {
+        setItemContextLoading(false);
+      }
+    },
+    [setChatError, setChatMessages, setChatThreadId, setCommentMessages, setCommentThreadId, setItemActionNotice, setItemContextLoading, syncItemArtifacts]
+  );
+
+  const ensureThreadForItem = useCallback(
+    async (itemId: string, kind: "item_comment" | "item_chat") => {
+      const threads = await listThreadsByTarget<ThreadDto[]>(itemId);
+      const existing = threads.find((thread) => thread.kind === kind);
+      if (existing) {
+        if (itemId === selectedItemId) {
+          if (kind === "item_comment") setCommentThreadId(existing.id);
+          if (kind === "item_chat") setChatThreadId(existing.id);
+        }
+        return existing.id;
+      }
+
+      const created = await createThread<{ id: string }>({ targetItemId: itemId, kind });
+      if (itemId === selectedItemId) {
+        if (kind === "item_comment") setCommentThreadId(created.id);
+        if (kind === "item_chat") setChatThreadId(created.id);
+      }
+      return created.id;
+    },
+    [selectedItemId, setChatThreadId, setCommentThreadId]
+  );
+
+  const createComment = useCallback(
+    async (itemId: string, content: string) => {
+      const normalized = content.trim();
+      if (!normalized) return null;
+      const threadId = await ensureThreadForItem(itemId, "item_comment");
+      const created = await sendMessage<MessageDto>({ threadId, role: "user", content: normalized });
+      if (itemId === selectedItemId) {
+        setCommentMessages((current) => [...current, created]);
+        setItemActionNotice("Comment added to continuity timeline.");
+      }
+      return created;
+    },
+    [ensureThreadForItem, selectedItemId, setCommentMessages, setItemActionNotice]
+  );
+
+  const runQuickAction = useCallback(
+    async (action: "summarize" | "classify" | "convert_to_task") => {
+      if (!selectedItem) return;
+      setLastAction(action);
+      if (action === "convert_to_task") {
+        await runConvert({ itemId: selectedItem.id, content: selectedItem.rawContent });
+        return;
+      }
+
+      try {
+        if (action === "summarize") {
+          const response = await summarizeBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
+          setArtifactHistoryByItem((current) => {
+            const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
+            return {
+              ...current,
+              [selectedItem.id]: { summary: [response.ai.content, ...existing.summary], classification: existing.classification }
+            };
+          });
+        } else {
+          const response = await classifyBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
+          setArtifactHistoryByItem((current) => {
+            const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
+            return {
+              ...current,
+              [selectedItem.id]: { summary: existing.summary, classification: [response.ai.content, ...existing.classification] }
+            };
+          });
+        }
+      } catch {
+        setLastAction(`${action}_failed`);
+      }
+    },
+    [runConvert, selectedItem, setArtifactHistoryByItem, setLastAction]
+  );
+
+  const runAiQuery = useCallback(
+    async (question: string) => {
+      if (!selectedItem) return;
+      setLastQuestion(question);
+      setChatError("");
+      try {
+        const activeThreadId = await ensureThreadForItem(selectedItem.id, "item_chat");
+        const response = await queryBrainItemThread<{ userMessage: MessageDto; message: MessageDto; fallbackUsed: boolean }>({
+          threadId: activeThreadId,
+          question
+        });
+        setChatMessages((current) => [...current, response.userMessage, response.message]);
+        setChatFallbackNotice(response.fallbackUsed ? "AI fallback used for this response." : "");
+        setItemActionNotice("Asked Yurbrain in-context.");
+      } catch {
+        setChatError("Could not reach AI query. Retry your last question.");
+        setChatFallbackNotice("AI query unavailable; using local echo fallback.");
+        setChatMessages((current) => [
+          ...current,
+          { id: `local-user-${Date.now()}`, threadId: chatThreadId, role: "user", content: question, createdAt: new Date().toISOString() },
+          {
+            id: `local-assistant-${Date.now()}`,
+            threadId: chatThreadId,
+            role: "assistant",
+            content: `Recommendation: ${derivedItemContinuity.nextStep ?? "Open this item and continue it now."} Reason: ${
+              derivedItemContinuity.blockedState
+                ? `It is currently blocked (${derivedItemContinuity.blockedState}).`
+                : "It is the clearest active continuity loop."
+            } Next move: ${derivedItemContinuity.nextStep ?? "Write one continuation note, then return to feed."}`,
+            createdAt: new Date().toISOString()
+          }
+        ]);
+        setItemActionNotice("Used local ask fallback.");
+      }
+    },
+    [
+      chatThreadId,
+      derivedItemContinuity.blockedState,
+      derivedItemContinuity.nextStep,
+      ensureThreadForItem,
+      selectedItem,
+      setChatError,
+      setChatFallbackNotice,
+      setChatMessages,
+      setItemActionNotice,
+      setLastQuestion
+    ]
+  );
+
+  const handleOpenRelatedItem = useCallback(
+    (itemId: string) => {
+      if (!itemId) return;
+      setSelectedItemId(itemId);
+      setSelectedContinuity(null);
+      setItemActionNotice("Opened a related item to continue context.");
+    },
+    [setItemActionNotice, setSelectedContinuity, setSelectedItemId]
+  );
+
+  const handleKeepInMind = useCallback(() => {
+    setItemActionNotice("Marked as keep in mind. You can switch to that lens in feed anytime.");
+  }, [setItemActionNotice]);
+
+  return {
+    loadSelectedItemContext,
+    createComment,
+    runQuickAction,
+    runAiQuery,
+    handleOpenRelatedItem,
+    handleKeepInMind
+  };
+}
