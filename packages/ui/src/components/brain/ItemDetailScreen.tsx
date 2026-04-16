@@ -120,6 +120,26 @@ const styles = {
     background: "#f8fafc",
     padding: "10px 12px"
   },
+  timelineMeta: {
+    margin: 0,
+    fontSize: "12px",
+    color: "#475569",
+    textTransform: "uppercase",
+    letterSpacing: "0.03em"
+  },
+  relatedRibbon: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px"
+  },
+  relatedChip: {
+    textAlign: "left",
+    borderRadius: "999px",
+    border: "1px solid #dbeafe",
+    background: "#f8fbff",
+    padding: "7px 12px",
+    maxWidth: "100%"
+  },
   aiSupport: {
     borderRadius: "16px",
     border: "1px solid #e2e8f0",
@@ -128,12 +148,6 @@ const styles = {
     display: "grid",
     gap: "10px"
   },
-  timeline: {
-    margin: 0,
-    paddingLeft: "18px",
-    display: "grid",
-    gap: "8px"
-  }
 } satisfies Record<string, React.CSSProperties>;
 
 export function ItemDetailScreen({
@@ -165,15 +179,28 @@ export function ItemDetailScreen({
 }: ItemDetailScreenProps) {
   const [preferredComposerMode, setPreferredComposerMode] = React.useState<CommentComposerMode>("comment");
   const [composerFocusSignal, setComposerFocusSignal] = React.useState(0);
+  const [showAllRelated, setShowAllRelated] = React.useState(false);
 
   const timelineInReverse = React.useMemo(() => [...timeline].reverse(), [timeline]);
   const latestTimelineEntry = timelineInReverse[0];
   const quickNextQuestion = `What should I do next on "${item.title}"? Give one recommendation, one reason, and one next move.`;
+  const relatedItemsToShow = showAllRelated ? relatedItems : relatedItems.slice(0, 3);
+  const canShowMoreRelated = relatedItems.length > 3;
+  const summarizeSimilarPrompt = relatedItems.length
+    ? `Summarize the shared continuity between "${item.title}" and these related items: ${relatedItems
+        .slice(0, 5)
+        .map((related) => `"${related.title}"`)
+        .join(", ")}. Focus on one connective theme and one next move.`
+    : `Summarize this item in continuity terms: one key theme and one next move.`;
 
   const focusComposer = (mode: CommentComposerMode) => {
     setPreferredComposerMode(mode);
     setComposerFocusSignal((current) => current + 1);
   };
+
+  React.useEffect(() => {
+    setShowAllRelated(false);
+  }, [item.title, relatedItems.length]);
 
   return (
     <section style={styles.shell} aria-label="Item detail continuity screen">
@@ -204,26 +231,30 @@ export function ItemDetailScreen({
               <strong>Where you left off:</strong> {whereLeftOff}
             </p>
           ) : null}
-          {changedSince ? (
-            <p style={{ margin: 0 }}>
-              <strong>What changed:</strong> {changedSince}
-            </p>
-          ) : null}
-          {blockedState ? (
-            <p style={{ margin: 0 }}>
-              <strong>Current blocker:</strong> {blockedState}
-            </p>
-          ) : null}
           {nextStep ? (
             <p style={{ margin: 0 }}>
               <strong>Best next move:</strong> {nextStep}
             </p>
           ) : null}
-          {executionHint ? (
-            <p style={{ margin: 0, color: "#475569", fontSize: "13px" }}>
-              <strong>Execution:</strong> {executionHint}
-            </p>
-          ) : null}
+          {(changedSince || blockedState || executionHint) && (
+            <div style={{ borderTop: "1px solid #dbeafe", paddingTop: "8px", display: "grid", gap: "6px", fontSize: "13px", color: "#475569" }}>
+              {changedSince ? (
+                <p style={{ margin: 0 }}>
+                  <strong>What changed:</strong> {changedSince}
+                </p>
+              ) : null}
+              {blockedState ? (
+                <p style={{ margin: 0 }}>
+                  <strong>Current blocker:</strong> {blockedState}
+                </p>
+              ) : null}
+              {executionHint ? (
+                <p style={{ margin: 0 }}>
+                  <strong>Execution:</strong> {executionHint}
+                </p>
+              ) : null}
+            </div>
+          )}
         </div>
       </div>
 
@@ -253,8 +284,18 @@ export function ItemDetailScreen({
           >
             Start Session
           </button>
-          <button type="button" onClick={() => onQuickAction("summarize")} style={styles.secondaryAction}>
-            Summarize Progress
+          <button
+            type="button"
+            onClick={() => {
+              if (onAskYurbrain) {
+                onAskYurbrain(summarizeSimilarPrompt);
+                return;
+              }
+              onQuickAction("summarize");
+            }}
+            style={styles.secondaryAction}
+          >
+            Summarize Similar
           </button>
           <button
             type="button"
@@ -309,8 +350,14 @@ export function ItemDetailScreen({
         {timelineInReverse.length > 0 ? (
           <div style={styles.timelineTrack}>
             {timelineInReverse.map((entry) => (
-              <article key={entry.id} style={styles.timelineEntry}>
-                <p style={{ margin: 0, fontSize: "12px", color: "#475569", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+              <article
+                key={entry.id}
+                style={{
+                  ...styles.timelineEntry,
+                  borderLeft: `3px solid ${entry.role === "assistant" ? "#c7d2fe" : entry.role === "system" ? "#fde68a" : "#bae6fd"}`
+                }}
+              >
+                <p style={styles.timelineMeta}>
                   {entry.role ? roleLabels[entry.role] : "Continuity note"}
                   {entry.timestamp ? ` · ${entry.timestamp}` : ""}
                 </p>
@@ -354,17 +401,29 @@ export function ItemDetailScreen({
         {relatedItems.length === 0 ? <p style={{ margin: 0, color: "#475569" }}>No related items yet. Capture and update history will connect nearby thoughts over time.</p> : null}
         {relatedItems.length > 0 ? (
           <div style={{ display: "grid", gap: "8px" }}>
-            {relatedItems.map((related) => (
+            <div style={styles.relatedRibbon}>
+              {relatedItemsToShow.map((related) => (
+                <button
+                  key={related.id}
+                  type="button"
+                  onClick={() => onOpenRelatedItem?.(related.id)}
+                  style={styles.relatedChip}
+                  title={related.hint}
+                >
+                  <strong>{related.title}</strong>
+                  {related.hint ? <span style={{ color: "#475569" }}> · {related.hint}</span> : null}
+                </button>
+              ))}
+            </div>
+            {canShowMoreRelated ? (
               <button
-                key={related.id}
                 type="button"
-                onClick={() => onOpenRelatedItem?.(related.id)}
-                style={{ textAlign: "left", borderRadius: "12px", border: "1px solid #e2e8f0", background: "#f8fafc", padding: "10px 12px" }}
+                onClick={() => setShowAllRelated((current) => !current)}
+                style={{ ...styles.secondaryAction, justifySelf: "start" }}
               >
-                <strong>{related.title}</strong>
-                {related.hint ? <span style={{ color: "#475569" }}> — {related.hint}</span> : null}
+                {showAllRelated ? "Show fewer" : `Show more (${relatedItems.length - relatedItemsToShow.length})`}
               </button>
-            ))}
+            ) : null}
           </div>
         ) : null}
       </div>
