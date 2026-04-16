@@ -15,6 +15,35 @@ import { summarizeItem } from "../services/ai/summarize";
 import type { AppState } from "../state";
 
 export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
+  async function buildClusterSynthesisInput(itemIds: string[]) {
+    const items = (await Promise.all(itemIds.map((itemId) => state.repo.getBrainItemById(itemId)))).flatMap((item) => (item ? [item] : []));
+    if (items.length === 0) {
+      return null;
+    }
+    const itemIdSet = new Set(items.map((item) => item.id));
+    const relatedTasks = (await state.repo.listTasks({ userId: items[0]?.userId })).filter(
+      (task) => task.sourceItemId && itemIdSet.has(task.sourceItemId)
+    );
+    const relatedTaskIds = new Set(relatedTasks.map((task) => task.id));
+    const relatedSessions =
+      relatedTaskIds.size > 0 ? (await state.repo.listSessions({ userId: items[0]?.userId })).filter((session) => relatedTaskIds.has(session.taskId)) : [];
+    const relatedThreads = (await Promise.all(items.map((item) => state.repo.listThreads(item.id)))).flat();
+    const relatedMessages = (
+      await Promise.all(
+        relatedThreads.map(async (thread) => {
+          const messages = await state.repo.listMessagesByThread(thread.id);
+          return messages;
+        })
+      )
+    ).flat();
+    return {
+      items,
+      messages: relatedMessages,
+      tasks: relatedTasks,
+      sessions: relatedSessions
+    };
+  }
+
   app.post("/ai/summarize", async (request, reply) => {
     const payload = SummarizeItemRequestSchema.parse(request.body);
     const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
@@ -53,25 +82,21 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
 
   app.post("/ai/summarize-cluster", async (request, reply) => {
     const payload = AiClusterSynthesisRequestSchema.parse(request.body);
-    const items = (await Promise.all(payload.itemIds.map((itemId) => state.repo.getBrainItemById(itemId)))).flatMap((item) =>
-      item ? [item] : []
-    );
-    if (items.length === 0) {
+    const synthesisInput = await buildClusterSynthesisInput(payload.itemIds);
+    if (!synthesisInput) {
       return reply.code(404).send({ message: "No matching items found for cluster synthesis" });
     }
-    const result = synthesizeCluster(items, "summary");
+    const result = synthesizeCluster(synthesisInput, "summary");
     return reply.code(200).send(AiClusterSynthesisResponseSchema.parse(result));
   });
 
   app.post("/ai/next-step", async (request, reply) => {
     const payload = AiClusterSynthesisRequestSchema.parse(request.body);
-    const items = (await Promise.all(payload.itemIds.map((itemId) => state.repo.getBrainItemById(itemId)))).flatMap((item) =>
-      item ? [item] : []
-    );
-    if (items.length === 0) {
+    const synthesisInput = await buildClusterSynthesisInput(payload.itemIds);
+    if (!synthesisInput) {
       return reply.code(404).send({ message: "No matching items found for next-step synthesis" });
     }
-    const result = synthesizeCluster(items, "next_step");
+    const result = synthesizeCluster(synthesisInput, "next_step");
     return reply.code(200).send(AiClusterSynthesisResponseSchema.parse(result));
   });
 }

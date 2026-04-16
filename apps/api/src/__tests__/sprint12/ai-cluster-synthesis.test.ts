@@ -64,3 +64,72 @@ test("POST /ai/summarize-cluster and /ai/next-step produce grounded short output
   assert.ok(nextStepBody.suggestedNextAction.length > 0);
   assert.ok(nextStepBody.reason.length > 0);
 });
+
+test("cluster synthesis uses thread/task/session signals for grounded reasons", async () => {
+  const userId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const intake = await app.inject({
+    method: "POST",
+    url: "/capture/intake",
+    payload: {
+      userId,
+      type: "text",
+      content: "Investigate API latency spikes during release checks",
+      topicGuess: "Engineering"
+    }
+  });
+  assert.equal(intake.statusCode, 201);
+  const intakeBody = intake.json<{ itemId: string }>();
+
+  const taskResp = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: {
+      userId,
+      title: "Latency check follow-up",
+      sourceItemId: intakeBody.itemId
+    }
+  });
+  assert.equal(taskResp.statusCode, 201);
+  const task = taskResp.json<{ id: string }>();
+
+  const session = await app.inject({
+    method: "POST",
+    url: `/tasks/${task.id}/start`,
+    payload: {}
+  });
+  assert.equal(session.statusCode, 201);
+  const startedSession = session.json<{ id: string }>();
+  const paused = await app.inject({
+    method: "POST",
+    url: `/sessions/${startedSession.id}/pause`,
+    payload: {}
+  });
+  assert.equal(paused.statusCode, 200);
+
+  const threadResp = await app.inject({
+    method: "POST",
+    url: "/threads",
+    payload: { targetItemId: intakeBody.itemId, kind: "item_comment" }
+  });
+  assert.equal(threadResp.statusCode, 201);
+  const thread = threadResp.json<{ id: string }>();
+  const messageResp = await app.inject({
+    method: "POST",
+    url: "/messages",
+    payload: {
+      threadId: thread.id,
+      role: "user",
+      content: "Still blocked waiting on production metrics dashboard."
+    }
+  });
+  assert.equal(messageResp.statusCode, 201);
+
+  const nextStep = await app.inject({
+    method: "POST",
+    url: "/ai/next-step",
+    payload: { itemIds: [intakeBody.itemId] }
+  });
+  assert.equal(nextStep.statusCode, 200);
+  const body = nextStep.json<{ suggestedNextAction: string; reason: string }>();
+  assert.ok(/paused|session|task|thread/i.test(body.reason));
+});

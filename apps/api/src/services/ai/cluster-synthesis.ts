@@ -1,10 +1,17 @@
-import type { BrainItemRecord } from "../../state";
+import type { BrainItemRecord, MessageRecord, SessionRecord, TaskRecord } from "../../state";
 
 export type ClusterSynthesisResult = {
   summary: string;
   repeatedIdeas?: string[];
   suggestedNextAction: string;
   reason: string;
+};
+
+export type ClusterSynthesisInput = {
+  items: BrainItemRecord[];
+  messages: MessageRecord[];
+  tasks: TaskRecord[];
+  sessions: SessionRecord[];
 };
 
 const STOPWORDS = new Set([
@@ -37,13 +44,23 @@ const STOPWORDS = new Set([
 
 type Mode = "summary" | "next_step";
 
-export function synthesizeCluster(items: BrainItemRecord[], mode: Mode): ClusterSynthesisResult {
-  const topKeywords = extractTopKeywords(items, 4);
-  const repeatedIdeas = topKeywords.length > 0 ? topKeywords.map((keyword) => `Repeated focus on ${keyword}.`) : undefined;
-  const summaryLines = items.slice(0, 5).map((item) => summarizeItem(item));
-  const summary = mode === "summary" ? summaryLines.map((line) => `- ${line}`).join("\n") : summarizeAsParagraph(summaryLines, topKeywords);
-  const suggestedNextAction = buildSuggestedNextAction(topKeywords, items);
-  const reason = buildReason(topKeywords, items.length);
+type ExecutionSignals = {
+  messageCount: number;
+  linkedTaskCount: number;
+  runningSessionCount: number;
+  pausedSessionCount: number;
+  blockedTask: TaskRecord | null;
+};
+
+export function synthesizeCluster(input: ClusterSynthesisInput, mode: Mode): ClusterSynthesisResult {
+  const { items, messages, tasks, sessions } = input;
+  const topKeywords = extractTopKeywords(items, messages, 4);
+  const repeatedIdeas = topKeywords.length > 0 ? topKeywords.slice(0, 3).map((keyword) => `Repeated focus on ${keyword}.`) : undefined;
+  const executionSignals = deriveExecutionSignals(messages, tasks, sessions);
+  const anchor = selectAnchorItem(items, executionSignals.blockedTask);
+  const summary = buildSummary(mode, items, topKeywords, executionSignals, anchor);
+  const suggestedNextAction = buildSuggestedNextAction(topKeywords, items, executionSignals, anchor);
+  const reason = buildReason(topKeywords, items.length, executionSignals, anchor);
   return {
     summary,
     repeatedIdeas,
@@ -59,32 +76,93 @@ function summarizeItem(item: BrainItemRecord): string {
   return `${source}: ${snippet}${snippet.length >= 92 ? "..." : ""}`;
 }
 
-function summarizeAsParagraph(lines: string[], keywords: string[]): string {
-  const compact = lines.slice(0, 3).join(" ");
-  if (keywords.length === 0) return compact;
-  const lead = `Theme: ${keywords.slice(0, 2).join(", ")}.`;
-  return `${lead} ${compact}`.trim();
+function buildSummary(
+  mode: Mode,
+  items: BrainItemRecord[],
+  keywords: string[],
+  signals: ExecutionSignals,
+  anchor: BrainItemRecord | null
+): string {
+  if (mode === "next_step") {
+    return clamp(
+      [
+        `Current continuity: ${items.length} captures, ${signals.messageCount} thread updates, ${signals.linkedTaskCount} linked tasks`,
+        signals.pausedSessionCount > 0 ? `, ${signals.pausedSessionCount} paused sessions` : "",
+        "."
+      ].join(""),
+      1_500
+    );
+  }
+
+  const bullets: string[] = [];
+  if (keywords.length > 0) {
+    bullets.push(`Theme: ${keywords.slice(0, 2).join(", ")}.`);
+  } else {
+    bullets.push(`Theme is still emerging across ${items.length} captures.`);
+  }
+  bullets.push(
+    `Signals: ${signals.messageCount} thread updates, ${signals.linkedTaskCount} linked tasks, ${signals.runningSessionCount} running sessions.`
+  );
+  if (signals.pausedSessionCount > 0) {
+    bullets.push(`Blocker: ${signals.pausedSessionCount} paused sessions are interrupting momentum.`);
+  } else if (signals.linkedTaskCount === 0) {
+    bullets.push("Execution not started yet; captures are still in hold mode.");
+  }
+  if (anchor) {
+    bullets.push(`Anchor item: ${summarizeItem(anchor)}.`);
+  }
+  return bullets
+    .slice(0, 5)
+    .map((bullet) => `- ${clamp(bullet, 220)}`)
+    .join("\n");
 }
 
-function buildSuggestedNextAction(keywords: string[], items: BrainItemRecord[]): string {
-  if (keywords.length > 0) {
-    return `Pick one ${keywords[0]} item and add one concrete update today.`;
+function buildSuggestedNextAction(
+  keywords: string[],
+  items: BrainItemRecord[],
+  signals: ExecutionSignals,
+  anchor: BrainItemRecord | null
+): string {
+  const blockedItem = resolveItemForTask(signals.blockedTask, items);
+  if (blockedItem && signals.pausedSessionCount > 0) {
+    return clamp(`Resume "${blockedItem.title}" by adding one unblock note, then restart its paused session.`, 220);
   }
-  const anchor = items[0];
+  const todoTask = signals.blockedTask;
+  if (todoTask) {
+    const taskItem = resolveItemForTask(todoTask, items);
+    if (taskItem) {
+      return clamp(`Open "${taskItem.title}" and complete one 10-minute step tied to the existing task.`, 220);
+    }
+  }
+  if (anchor && keywords.length > 0) {
+    return clamp(`Re-open "${anchor.title}" and add one concrete ${keywords[0]} update today.`, 220);
+  }
   if (anchor) {
-    return `Re-open "${anchor.title}" and capture one next move in a short note.`;
+    return clamp(`Re-open "${anchor.title}" and capture one concrete next move today.`, 220);
   }
   return "Choose one item and write one concrete next move.";
 }
 
-function buildReason(keywords: string[], itemCount: number): string {
-  if (keywords.length > 0) {
-    return `This action is grounded in repeated ${keywords[0]} patterns across ${itemCount} saved items.`;
+function buildReason(keywords: string[], itemCount: number, signals: ExecutionSignals, anchor: BrainItemRecord | null): string {
+  if (signals.pausedSessionCount > 0) {
+    return clamp(
+      `This recommendation prioritizes recovery from ${signals.pausedSessionCount} paused sessions across ${signals.linkedTaskCount} linked tasks.`,
+      220
+    );
   }
-  return `This action keeps continuity moving across ${itemCount} related captures without adding extra structure.`;
+  if (signals.linkedTaskCount > 0) {
+    return clamp(`This action uses ${signals.linkedTaskCount} linked tasks and ${signals.messageCount} thread updates as execution signals.`, 220);
+  }
+  if (keywords.length > 0) {
+    return clamp(`This action is grounded in repeated ${keywords[0]} patterns across ${itemCount} saved items.`, 220);
+  }
+  if (anchor) {
+    return clamp(`This action starts from "${anchor.title}" because execution history is still light for this cluster.`, 220);
+  }
+  return clamp(`This action keeps continuity moving across ${itemCount} related captures without adding extra structure.`, 220);
 }
 
-function extractTopKeywords(items: BrainItemRecord[], maxKeywords: number): string[] {
+function extractTopKeywords(items: BrainItemRecord[], messages: MessageRecord[], maxKeywords: number): string[] {
   const counts = new Map<string, number>();
   for (const item of items) {
     const topic = normalizeToken(item.topicGuess);
@@ -95,11 +173,53 @@ function extractTopKeywords(items: BrainItemRecord[], maxKeywords: number): stri
       counts.set(token, (counts.get(token) ?? 0) + 1);
     }
   }
+  for (const message of messages) {
+    for (const token of tokenize(message.content)) {
+      counts.set(token, (counts.get(token) ?? 0) + 1);
+    }
+  }
 
   return [...counts.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
     .slice(0, maxKeywords)
     .map(([token]) => token);
+}
+
+function deriveExecutionSignals(messages: MessageRecord[], tasks: TaskRecord[], sessions: SessionRecord[]): ExecutionSignals {
+  const taskIds = new Set(tasks.map((task) => task.id));
+  const linkedSessions = sessions.filter((session) => taskIds.has(session.taskId));
+  const runningSessionCount = linkedSessions.filter((session) => session.state === "running").length;
+  const pausedSessionCount = linkedSessions.filter((session) => session.state === "paused").length;
+  const blockedTask =
+    tasks.find((task) => linkedSessions.some((session) => session.taskId === task.id && session.state === "paused")) ??
+    tasks.find((task) => task.status === "todo") ??
+    null;
+  return {
+    messageCount: messages.length,
+    linkedTaskCount: tasks.length,
+    runningSessionCount,
+    pausedSessionCount,
+    blockedTask
+  };
+}
+
+function selectAnchorItem(items: BrainItemRecord[], blockedTask: TaskRecord | null): BrainItemRecord | null {
+  if (blockedTask?.sourceItemId) {
+    const blockedItem = items.find((item) => item.id === blockedTask.sourceItemId);
+    if (blockedItem) return blockedItem;
+  }
+  const sorted = [...items].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  return sorted[0] ?? null;
+}
+
+function resolveItemForTask(task: TaskRecord | null, items: BrainItemRecord[]): BrainItemRecord | null {
+  if (!task?.sourceItemId) return null;
+  return items.find((item) => item.id === task.sourceItemId) ?? null;
+}
+
+function clamp(value: string, max: number): string {
+  if (value.length <= max) return value;
+  return `${value.slice(0, max - 3).trimEnd()}...`;
 }
 
 function tokenize(value: string): string[] {

@@ -84,7 +84,7 @@ export function useItemDetailController({
 
         if (commentThread) {
           const comments = await listThreadMessages<MessageDto[]>(commentThread.id);
-          setCommentMessages(comments.filter((message) => message.role === "user"));
+          setCommentMessages(comments.filter((message) => message.role === "user" || message.role === "assistant"));
         } else {
           setCommentMessages([]);
         }
@@ -173,16 +173,13 @@ export function useItemDetailController({
           const itemIds = [selectedItem.id, ...related.relatedItemIds].slice(0, 8);
           const response = await getBrainItemNextStep<ClusterSynthesisDto>({ itemIds });
           const recommendation = `Next step: ${response.suggestedNextAction} Reason: ${response.reason}`;
-          setCommentMessages((current) => [
-            ...current,
-            {
-              id: `next-step-${Date.now()}`,
-              threadId: selectedItem.id,
-              role: "assistant",
-              content: recommendation,
-              createdAt: new Date().toISOString()
-            }
-          ]);
+          const continuityThreadId = await ensureThreadForItem(selectedItem.id, "item_comment");
+          const storedAssistantMessage = await sendMessage<MessageDto>({
+            threadId: continuityThreadId,
+            role: "assistant",
+            content: recommendation
+          });
+          setCommentMessages((current) => [...current, storedAssistantMessage]);
           setItemActionNotice(recommendation);
         } else {
           const response = await classifyBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
@@ -197,9 +194,18 @@ export function useItemDetailController({
         }
       } catch {
         setLastAction(`${action}_failed`);
+        if (action === "summarize") {
+          setItemActionNotice("Could not summarize progress right now. You can continue by adding a short update manually.");
+          return;
+        }
+        if (action === "next_step") {
+          setItemActionNotice("Could not generate a next step right now. Add one concrete next move manually to keep continuity.");
+          return;
+        }
+        setItemActionNotice("Could not complete this AI action right now. Continue in the timeline and retry later.");
       }
     },
-    [runConvert, selectedItem, setArtifactHistoryByItem, setCommentMessages, setItemActionNotice, setLastAction]
+    [ensureThreadForItem, runConvert, selectedItem, setArtifactHistoryByItem, setCommentMessages, setItemActionNotice, setLastAction]
   );
 
   const runAiQuery = useCallback(
