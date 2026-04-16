@@ -12,8 +12,18 @@ export type BrainItemRecord = {
   id: string;
   userId: string;
   type: "note" | "link" | "idea" | "quote" | "file";
+  contentType?: "text" | "link" | "image";
   title: string;
   rawContent: string;
+  sourceApp?: string | null;
+  sourceLink?: string | null;
+  previewTitle?: string | null;
+  previewDescription?: string | null;
+  previewImageUrl?: string | null;
+  topicGuess?: string | null;
+  clusterKey?: string | null;
+  founderModeAtCapture?: boolean;
+  executionMetadata?: Record<string, unknown> | null;
   status: "active" | "archived";
   createdAt: string;
   updatedAt: string;
@@ -119,7 +129,26 @@ export type DbRepository = {
   listBrainItemsByUser: (userId: string) => Promise<BrainItemRecord[]>;
   updateBrainItem: (
     id: string,
-    updates: Partial<Pick<BrainItemRecord, "type" | "title" | "rawContent" | "status" | "updatedAt">>
+    updates: Partial<
+      Pick<
+        BrainItemRecord,
+        | "type"
+        | "contentType"
+        | "title"
+        | "rawContent"
+        | "sourceApp"
+        | "sourceLink"
+        | "previewTitle"
+        | "previewDescription"
+        | "previewImageUrl"
+        | "topicGuess"
+        | "clusterKey"
+        | "founderModeAtCapture"
+        | "executionMetadata"
+        | "status"
+        | "updatedAt"
+      >
+    >
   ) => Promise<BrainItemRecord | null>;
   appendEvent: (event: EventRecord) => Promise<EventRecord>;
   createThread: (thread: ThreadRecord) => Promise<ThreadRecord>;
@@ -184,8 +213,18 @@ function toBrainItemRecord(row: typeof schema.brainItems.$inferSelect): BrainIte
     id: row.id,
     userId: row.userId,
     type: row.type,
+    contentType: (row.contentType as BrainItemRecord["contentType"] | null) ?? "text",
     title: row.title,
     rawContent: row.rawContent,
+    sourceApp: row.sourceApp,
+    sourceLink: row.sourceLink,
+    previewTitle: row.previewTitle,
+    previewDescription: row.previewDescription,
+    previewImageUrl: row.previewImageUrl,
+    topicGuess: row.topicGuess,
+    clusterKey: row.clusterKey,
+    founderModeAtCapture: row.founderModeAtCapture,
+    executionMetadata: (row.executionMetadata as Record<string, unknown> | null) ?? null,
     status: row.status,
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
@@ -354,8 +393,18 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             id: item.id,
             userId: item.userId,
             type: item.type,
+            contentType: item.contentType ?? "text",
             title: item.title,
             rawContent: item.rawContent,
+            sourceApp: item.sourceApp,
+            sourceLink: item.sourceLink,
+            previewTitle: item.previewTitle,
+            previewDescription: item.previewDescription,
+            previewImageUrl: item.previewImageUrl,
+            topicGuess: item.topicGuess,
+            clusterKey: item.clusterKey,
+            founderModeAtCapture: item.founderModeAtCapture ?? false,
+            executionMetadata: item.executionMetadata ?? null,
             status: item.status,
             createdAt: toDate(item.createdAt) ?? undefined,
             updatedAt: toDate(item.updatedAt) ?? undefined
@@ -386,8 +435,18 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           .update(schema.brainItems)
           .set({
             type: updates.type,
+            contentType: updates.contentType,
             title: updates.title,
             rawContent: updates.rawContent,
+            sourceApp: updates.sourceApp,
+            sourceLink: updates.sourceLink,
+            previewTitle: updates.previewTitle,
+            previewDescription: updates.previewDescription,
+            previewImageUrl: updates.previewImageUrl,
+            topicGuess: updates.topicGuess,
+            clusterKey: updates.clusterKey,
+            founderModeAtCapture: updates.founderModeAtCapture,
+            executionMetadata: updates.executionMetadata,
             status: updates.status,
             updatedAt: toDate(updates.updatedAt) ?? undefined
           })

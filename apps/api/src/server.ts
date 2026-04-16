@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { registerObservability, buildErrorEnvelope } from "./middleware/observability";
 import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
+import { registerCaptureRoutes } from "./routes/capture";
 import { registerConvertRoutes } from "./routes/convert";
 import { registerFeedRoutes } from "./routes/feed";
 import { registerMessageRoutes } from "./routes/messages";
@@ -44,6 +45,7 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   registerBrainItemRoutes(app, state);
+  registerCaptureRoutes(app, state);
   registerThreadRoutes(app, state);
   registerMessageRoutes(app, state);
   registerPreferenceRoutes(app, state);

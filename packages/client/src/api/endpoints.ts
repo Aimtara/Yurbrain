@@ -1,4 +1,5 @@
 export const endpoints = {
+  captureIntake: "/capture/intake",
   brainItems: "/brain-items",
   feed: "/feed",
   threads: "/threads",

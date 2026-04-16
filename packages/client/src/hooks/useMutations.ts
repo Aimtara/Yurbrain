@@ -53,6 +53,10 @@ export async function createBrainItem<T>(payload: unknown) {
   return postJson<T>(endpoints.brainItems, payload);
 }
 
+export async function createCaptureIntake<T>(payload: unknown) {
+  return postJson<T>(endpoints.captureIntake, payload);
+}
+
 export async function createThread<T>(payload: unknown) {
   return postJson<T>(endpoints.threads, payload);
 }

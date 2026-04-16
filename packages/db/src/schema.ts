@@ -27,14 +27,26 @@ export const brainItems = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     userId: uuid("user_id").notNull(),
     type: brainItemTypeEnum("type").notNull(),
+    contentType: text("content_type").default("text").notNull(),
     title: text("title").notNull(),
     rawContent: text("raw_content").notNull(),
+    sourceApp: text("source_app"),
+    sourceLink: text("source_link"),
+    previewTitle: text("preview_title"),
+    previewDescription: text("preview_description"),
+    previewImageUrl: text("preview_image_url"),
+    topicGuess: text("topic_guess"),
+    clusterKey: text("cluster_key"),
+    founderModeAtCapture: boolean("founder_mode_at_capture").default(false).notNull(),
+    executionMetadata: jsonb("execution_metadata"),
     status: brainItemStatusEnum("status").default("active").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
   },
   (t) => ({
-    userCreatedIdx: index("brain_items_user_created_idx").on(t.userId, t.createdAt)
+    userCreatedIdx: index("brain_items_user_created_idx").on(t.userId, t.createdAt),
+    userTopicCreatedIdx: index("brain_items_user_topic_created_idx").on(t.userId, t.topicGuess, t.createdAt),
+    userClusterCreatedIdx: index("brain_items_user_cluster_created_idx").on(t.userId, t.clusterKey, t.createdAt)
   })
 );
 
