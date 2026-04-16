@@ -127,7 +127,7 @@ export function FocusFeedScreen({
         {errorMessage ? (
           <div style={styles.stateCard}>
             <p style={{ margin: 0, fontWeight: 600 }}>Your feed took a pause.</p>
-              <p style={{ margin: "6px 0 0", color: "#475569" }}>{errorMessage}</p>
+            <p style={{ margin: "6px 0 0", color: "#475569" }}>{errorMessage}</p>
             {onRetry ? (
               <button type="button" onClick={onRetry} style={{ marginTop: "12px" }}>
                 Try again gently

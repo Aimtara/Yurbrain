@@ -8,7 +8,7 @@ import { useCaptureController } from "../src/features/capture/useCaptureControll
 import { matchesExecutionLens, deriveFeedRequestLimit, formatRelative, inferBlockedState, inferContinuityNote, inferNextStep, inferVariant, inferWhereLeftOff, buildSyntheticDetailCard } from "../src/features/feed/feed-model";
 import { FocusFeedSurface } from "../src/features/feed/FocusFeedSurface";
 import { useFeedController } from "../src/features/feed/useFeedController";
-import { buildFounderBlockedItems, buildFounderStats, buildFounderSuggestedFocus, buildFounderSummaryText } from "../src/features/founder/founder-model";
+import { useFounderSummaryController } from "../src/features/founder/useFounderSummaryController";
 import { ItemDetailSurface } from "../src/features/item-detail/ItemDetailSurface";
 import { buildRelatedItems, buildSuggestedPrompts } from "../src/features/item-detail/item-detail-model";
 import { useBrainItemsController } from "../src/features/item-detail/useBrainItemsController";
@@ -19,7 +19,7 @@ import { buildMeInsights, calculatePlannedMinutesForSession, deriveSessionElapse
 import { SessionSurface } from "../src/features/session/SessionSurface";
 import { TimeSurface } from "../src/features/session/TimeSurface";
 import { useSessionController } from "../src/features/session/useSessionController";
-import type { ActiveTaskContextPeek, BrainItemDto, ContinuityContext, FeedCardDto, FeedCardModel, FinishRebalanceDraft, MeInsights, MessageDto, PlanPreviewDraft, PostponeDraft, SessionDto, Surface, TaskDto, UserPreferenceDto } from "../src/features/shared/types";
+import type { ActiveTaskContextPeek, BrainItemDto, ContinuityContext, FeedCardDto, FeedCardModel, FinishRebalanceDraft, MeInsights, MessageDto, PlanPreviewDraft, PostponeDraft, SessionDto, TaskDto, UserPreferenceDto } from "../src/features/shared/types";
 
 export default function Page() {
   const {
@@ -157,42 +157,15 @@ export default function Page() {
   );
 
   const visibleFeedModels = useMemo(() => (founderMode ? feedModels.filter((model) => matchesExecutionLens(model.variant, executionLens)) : feedModels), [executionLens, feedModels, founderMode]);
-
-  const founderStats = useMemo(() => buildFounderStats(feedModels, visibleFeedModels), [feedModels, visibleFeedModels]);
-
-  const openFounderItem = (sourceItemId: string, continuity: ContinuityContext) => {
-    setSelectedItemId(sourceItemId);
-    setSelectedContinuity(continuity);
-    setActiveSurface("item");
-  };
-
-  const founderFocusCandidate = useMemo(() => buildFounderSuggestedFocus(visibleFeedModels), [visibleFeedModels]);
-  const suggestedFocus = useMemo(
-    () =>
-      founderFocusCandidate
-        ? {
-            title: founderFocusCandidate.title,
-            reason: founderFocusCandidate.reason,
-            nextStep: founderFocusCandidate.nextStep,
-            onOpen: () => openFounderItem(founderFocusCandidate.sourceItemId, founderFocusCandidate.continuity)
-          }
-        : null,
-    [founderFocusCandidate]
-  );
-
-  const founderBlockedItems = useMemo(
-    () =>
-      buildFounderBlockedItems(visibleFeedModels).map((item) => ({
-        id: item.id,
-        title: item.title,
-        reason: item.reason,
-        nextMove: item.nextMove,
-        onOpen: () => openFounderItem(item.sourceItemId, item.continuity)
-      })),
-    [visibleFeedModels]
-  );
-
-  const founderSummaryText = useMemo(() => buildFounderSummaryText(feedModels, items, tasks), [feedModels, items, tasks]);
+  const { founderStats, suggestedFocus, founderBlockedItems, founderSummaryText } = useFounderSummaryController({
+    feedModels,
+    visibleFeedModels,
+    items,
+    tasks,
+    setSelectedItemId,
+    setSelectedContinuity,
+    setActiveSurface
+  });
 
   const resumeSessionCard = useMemo(() => {
     if (!activeSession || activeSession.state === "finished") return null;
