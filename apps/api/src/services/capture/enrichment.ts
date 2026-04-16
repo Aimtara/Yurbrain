@@ -4,12 +4,15 @@ type EnrichmentResult = {
   contentType: "text" | "link" | "image";
   title: string;
   rawContent: string;
+  source: string | null;
   sourceApp: string | null;
   sourceLink: string | null;
   previewTitle: string | null;
   previewDescription: string | null;
   previewImageUrl: string | null;
+  note: string | null;
   topicGuess: string | null;
+  recencyWeight: number;
   clusterKey: string | null;
   fallbackUsed: boolean;
   warnings: string[];
@@ -62,17 +65,17 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
   let fallbackUsed = false;
 
   const contentType = resolveContentType(payload);
-  const sourceLink = payload.source?.link?.trim() || payload.link?.trim() || null;
-  const sourceApp = normalizeText(payload.source?.app) ?? inferSourceApp(sourceLink);
-
-  const textContent = normalizeText(payload.text);
-  const imageContent = normalizeText(payload.image);
-  const rawContent = textContent ?? sourceLink ?? imageContent ?? "(empty capture)";
-  const rawForInference = [textContent, sourceLink, payload.preview?.title, payload.preview?.description].filter(Boolean).join(" ");
+  const canonicalContent = extractCanonicalContent(payload, contentType);
+  const note = normalizeText(payload.note);
+  const source = normalizeSource(payload.source);
+  const sourceLink = resolveSourceLink(payload, contentType, canonicalContent);
+  const sourceApp = resolveSourceApp(payload.source, sourceLink);
+  const rawContent = canonicalContent ?? "(empty capture)";
+  const rawForInference = [canonicalContent, note, source, sourceLink, payload.preview?.title, payload.preview?.description].filter(Boolean).join(" ");
 
   let previewTitle = normalizeText(payload.preview?.title);
   let previewDescription = normalizeText(payload.preview?.description);
-  let previewImageUrl = normalizeText(payload.preview?.imageUrl) ?? (contentType === "image" ? imageContent : null);
+  let previewImageUrl = normalizeText(payload.preview?.imageUrl) ?? (contentType === "image" ? canonicalContent : null);
 
   if (sourceLink) {
     try {
@@ -92,10 +95,11 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
   }
 
   const topicGuess = normalizeText(payload.topicGuess) ?? inferTopicGuess(rawForInference);
+  const recencyWeight = inferRecencyWeight(contentType);
   const clusterKey = topicGuess ? toClusterKey(topicGuess) : null;
   const title = buildCaptureTitle({
     contentType,
-    text: textContent,
+    text: canonicalContent,
     previewTitle,
     sourceApp,
     topicGuess
@@ -105,12 +109,15 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
     contentType,
     title,
     rawContent,
+    source,
     sourceApp,
     sourceLink,
     previewTitle,
     previewDescription,
     previewImageUrl,
+    note,
     topicGuess,
+    recencyWeight,
     clusterKey,
     fallbackUsed,
     warnings
@@ -119,9 +126,64 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
 
 function resolveContentType(payload: CaptureIntakeRequest): "text" | "link" | "image" {
   if (payload.type) return payload.type;
+  if (looksLikeImageUrl(payload.content)) return "image";
+  if (looksLikeUrl(payload.content)) return "link";
   if (payload.image) return "image";
   if (payload.link) return "link";
   return "text";
+}
+
+function extractCanonicalContent(payload: CaptureIntakeRequest, contentType: "text" | "link" | "image"): string | null {
+  const explicit = normalizeText(payload.content);
+  if (explicit) return explicit;
+  if (contentType === "link") {
+    return normalizeText(payload.link) ?? normalizeText(payload.text);
+  }
+  if (contentType === "image") {
+    return normalizeText(payload.image) ?? normalizeText(payload.text);
+  }
+  return normalizeText(payload.text) ?? normalizeText(payload.link) ?? normalizeText(payload.image);
+}
+
+function normalizeSource(source: CaptureIntakeRequest["source"]): string | null {
+  if (!source) return null;
+  if (typeof source === "string") {
+    const normalized = normalizeText(source);
+    return normalized ? truncate(normalized, 500) : null;
+  }
+  const fromApp = normalizeText(source.app);
+  if (fromApp) return truncate(fromApp, 500);
+  const fromLink = normalizeText(source.link);
+  return fromLink ? truncate(fromLink, 500) : null;
+}
+
+function resolveSourceLink(
+  payload: CaptureIntakeRequest,
+  contentType: "text" | "link" | "image",
+  canonicalContent: string | null
+): string | null {
+  if (typeof payload.source === "object" && payload.source) {
+    const sourceLink = normalizeText(payload.source.link);
+    if (sourceLink) return sourceLink;
+  }
+  if (contentType === "link" && canonicalContent) {
+    return canonicalContent;
+  }
+  return normalizeText(payload.link);
+}
+
+function resolveSourceApp(source: CaptureIntakeRequest["source"], sourceLink: string | null): string | null {
+  if (typeof source === "string") {
+    if (!looksLikeUrl(source)) {
+      const normalized = normalizeText(source);
+      return normalized ? truncate(normalized, 80) : null;
+    }
+  }
+  if (typeof source === "object" && source) {
+    const sourceApp = normalizeText(source.app);
+    if (sourceApp) return truncate(sourceApp, 80);
+  }
+  return inferSourceApp(sourceLink);
 }
 
 function buildCaptureTitle(input: {
@@ -163,6 +225,12 @@ function inferSourceApp(link: string | null): string | null {
   }
 }
 
+function inferRecencyWeight(contentType: "text" | "link" | "image"): number {
+  if (contentType === "text") return 1;
+  if (contentType === "image") return 0.9;
+  return 0.85;
+}
+
 function toClusterKey(topicGuess: string): string {
   return topicGuess
     .trim()
@@ -193,6 +261,21 @@ function normalizeText(value: string | undefined): string | null {
   if (!value) return null;
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
+}
+
+function looksLikeUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function looksLikeImageUrl(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(value.trim());
 }
 
 function toTitleCase(input: string): string {

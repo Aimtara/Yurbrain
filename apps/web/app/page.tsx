@@ -142,12 +142,12 @@ export default function Page() {
           card,
           variant,
           continuity: {
-            whyShown: card.whyShown.summary,
+            whyShown: card.whyShownText ?? card.whyShown.summary,
             whereLeftOff: inferWhereLeftOff(card, variant, linkedTask, linkedSession, linkedItem),
             changedSince: inferContinuityNote(card, variant, linkedTask, linkedSession, linkedItem),
             blockedState: variant === "blocked" ? inferBlockedState(card, linkedTask, linkedSession) : undefined,
             nextStep: inferNextStep(card, variant, linkedTask, linkedSession, linkedItem),
-            lastTouched: formatRelative(linkedItem?.updatedAt ?? linkedTask?.updatedAt ?? linkedSession?.startedAt),
+            lastTouched: formatRelative(card.lastTouched ?? linkedItem?.updatedAt ?? linkedTask?.updatedAt ?? linkedSession?.startedAt),
             sourceItemId,
             sourceItemTitle: linkedItem?.title
           }
@@ -638,6 +638,9 @@ export default function Page() {
           }
           onAskYurbrain={(question) => void runAiQuery(question)}
           onOpenRelatedItem={handleOpenRelatedItem}
+          onShowRelatedItems={() => {
+            setItemActionNotice("Showing related items for continuity context.");
+          }}
           onStartSession={() =>
             void (async () => {
               if (!selectedItemTask) {

@@ -14,8 +14,10 @@ export type FeedCardDto = {
   snoozedUntil: string | null;
   refreshCount: number;
   postponeCount: number;
+  relatedCount: number | null;
   lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
+  lastTouched: string | null;
   availableActions: Array<
     "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh"
   >;
@@ -30,6 +32,7 @@ export type FeedCardDto = {
     summary: string;
     reasons: string[];
   };
+  whyShownText?: string;
   createdAt: string;
 };
 
@@ -46,11 +49,27 @@ export type BrainItemDto = {
   id: string;
   userId: string;
   type: "note" | "link" | "idea" | "quote" | "file";
+  contentType?: "text" | "link" | "image";
   title: string;
   rawContent: string;
+  sourceApp?: string | null;
+  sourceLink?: string | null;
+  previewTitle?: string | null;
+  previewDescription?: string | null;
+  previewImageUrl?: string | null;
+  note?: string | null;
+  topicGuess?: string | null;
+  recencyWeight?: number;
   status: "active" | "archived";
   createdAt: string;
   updatedAt: string;
+};
+
+export type ClusterSynthesisDto = {
+  summary: string;
+  repeatedIdeas?: string[];
+  suggestedNextAction: string;
+  reason: string;
 };
 
 export type ThreadDto = {

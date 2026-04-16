@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/brain-items/:path*", destination: `${apiOrigin}/brain-items/:path*` },
+      { source: "/capture/:path*", destination: `${apiOrigin}/capture/:path*` },
       { source: "/feed/:path*", destination: `${apiOrigin}/feed/:path*` },
       { source: "/threads/:path*", destination: `${apiOrigin}/threads/:path*` },
       { source: "/messages/:path*", destination: `${apiOrigin}/messages/:path*` },

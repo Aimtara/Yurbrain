@@ -114,6 +114,14 @@ export async function queryItem<T>(payload: unknown) {
   return postJson<T>(endpoints.aiQuery, payload);
 }
 
+export async function summarizeCluster<T>(payload: { itemIds: string[] }) {
+  return postJson<T>(endpoints.aiSummarizeCluster, payload);
+}
+
+export async function getNextStep<T>(payload: { itemIds: string[] }) {
+  return postJson<T>(endpoints.aiNextStep, payload);
+}
+
 export async function getUserPreference<T>(userId: string) {
   return withNormalizedErrors(() => apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`));
 }

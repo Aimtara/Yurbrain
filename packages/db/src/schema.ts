@@ -35,7 +35,9 @@ export const brainItems = pgTable(
     previewTitle: text("preview_title"),
     previewDescription: text("preview_description"),
     previewImageUrl: text("preview_image_url"),
+    note: text("note"),
     topicGuess: text("topic_guess"),
+    recencyWeight: integer("recency_weight").default(100).notNull(),
     clusterKey: text("cluster_key"),
     founderModeAtCapture: boolean("founder_mode_at_capture").default(false).notNull(),
     executionMetadata: jsonb("execution_metadata"),
@@ -105,8 +107,10 @@ export const feedCards = pgTable(
     snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
     refreshCount: integer("refresh_count").default(0).notNull(),
     postponeCount: integer("postpone_count").default(0).notNull(),
+    relatedCount: integer("related_count"),
     lastPostponedAt: timestamp("last_postponed_at", { withTimezone: true }),
     lastRefreshedAt: timestamp("last_refreshed_at", { withTimezone: true }),
+    lastTouched: timestamp("last_touched", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
   },
   (t) => ({

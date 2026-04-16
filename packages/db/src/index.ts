@@ -20,7 +20,9 @@ export type BrainItemRecord = {
   previewTitle?: string | null;
   previewDescription?: string | null;
   previewImageUrl?: string | null;
+  note?: string | null;
   topicGuess?: string | null;
+  recencyWeight?: number;
   clusterKey?: string | null;
   founderModeAtCapture?: boolean;
   executionMetadata?: Record<string, unknown> | null;
@@ -72,8 +74,10 @@ export type FeedCardRecord = {
   snoozedUntil?: string | null;
   refreshCount?: number;
   postponeCount?: number;
+  relatedCount?: number | null;
   lastPostponedAt?: string | null;
   lastRefreshedAt?: string | null;
+  lastTouched?: string | null;
   createdAt: string;
 };
 
@@ -141,7 +145,9 @@ export type DbRepository = {
         | "previewTitle"
         | "previewDescription"
         | "previewImageUrl"
+        | "note"
         | "topicGuess"
+        | "recencyWeight"
         | "clusterKey"
         | "founderModeAtCapture"
         | "executionMetadata"
@@ -162,7 +168,10 @@ export type DbRepository = {
   updateFeedCard: (
     id: string,
     updates: Partial<
-      Pick<FeedCardRecord, "dismissed" | "snoozedUntil" | "refreshCount" | "postponeCount" | "lastPostponedAt" | "lastRefreshedAt">
+      Pick<
+        FeedCardRecord,
+        "dismissed" | "snoozedUntil" | "refreshCount" | "postponeCount" | "relatedCount" | "lastPostponedAt" | "lastRefreshedAt" | "lastTouched"
+      >
     >
   ) => Promise<FeedCardRecord | null>;
   createTask: (task: TaskRecord) => Promise<TaskRecord>;
@@ -208,6 +217,16 @@ function toDate(value: string | null | undefined): Date | null {
   return new Date(value);
 }
 
+function fromRecencyStorage(value: number | null | undefined): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(0, Math.min(1, (value as number) / 100));
+}
+
+function toRecencyStorage(value: number | null | undefined): number {
+  if (!Number.isFinite(value)) return 100;
+  return Math.max(0, Math.min(100, Math.round((value as number) * 100)));
+}
+
 function toBrainItemRecord(row: typeof schema.brainItems.$inferSelect): BrainItemRecord {
   return {
     id: row.id,
@@ -221,7 +240,9 @@ function toBrainItemRecord(row: typeof schema.brainItems.$inferSelect): BrainIte
     previewTitle: row.previewTitle,
     previewDescription: row.previewDescription,
     previewImageUrl: row.previewImageUrl,
+    note: row.note,
     topicGuess: row.topicGuess,
+    recencyWeight: fromRecencyStorage(row.recencyWeight),
     clusterKey: row.clusterKey,
     founderModeAtCapture: row.founderModeAtCapture,
     executionMetadata: (row.executionMetadata as Record<string, unknown> | null) ?? null,
@@ -265,8 +286,10 @@ function toFeedCardRecord(row: typeof schema.feedCards.$inferSelect): FeedCardRe
     snoozedUntil: toIso(row.snoozedUntil),
     refreshCount: row.refreshCount,
     postponeCount: row.postponeCount,
+    relatedCount: row.relatedCount,
     lastPostponedAt: toIso(row.lastPostponedAt),
     lastRefreshedAt: toIso(row.lastRefreshedAt),
+    lastTouched: toIso(row.lastTouched),
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString()
   };
 }
@@ -401,7 +424,9 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             previewTitle: item.previewTitle,
             previewDescription: item.previewDescription,
             previewImageUrl: item.previewImageUrl,
+            note: item.note,
             topicGuess: item.topicGuess,
+            recencyWeight: toRecencyStorage(item.recencyWeight),
             clusterKey: item.clusterKey,
             founderModeAtCapture: item.founderModeAtCapture ?? false,
             executionMetadata: item.executionMetadata ?? null,
@@ -443,7 +468,9 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             previewTitle: updates.previewTitle,
             previewDescription: updates.previewDescription,
             previewImageUrl: updates.previewImageUrl,
+            note: updates.note,
             topicGuess: updates.topicGuess,
+            recencyWeight: updates.recencyWeight !== undefined ? toRecencyStorage(updates.recencyWeight) : undefined,
             clusterKey: updates.clusterKey,
             founderModeAtCapture: updates.founderModeAtCapture,
             executionMetadata: updates.executionMetadata,
@@ -535,8 +562,10 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
             snoozedUntil: toDate(card.snoozedUntil),
             refreshCount: card.refreshCount ?? 0,
             postponeCount: card.postponeCount ?? 0,
+            relatedCount: card.relatedCount ?? null,
             lastPostponedAt: toDate(card.lastPostponedAt),
             lastRefreshedAt: toDate(card.lastRefreshedAt),
+            lastTouched: toDate(card.lastTouched),
             createdAt: toDate(card.createdAt) ?? undefined
           })
           .returning();
@@ -571,11 +600,17 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
         if (updates.postponeCount !== undefined) {
           patch.postponeCount = updates.postponeCount;
         }
+        if (updates.relatedCount !== undefined) {
+          patch.relatedCount = updates.relatedCount;
+        }
         if (updates.lastPostponedAt !== undefined) {
           patch.lastPostponedAt = toDate(updates.lastPostponedAt);
         }
         if (updates.lastRefreshedAt !== undefined) {
           patch.lastRefreshedAt = toDate(updates.lastRefreshedAt);
+        }
+        if (updates.lastTouched !== undefined) {
+          patch.lastTouched = toDate(updates.lastTouched);
         }
         if (Object.keys(patch).length === 0) {
           const [current] = await db.select().from(schema.feedCards).where(eq(schema.feedCards.id, id)).limit(1);

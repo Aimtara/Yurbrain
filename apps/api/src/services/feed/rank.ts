@@ -151,6 +151,18 @@ function isHigherRank(candidate: ScoreBreakdown, currentBest: ScoreBreakdown): b
 }
 
 function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["lens"], now: Date): FeedWhyShown {
+  if (score.card.cardType === "cluster") {
+    const topic = extractClusterTopic(score.card.title);
+    const relatedCount = score.card.relatedCount ?? 2;
+    return {
+      summary: clampReasonLength(`You've been saving similar ${topic.toLowerCase()} recently.`),
+      reasons: [
+        clampReasonLength(`Grouped ${relatedCount} related captures so you can compare them in one pass.`),
+        clampReasonLength("Clustered to restore context before it fades.")
+      ]
+    };
+  }
+
   const reasons: string[] = [];
   const refreshedAgeHours = getAgeHours(score.card.lastRefreshedAt, now);
   const postponedAgeHours = getAgeHours(score.card.lastPostponedAt ?? undefined, now);
@@ -197,6 +209,11 @@ function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["len
     summary,
     reasons: uniqueReasons.slice(0, 3)
   };
+}
+
+function extractClusterTopic(title: string): string {
+  const normalized = title.replace(/^cluster:\s*/i, "").trim();
+  return normalized.length > 0 ? normalized : "ideas";
 }
 
 function formatRelativeAge(ageHours: number): string {

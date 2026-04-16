@@ -11,6 +11,7 @@ export type RelatedCaptureItem = {
 type RelatedDetectionOptions = {
   now?: Date;
   limit?: number;
+  recentWindowDays?: number;
 };
 
 const STOPWORDS = new Set([
@@ -46,6 +47,8 @@ export function detectRelatedItems(
 ): RelatedCaptureItem[] {
   const now = options.now ?? new Date();
   const limit = options.limit ?? 5;
+  const recentWindowDays = options.recentWindowDays ?? 14;
+  const recentCutoffMs = now.getTime() - recentWindowDays * 24 * 3_600_000;
   const targetKeywords = toKeywords(target);
 
   const scored = candidates
@@ -54,6 +57,8 @@ export function detectRelatedItems(
       const candidateKeywords = toKeywords(candidate);
       const sharedKeywords = [...targetKeywords].filter((keyword) => candidateKeywords.has(keyword));
       const topicMatch = normalizedTopic(target.topicGuess) !== null && normalizedTopic(target.topicGuess) === normalizedTopic(candidate.topicGuess);
+      const createdAtMs = new Date(candidate.createdAt).getTime();
+      const isRecent = Number.isFinite(createdAtMs) && createdAtMs >= recentCutoffMs;
       const recencyBoost = scoreRecency(candidate.createdAt, now);
       const keywordScore = Math.min(4, sharedKeywords.length);
       const score = (topicMatch ? 4 : 0) + keywordScore + recencyBoost;
@@ -61,10 +66,12 @@ export function detectRelatedItems(
         candidate,
         score,
         sharedKeywords,
-        topicMatch
+        topicMatch,
+        isRecent
       };
     })
-    .filter((entry) => entry.score >= 2.25)
+    .filter((entry) => entry.topicMatch || entry.sharedKeywords.length > 0 || entry.isRecent)
+    .filter((entry) => entry.score >= 1.5)
     .sort((a, b) => b.score - a.score || b.candidate.createdAt.localeCompare(a.candidate.createdAt));
 
   return scored.slice(0, limit).map((entry) => ({
@@ -74,6 +81,12 @@ export function detectRelatedItems(
     score: Number(entry.score.toFixed(3)),
     reason: buildReason(entry.topicMatch, entry.sharedKeywords)
   }));
+}
+
+export function getRelatedItems(itemId: string, items: BrainItemRecord[], options: RelatedDetectionOptions = {}): string[] {
+  const target = items.find((item) => item.id === itemId);
+  if (!target) return [];
+  return detectRelatedItems(target, items, options).map((item) => item.id);
 }
 
 function normalizedTopic(value: string | null | undefined): string | null {

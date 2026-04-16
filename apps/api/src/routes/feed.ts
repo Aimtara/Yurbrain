@@ -8,6 +8,8 @@ import type { FeedWhyShown, StoredFeedCard } from "../services/feed/static-feed"
 import { toFeedCardResponse } from "../services/feed/static-feed";
 import type { AppState } from "../state";
 
+const clusterCardThreshold = 3;
+
 function parseLimit(value?: string): number {
   if (!value) return 20;
   const parsed = Number.parseInt(value, 10);
@@ -26,6 +28,17 @@ function parseSnoozeMinutes(value: unknown): number {
     }
   }
   return 60;
+}
+
+function inferRelatedCount(card: StoredFeedCard): number | null {
+  if (typeof card.relatedCount === "number" && Number.isFinite(card.relatedCount)) {
+    return Math.max(0, Math.trunc(card.relatedCount));
+  }
+  if (card.cardType !== "cluster") return null;
+  const matched = card.body.match(/(\d+)\s+(captures|items|notes|threads)/i);
+  if (!matched) return null;
+  const parsed = Number.parseInt(matched[1] ?? "", 10);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
 }
 
 function toFeedCardContract(card: StoredFeedCard, whyShown: FeedWhyShown) {
@@ -62,7 +75,28 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
     }
 
     const cards = userId ? await state.repo.listFeedCardsByUser(userId) : [];
-    const candidates = gatherFeedCandidates(cards, {
+    const [brainItems, tasks] = userId ? await Promise.all([state.repo.listBrainItemsByUser(userId), state.repo.listTasks({ userId })]) : [[], []];
+    const itemById = new Map(brainItems.map((item) => [item.id, item]));
+    const taskById = new Map(tasks.map((task) => [task.id, task]));
+    const cardsWithContext = cards.map((card) => {
+      const linkedItem = card.itemId ? itemById.get(card.itemId) : null;
+      const linkedTask = card.taskId ? taskById.get(card.taskId) : null;
+      return {
+        ...card,
+        relatedCount: inferRelatedCount(card),
+        lastTouched: card.lastTouched ?? linkedItem?.updatedAt ?? linkedTask?.updatedAt ?? card.lastRefreshedAt ?? card.createdAt
+      };
+    });
+    const clusteredItemIds = new Set(
+      cardsWithContext
+        .filter((card) => card.cardType === "cluster" && (card.relatedCount ?? 0) >= clusterCardThreshold)
+        .map((card) => card.itemId)
+        .filter((itemId): itemId is string => Boolean(itemId))
+    );
+    const cardsForCandidates = cardsWithContext.filter(
+      (card) => !(card.cardType === "item" && card.itemId && clusteredItemIds.has(card.itemId))
+    );
+    const candidates = gatherFeedCandidates(cardsForCandidates, {
       userId,
       lens,
       includeSnoozed: includeSnoozed === "true"
@@ -97,8 +131,10 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       snoozedUntil: null,
       refreshCount: 0,
       postponeCount: 0,
+      relatedCount: null,
       lastPostponedAt: null,
       lastRefreshedAt: null,
+      lastTouched: null,
       createdAt: new Date().toISOString()
     };
 

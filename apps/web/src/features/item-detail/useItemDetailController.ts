@@ -1,7 +1,18 @@
 import { useCallback } from "react";
-import { classifyBrainItem, createThread, listBrainItemArtifacts, listThreadMessages, listThreadsByTarget, queryBrainItemThread, sendMessage, summarizeBrainItem } from "@yurbrain/client";
+import {
+  classifyBrainItem,
+  createThread,
+  getBrainItemNextStep,
+  listBrainItemArtifacts,
+  listRelatedBrainItems,
+  listThreadMessages,
+  listThreadsByTarget,
+  queryBrainItemThread,
+  sendMessage,
+  summarizeBrainItemCluster
+} from "@yurbrain/client";
 
-import type { BrainItemDto, ContinuityContext, ItemArtifactDto, MessageDto, ThreadDto } from "../shared/types";
+import type { BrainItemDto, ClusterSynthesisDto, ContinuityContext, ItemArtifactDto, MessageDto, ThreadDto } from "../shared/types";
 import { deriveArtifactHistory } from "./item-detail-model";
 
 type UseItemDetailControllerInput = {
@@ -73,7 +84,7 @@ export function useItemDetailController({
 
         if (commentThread) {
           const comments = await listThreadMessages<MessageDto[]>(commentThread.id);
-          setCommentMessages(comments.filter((message) => message.role === "user"));
+          setCommentMessages(comments.filter((message) => message.role === "user" || message.role === "assistant"));
         } else {
           setCommentMessages([]);
         }
@@ -136,7 +147,7 @@ export function useItemDetailController({
   );
 
   const runQuickAction = useCallback(
-    async (action: "summarize" | "classify" | "convert_to_task") => {
+    async (action: "summarize" | "classify" | "convert_to_task" | "next_step") => {
       if (!selectedItem) return;
       setLastAction(action);
       if (action === "convert_to_task") {
@@ -146,15 +157,30 @@ export function useItemDetailController({
 
       try {
         if (action === "summarize") {
-          const response = await summarizeBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
+          const related = await listRelatedBrainItems<{ relatedItemIds: string[] }>(selectedItem.id).catch(() => ({ relatedItemIds: [] }));
+          const itemIds = [selectedItem.id, ...related.relatedItemIds].slice(0, 8);
+          const response = await summarizeBrainItemCluster<ClusterSynthesisDto>({ itemIds });
           setArtifactHistoryByItem((current) => {
             const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
             return {
               ...current,
-              [selectedItem.id]: { summary: [response.ai.content, ...existing.summary], classification: existing.classification }
+              [selectedItem.id]: { summary: [response.summary, ...existing.summary], classification: existing.classification }
             };
           });
-          setItemActionNotice("Summarized recent progress for faster re-entry.");
+          setItemActionNotice(`Summarized cluster continuity. Next action: ${response.suggestedNextAction}`);
+        } else if (action === "next_step") {
+          const related = await listRelatedBrainItems<{ relatedItemIds: string[] }>(selectedItem.id).catch(() => ({ relatedItemIds: [] }));
+          const itemIds = [selectedItem.id, ...related.relatedItemIds].slice(0, 8);
+          const response = await getBrainItemNextStep<ClusterSynthesisDto>({ itemIds });
+          const recommendation = `Next step: ${response.suggestedNextAction} Reason: ${response.reason}`;
+          const continuityThreadId = await ensureThreadForItem(selectedItem.id, "item_comment");
+          const storedAssistantMessage = await sendMessage<MessageDto>({
+            threadId: continuityThreadId,
+            role: "assistant",
+            content: recommendation
+          });
+          setCommentMessages((current) => [...current, storedAssistantMessage]);
+          setItemActionNotice(recommendation);
         } else {
           const response = await classifyBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
           setArtifactHistoryByItem((current) => {
@@ -168,9 +194,18 @@ export function useItemDetailController({
         }
       } catch {
         setLastAction(`${action}_failed`);
+        if (action === "summarize") {
+          setItemActionNotice("Could not summarize progress right now. You can continue by adding a short update manually.");
+          return;
+        }
+        if (action === "next_step") {
+          setItemActionNotice("Could not generate a next step right now. Add one concrete next move manually to keep continuity.");
+          return;
+        }
+        setItemActionNotice("Could not complete this AI action right now. Continue in the timeline and retry later.");
       }
     },
-    [runConvert, selectedItem, setArtifactHistoryByItem, setItemActionNotice, setLastAction]
+    [ensureThreadForItem, runConvert, selectedItem, setArtifactHistoryByItem, setCommentMessages, setItemActionNotice, setLastAction]
   );
 
   const runAiQuery = useCallback(

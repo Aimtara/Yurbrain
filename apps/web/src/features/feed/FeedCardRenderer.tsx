@@ -16,17 +16,8 @@ type FeedCardRendererProps = {
 };
 
 function buildClusterMeta(model: FeedCardModel): { topicLabel: string; itemCount: number; description: string } {
-  const reasons = model.card.whyShown.reasons;
-  const fromTitle = model.card.title.split(":")[0]?.trim();
-  const topicCandidate = [fromTitle, ...reasons].find((value) => value && value.length <= 26);
-  const topicLabel = (topicCandidate ?? "Related thread").replace(/[.]/g, "").trim() || "Related thread";
-  const inferredCount =
-    (() => {
-      const counted = model.card.body.match(/(\d+)\s+(items|notes|threads|themes)/i);
-      if (!counted) return null;
-      const parsed = Number.parseInt(counted[1] ?? "", 10);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    })() ?? Math.min(6, Math.max(2, reasons.length + (model.card.itemId ? 1 : 2)));
+  const topicLabel = model.card.title.trim() || "Related thread";
+  const inferredCount = model.card.relatedCount ?? Math.min(6, Math.max(2, model.card.whyShown.reasons.length + (model.card.itemId ? 1 : 2)));
   return {
     topicLabel,
     itemCount: inferredCount,
@@ -93,7 +84,7 @@ function renderClusterPlaceholderCard({
   model,
   onOpenItem,
   onConvertToTask,
-  onRefresh
+  onDismiss
 }: FeedCardRendererProps) {
   const clusterMeta = buildClusterMeta(model);
   return (
@@ -101,14 +92,14 @@ function renderClusterPlaceholderCard({
       key={model.card.id}
       title={model.card.title}
       description={clusterMeta.description}
-      whyShown={model.card.whyShown.summary}
+      whyShown={model.card.whyShownText ?? model.card.whyShown.summary}
       topicLabel={clusterMeta.topicLabel}
       itemCount={clusterMeta.itemCount}
       lastTouched={model.continuity.lastTouched}
       onSeeHighlights={model.continuity.sourceItemId ? () => onOpenItem(model) : undefined}
       onCompare={model.continuity.sourceItemId ? () => onOpenItem(model) : undefined}
       onTryOneToday={model.card.itemId ? () => onConvertToTask(model.card.itemId ?? "", model.card.body) : undefined}
-      onKeepInMind={() => onRefresh(model.card.id)}
+      onDismiss={() => onDismiss(model.card.id)}
     />
   );
 }
