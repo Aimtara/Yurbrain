@@ -4,12 +4,12 @@ import { tokens } from "../../design/tokens";
 export type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
 
 const lensLabels: Record<FeedLens, string> = {
-  all: "All",
-  keep_in_mind: "Keep in mind",
+  all: "Mixed",
+  keep_in_mind: "Keep nearby",
   open_loops: "Open loops",
   learning: "Learning",
-  in_progress: "In progress",
-  recently_commented: "Recent comments"
+  in_progress: "In motion",
+  recently_commented: "Recent notes"
 };
 
 export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens[]; activeLens: FeedLens; onChange: (lens: FeedLens) => void }) {
@@ -46,12 +46,12 @@ export function FeedLensBar({ lenses, activeLens, onChange }: { lenses: FeedLens
 }
 
 const lensHints: Record<FeedLens, string> = {
-  all: "A balanced mix of memories worth resurfacing now.",
-  keep_in_mind: "Gentle reminders to keep nearby while thinking.",
-  open_loops: "Unfinished threads that may need closure.",
-  learning: "Ideas and notes with reusable takeaways.",
-  in_progress: "Things already in motion so momentum stays intact.",
-  recently_commented: "Memories you recently discussed or updated."
+  all: "A balanced window into what is worth revisiting now.",
+  keep_in_mind: "Light cues to keep in view while you think.",
+  open_loops: "Threads that feel close to useful closure.",
+  learning: "Ideas with takeaways you can reuse quickly.",
+  in_progress: "Work already moving, so momentum stays easy.",
+  recently_commented: "Thoughts you recently continued or clarified."
 };
 
 const feedPalette = {

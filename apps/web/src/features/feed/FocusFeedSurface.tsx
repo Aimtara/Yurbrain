@@ -68,7 +68,7 @@ export function FocusFeedSurface({
     <>
       <FocusFeedScreen
         title="Focus Feed"
-        subtitle="Recognition first. Continue one thought at a time."
+        subtitle="Resurfaced thoughts worth revisiting, without pressure."
         reentryMessage={reentryMessage}
         activeLens={activeLens}
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
@@ -90,7 +90,7 @@ export function FocusFeedSurface({
           <FeedCard
             key={model.card.id}
             variant={model.variant}
-            badge={activeLens.replaceAll("_", " ")}
+            badge={activeLens === "all" ? undefined : activeLens.replaceAll("_", " ")}
             cardType={model.card.cardType}
             lens={model.card.lens}
             title={model.card.title}
