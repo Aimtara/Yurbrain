@@ -2,6 +2,13 @@ import type { FeedCardVariant, FeedLens } from "@yurbrain/ui";
 
 export type Surface = "feed" | "item" | "session" | "time" | "me";
 
+export type CaptureDraft = {
+  type: "text" | "link" | "image";
+  content: string;
+  source: string;
+  note: string;
+};
+
 export type FeedCardDto = {
   id: string;
   cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";

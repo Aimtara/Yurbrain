@@ -2,13 +2,13 @@ import { useCallback } from "react";
 import { createCaptureIntake } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
-import type { BrainItemDto } from "../shared/types";
+import type { BrainItemDto, CaptureDraft } from "../shared/types";
 import { captureSuccessMessages, userId } from "../shell/constants";
 
 type UseCaptureControllerInput = {
-  captureDraft: string;
+  captureDraft: CaptureDraft;
   activeLens: import("@yurbrain/ui").FeedLens;
-  setCaptureDraft: (draft: string) => void;
+  setCaptureDraft: (draft: CaptureDraft) => void;
   setCaptureSheetOpen: (open: boolean) => void;
   setCaptureLoading: (loading: boolean) => void;
   setCaptureError: (error: string) => void;
@@ -52,9 +52,18 @@ export function useCaptureController({
   loadFeed,
   loadTasks
 }: UseCaptureControllerInput) {
+  const resetCaptureDraft = useCallback(() => {
+    setCaptureDraft({
+      type: "text",
+      content: "",
+      source: "",
+      note: ""
+    });
+  }, [setCaptureDraft]);
+
   const captureItem = useCallback(
     async (intent: CaptureSubmitIntent = "save") => {
-      const normalized = captureDraft.trim();
+      const normalized = captureDraft.content.trim();
       if (!normalized) return;
       setCaptureLoading(true);
       setCaptureError("");
@@ -63,12 +72,13 @@ export function useCaptureController({
       try {
         const intake = await createCaptureIntake<CaptureIntakeResponse>({
           userId,
-          type: "text",
+          type: captureDraft.type,
           content: normalized,
-          source: "web_capture_sheet"
+          source: captureDraft.source.trim() || "web_capture_sheet",
+          note: captureDraft.note.trim() || undefined
         });
         const created = intake.item;
-        setCaptureDraft("");
+        resetCaptureDraft();
         setItems((current) => [created, ...current.filter((item) => item.id !== created.id)]);
         setSelectedItemId(created.id);
         setLastAction("Captured a new note.");
@@ -105,9 +115,9 @@ export function useCaptureController({
       captureDraft,
       loadFeed,
       loadTasks,
+      resetCaptureDraft,
       runConvert,
       setActiveSurface,
-      setCaptureDraft,
       setCaptureError,
       setCaptureLoading,
       setCaptureSheetOpen,
@@ -124,8 +134,9 @@ export function useCaptureController({
     setCaptureError("");
     setCaptureStatusNotice("");
     setCaptureSuccessNotice("");
+    resetCaptureDraft();
     setCaptureSheetOpen(true);
-  }, [setCaptureError, setCaptureSheetOpen, setCaptureStatusNotice, setCaptureSuccessNotice]);
+  }, [resetCaptureDraft, setCaptureError, setCaptureSheetOpen, setCaptureStatusNotice, setCaptureSuccessNotice]);
 
   const handleVoiceCaptureStub = useCallback(() => {
     setCaptureStatusNotice("Voice capture is a placeholder for now. Type your thought and save.");

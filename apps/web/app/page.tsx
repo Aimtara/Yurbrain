@@ -19,7 +19,22 @@ import { buildMeInsights, calculatePlannedMinutesForSession, deriveSessionElapse
 import { SessionSurface } from "../src/features/session/SessionSurface";
 import { TimeSurface } from "../src/features/session/TimeSurface";
 import { useSessionController } from "../src/features/session/useSessionController";
-import type { ActiveTaskContextPeek, BrainItemDto, ContinuityContext, FeedCardDto, FeedCardModel, FinishRebalanceDraft, MeInsights, MessageDto, PlanPreviewDraft, PostponeDraft, SessionDto, TaskDto, UserPreferenceDto } from "../src/features/shared/types";
+import type {
+  ActiveTaskContextPeek,
+  BrainItemDto,
+  CaptureDraft,
+  ContinuityContext,
+  FeedCardDto,
+  FeedCardModel,
+  FinishRebalanceDraft,
+  MeInsights,
+  MessageDto,
+  PlanPreviewDraft,
+  PostponeDraft,
+  SessionDto,
+  TaskDto,
+  UserPreferenceDto
+} from "../src/features/shared/types";
 
 export default function Page() {
   const {
@@ -50,7 +65,12 @@ export default function Page() {
     setCustomWindowMinutes
   } = useAppShellState();
 
-  const [captureDraft, setCaptureDraft] = useState("");
+  const [captureDraft, setCaptureDraft] = useState<CaptureDraft>({
+    type: "text",
+    content: "",
+    source: "",
+    note: ""
+  });
   const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [items, setItems] = useState<BrainItemDto[]>([]);
   const [selectedContinuity, setSelectedContinuity] = useState<ContinuityContext | null>(null);

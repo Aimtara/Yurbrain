@@ -20,5 +20,5 @@ export const storageKeys = {
 export const captureSuccessMessages: Record<CaptureSubmitIntent, string> = {
   save: "Saved. Returning you to the feed.",
   save_and_plan: "Saved and routed into lightweight planning.",
-  save_and_remind: "Saved. Reminder stub captured for follow-up."
+  save_and_remind: "Saved for deferred resurfacing."
 };

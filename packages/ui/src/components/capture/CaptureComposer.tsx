@@ -1,11 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 
 export type CaptureSubmitIntent = "save" | "save_and_plan" | "save_and_remind";
+export type CaptureComposerValue = {
+  type: "text" | "link" | "image";
+  content: string;
+  source: string;
+  note: string;
+};
 
 type Props = {
   isOpen: boolean;
-  value: string;
-  onChange: (value: string) => void;
+  value: CaptureComposerValue;
+  onChange: (value: CaptureComposerValue) => void;
   onClose: () => void;
   onSubmit: (intent: CaptureSubmitIntent) => void;
   isSubmitting?: boolean;
@@ -29,6 +35,7 @@ export function CaptureComposer({
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isCompact, setIsCompact] = useState(false);
+  const canSubmit = value.content.trim().length > 0;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -47,9 +54,9 @@ export function CaptureComposer({
     const node = textareaRef.current;
     if (!node) return;
     node.focus();
-    const cursorPosition = node.value.length;
+    const cursorPosition = value.content.length;
     node.setSelectionRange(cursorPosition, cursorPosition);
-  }, [isOpen]);
+  }, [isOpen, value.content]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -57,7 +64,7 @@ export function CaptureComposer({
     if (!node) return;
     node.style.height = "auto";
     node.style.height = `${Math.min(node.scrollHeight, 280)}px`;
-  }, [isOpen, value]);
+  }, [isOpen, value.content]);
 
   if (!isOpen) return null;
 
@@ -129,19 +136,34 @@ export function CaptureComposer({
           </div>
         </div>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }} aria-label="Attachment placeholders">
-          <span style={placeholderChipStyle}>Link placeholder</span>
-          <span style={placeholderChipStyle}>Image placeholder</span>
-          <span style={placeholderChipStyle}>Voice memo placeholder</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }} aria-label="Capture type">
+          {captureTypes.map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => onChange({ ...value, type })}
+              disabled={isSubmitting}
+              style={{
+                ...typeChipStyle,
+                background: value.type === type ? "#e0f2fe" : "#ffffff",
+                borderColor: value.type === type ? "#38bdf8" : "#cbd5e1"
+              }}
+            >
+              {captureTypeLabels[type]}
+            </button>
+          ))}
         </div>
 
+        <label htmlFor="capture-content" style={fieldLabelStyle}>
+          {contentFieldLabels[value.type]}
+        </label>
         <textarea
-          id="capture-composer"
+          id="capture-content"
           ref={textareaRef}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
+          value={value.content}
+          onChange={(event) => onChange({ ...value, content: event.target.value })}
           rows={3}
-          placeholder="Capture in your own words..."
+          placeholder={contentFieldPlaceholders[value.type]}
           style={{
             borderRadius: "12px",
             border: "1px solid #cbd5e1",
@@ -153,6 +175,34 @@ export function CaptureComposer({
           }}
         />
 
+        <div style={{ display: "grid", gap: "8px" }}>
+          <label htmlFor="capture-source" style={fieldLabelStyle}>
+            Source (optional)
+          </label>
+          <input
+            id="capture-source"
+            type="text"
+            value={value.source}
+            onChange={(event) => onChange({ ...value, source: event.target.value })}
+            placeholder="e.g. Slack, Twitter, Newsletter, copied from docs..."
+            style={textInputStyle}
+          />
+        </div>
+
+        <div style={{ display: "grid", gap: "8px" }}>
+          <label htmlFor="capture-note" style={fieldLabelStyle}>
+            Note (optional)
+          </label>
+          <textarea
+            id="capture-note"
+            value={value.note}
+            onChange={(event) => onChange({ ...value, note: event.target.value })}
+            rows={2}
+            placeholder="Why this matters or what to remember on resurfacing."
+            style={{ ...textInputStyle, minHeight: "72px", resize: "vertical" }}
+          />
+        </div>
+
         {successMessage ? (
           <p style={{ margin: 0, color: "#0f766e", fontWeight: 600 }}>{successMessage}</p>
         ) : null}
@@ -163,21 +213,21 @@ export function CaptureComposer({
           <button
             type="button"
             onClick={() => onSubmit("save")}
-            disabled={isSubmitting || !value.trim()}
+            disabled={isSubmitting || !canSubmit}
           >
             Save
           </button>
           <button
             type="button"
             onClick={() => onSubmit("save_and_plan")}
-            disabled={isSubmitting || !value.trim()}
+            disabled={isSubmitting || !canSubmit}
           >
             Save + Plan
           </button>
           <button
             type="button"
             onClick={() => onSubmit("save_and_remind")}
-            disabled={isSubmitting || !value.trim()}
+            disabled={isSubmitting || !canSubmit}
           >
             Save + Remind Later
           </button>
@@ -187,10 +237,46 @@ export function CaptureComposer({
   );
 }
 
-const placeholderChipStyle: React.CSSProperties = {
+const captureTypes: Array<CaptureComposerValue["type"]> = ["text", "link", "image"];
+
+const captureTypeLabels: Record<CaptureComposerValue["type"], string> = {
+  text: "Text",
+  link: "Link",
+  image: "Image"
+};
+
+const contentFieldLabels: Record<CaptureComposerValue["type"], string> = {
+  text: "Content",
+  link: "Link URL",
+  image: "Image URL or reference"
+};
+
+const contentFieldPlaceholders: Record<CaptureComposerValue["type"], string> = {
+  text: "Capture in your own words...",
+  link: "https://example.com/article-you-want-to-remember",
+  image: "https://example.com/image.png or brief image context"
+};
+
+const typeChipStyle: React.CSSProperties = {
   borderRadius: "999px",
-  border: "1px dashed #cbd5e1",
-  padding: "4px 10px",
+  border: "1px solid #cbd5e1",
+  padding: "6px 12px",
   fontSize: "12px",
-  color: "#475569"
+  color: "#0f172a",
+  fontWeight: 600
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+  color: "#334155",
+  fontSize: "13px",
+  fontWeight: 600
+};
+
+const textInputStyle: React.CSSProperties = {
+  borderRadius: "12px",
+  border: "1px solid #cbd5e1",
+  padding: "10px 12px",
+  width: "100%",
+  fontFamily: "inherit",
+  fontSize: "14px"
 };
