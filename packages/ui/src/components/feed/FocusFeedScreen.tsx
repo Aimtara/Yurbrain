@@ -121,24 +121,25 @@ export function FocusFeedScreen({
         <FeedLensBar lenses={lenses} activeLens={activeLens} onChange={onLensChange} />
         {executionLens}
         <p style={{ margin: 0, fontSize: "14px", lineHeight: "20px", color: "#475569" }}>
-          Focus on one card, continue lightly, then return.
+          Each card answers what it is, why now, and your next light move.
         </p>
-        {loading ? <p style={{ margin: 0 }}>Loading your focus feed...</p> : null}
+        {loading ? <p style={{ margin: 0 }}>Gathering the right threads for this moment...</p> : null}
         {errorMessage ? (
           <div style={styles.stateCard}>
-            <p style={{ margin: 0 }}>{errorMessage}</p>
+            <p style={{ margin: 0, fontWeight: 600 }}>Your feed took a pause.</p>
+            <p style={{ margin: "6px 0 0", color: "#475569" }}>{errorMessage}</p>
             {onRetry ? (
               <button type="button" onClick={onRetry} style={{ marginTop: "12px" }}>
-                Retry
+                Try again
               </button>
             ) : null}
           </div>
         ) : null}
         {!loading && !errorMessage && !hasCards ? (
           <div style={styles.stateCard}>
-            <p style={{ margin: 0, fontWeight: 600 }}>Nothing needs your attention in this lens yet.</p>
+            <p style={{ margin: 0, fontWeight: 600 }}>This lens is quiet right now.</p>
             <p style={{ margin: "8px 0 0", color: "#475569" }}>
-              Keep capturing thoughts and Yurbrain will bring them back when they are worth re-entering.
+              Keep capturing. Yurbrain will bring thoughts back when they are ready to re-enter.
             </p>
           </div>
         ) : null}

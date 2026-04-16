@@ -128,6 +128,7 @@ export function inferWhereLeftOff(
 }
 
 export function inferPrimaryActionLabel(card: FeedCardDto, canOpenContinuity: boolean): string {
+  if (supportsAction(card, "start_session")) return "Start Session";
   if (canOpenContinuity) return "Open continuity";
   if (card.stateFlags.hasSourceTask) return "Open execution";
   if (card.stateFlags.hasSourceItem) return "Open continuity";
