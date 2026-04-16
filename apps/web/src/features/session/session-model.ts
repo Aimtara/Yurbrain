@@ -51,6 +51,17 @@ export function calculatePlannedMinutesForSession(task: TaskDto | null): number 
   return estimateTaskMinutes(task);
 }
 
+export function summarizeExecutionHint(task: TaskDto | null, session: SessionDto | null): string | undefined {
+  if (!task) return undefined;
+  if (task.status === "done") return "Task completed.";
+  if (task.status === "in_progress") {
+    if (session?.state === "running") return "Task in progress with a running session.";
+    if (session?.state === "paused") return "Task in progress with a paused session.";
+    return "Task in progress.";
+  }
+  return "Task is queued as the next lightweight step.";
+}
+
 export function buildRebalanceSuggestion(deltaMinutes: number): string {
   if (deltaMinutes > 20) {
     return "This took longer than expected. Trim one optional follow-up so your next step stays lightweight.";

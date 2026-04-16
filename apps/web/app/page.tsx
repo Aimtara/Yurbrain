@@ -60,7 +60,8 @@ import {
   estimateTaskMinutes,
   formatDurationLabel,
   resolveTimeWindowMinutes,
-  selectActiveSession
+  selectActiveSession,
+  summarizeExecutionHint
 } from "../src/features/session/session-model";
 import { SessionSurface } from "../src/features/session/SessionSurface";
 import { TimeSurface } from "../src/features/session/TimeSurface";

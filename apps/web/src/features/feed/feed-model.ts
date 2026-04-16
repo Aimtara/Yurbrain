@@ -30,7 +30,7 @@ export function inferVariant(card: FeedCardDto, relatedTask?: TaskDto, relatedSe
   if (relatedTask?.status === "done") return "done";
   if (relatedSession?.state === "running") return "execution";
   const blockedState = inferBlockedState(card, relatedTask, relatedSession);
-  if (blockedState && relatedSession?.state !== "running") return "blocked";
+  if (blockedState) return "blocked";
   if (relatedTask?.status === "in_progress" || card.cardType === "resume") return "execution";
   if (card.cardType === "open_loop") return "resume";
   const summary = card.whyShown.summary.toLowerCase();
