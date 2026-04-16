@@ -77,7 +77,7 @@ export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}
     ranked.push({
       card: selected.card,
       score: bestScore.finalScore,
-      whyShown: buildWhyShown(bestScore, requestedLens)
+      whyShown: buildWhyShown(bestScore, requestedLens, now)
     });
   }
 
@@ -150,42 +150,52 @@ function isHigherRank(candidate: ScoreBreakdown, currentBest: ScoreBreakdown): b
   return candidate.card.id.localeCompare(currentBest.card.id) < 0;
 }
 
-function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["lens"]): FeedWhyShown {
+function buildWhyShown(score: ScoreBreakdown, requestedLens: StoredFeedCard["lens"], now: Date): FeedWhyShown {
   const reasons: string[] = [];
+  const refreshedAgeHours = getAgeHours(score.card.lastRefreshedAt, now);
+  const postponedAgeHours = getAgeHours(score.card.lastPostponedAt ?? undefined, now);
+
+  if (score.continuityBoost > 0 && refreshedAgeHours !== null) {
+    reasons.push(`You revisited this ${formatRelativeAge(refreshedAgeHours)}, so it stays easy to resume.`);
+  }
 
   if (requestedLens !== "all" && score.card.lens === requestedLens) {
-    reasons.push(`You're viewing ${lensLabels[requestedLens]}, and this card fits that lens.`);
+    reasons.push(`Fits your ${lensLabels[requestedLens]} lens right now.`);
+  }
+
+  if (score.card.taskId) {
+    reasons.push("Linked to a task already in motion.");
   }
 
   if (score.ageHours <= 24) {
-    reasons.push(`Updated ${formatRelativeAge(score.ageHours)}, so it is still top-of-mind.`);
+    reasons.push(`Captured ${formatRelativeAge(score.ageHours)}, so the context is still fresh.`);
   } else if (score.ageHours <= 72) {
-    reasons.push(`Captured ${formatRelativeAge(score.ageHours)}, making it timely to revisit.`);
+    reasons.push(`Captured ${formatRelativeAge(score.ageHours)} and still worth a quick revisit.`);
   }
 
   if (score.actionabilityBoost > 0) {
-    reasons.push(`${cardTypeLabels[score.card.cardType]} cards often lead to a useful next step.`);
+    reasons.push(`${cardTypeLabels[score.card.cardType]} cards usually have a light next step.`);
   }
 
-  if (score.continuityBoost > 0) {
-    reasons.push("You revisited this recently, so it stays in your flow.");
-  }
   if ((score.card.postponeCount ?? 0) > 0) {
-    reasons.push("You've postponed this before, so it stays visible without dominating the feed.");
+    const count = score.card.postponeCount ?? 0;
+    const postponedSuffix = postponedAgeHours === null ? "" : ` (last ${formatRelativeAge(postponedAgeHours)})`;
+    reasons.push(`You snoozed this ${count === 1 ? "once" : `${count} times`}${postponedSuffix}, so it resurfaces gently.`);
   }
 
   if (requestedLens === "all" && score.typeDiversityPenalty === 0) {
-    reasons.push("Added for variety, so your feed does not repeat one theme.");
+    reasons.push("Added to keep your feed varied, not repetitive.");
   }
 
   if (reasons.length === 0) {
-    reasons.push("Still relevant based on recency, continuity, and feed balance.");
+    reasons.push("Back now because recency and feed balance both point to it.");
   }
 
-  const summary = reasons[0];
+  const uniqueReasons = Array.from(new Set(reasons)).map((reason) => clampReasonLength(reason));
+  const summary = uniqueReasons[0] ?? clampReasonLength("Back now to keep your thinking thread continuous.");
   return {
     summary,
-    reasons: [summary, ...reasons.slice(1, 3)]
+    reasons: uniqueReasons.slice(0, 3)
   };
 }
 
@@ -195,4 +205,16 @@ function formatRelativeAge(ageHours: number): string {
   const days = Math.floor(ageHours / 24);
   if (days === 1) return "1 day ago";
   return `${days} days ago`;
+}
+
+function getAgeHours(isoValue: string | undefined | null, now: Date): number | null {
+  if (!isoValue) return null;
+  const parsed = new Date(isoValue).getTime();
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, (now.getTime() - parsed) / 3_600_000);
+}
+
+function clampReasonLength(reason: string): string {
+  if (reason.length <= 160) return reason;
+  return `${reason.slice(0, 157).trimEnd()}...`;
 }
