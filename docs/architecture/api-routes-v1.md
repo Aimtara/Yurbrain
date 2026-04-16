@@ -5,6 +5,7 @@ Brain:
 - GET /brain-items/:id
 - GET /brain-items
 - PATCH /brain-items/:id
+- GET /brain-items/:id/artifacts
 
 Threads:
 - POST /threads
@@ -19,6 +20,10 @@ Feed:
 - POST /feed/:id/snooze
 - POST /feed/:id/refresh
 
+Preferences:
+- GET /preferences/:userId
+- PUT /preferences/:userId
+
 AI:
 - POST /ai/summarize
 - POST /ai/classify
@@ -32,5 +37,6 @@ Tasks:
 - PATCH /tasks/:id
 - GET /tasks
 - POST /tasks/:id/start
+- GET /sessions
 - POST /sessions/:id/pause
 - POST /sessions/:id/finish

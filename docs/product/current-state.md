@@ -1,6 +1,6 @@
 # Yurbrain Current Implementation State
 
-_Last audited: April 15, 2026 (UTC)._
+_Last audited: April 16, 2026 (UTC)._
 
 This document is factual current state after code inspection plus command verification.
 
@@ -105,7 +105,6 @@ Not used for runtime truth:
 
 ## Known technical debt
 
-- API route docs in `docs/architecture/api-routes-v1.md` still describe older AI path shapes (`/ai/brain-items/:id/...`) that do not match current runtime (`/ai/summarize`, `/ai/classify`, `/ai/query`).
 - Repository uses app-local import path from API to `packages/db/src` instead of published package build boundaries.
 - Database schema keeps `confidence` as text in artifacts for compatibility with current migrations.
 - `/events` endpoint intentionally returns `403` until auth/per-user filtering is implemented.
@@ -120,6 +119,6 @@ Not used for runtime truth:
 
 Stabilize MVP for repeatable local demo + QA:
 1. keep web loop as primary validated path,
-2. align stale architecture docs with real routes/contracts,
+2. keep architecture docs aligned with runtime routes/contracts as features land,
 3. tighten package boundaries and script coverage (lint/build/test parity),
 4. prepare auth boundary without changing current object model.
