@@ -1,9 +1,20 @@
 import { useCallback } from "react";
-import { createBrainItem } from "@yurbrain/client";
+import { createCaptureIntake } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
 import type { BrainItemDto } from "../shared/types";
 import { captureSuccessMessages, userId } from "../shell/constants";
+
+function inferCaptureType(content: string): "text" | "link" | "image" {
+  const normalized = content.trim();
+  if (/^https?:\/\//i.test(normalized)) {
+    if (/\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(normalized)) {
+      return "image";
+    }
+    return "link";
+  }
+  return "text";
+}
 
 type UseCaptureControllerInput = {
   captureDraft: string;
@@ -49,11 +60,16 @@ export function useCaptureController({
       setCaptureLoading(true);
       setCaptureError("");
       setCaptureStatusNotice("");
-      const normalizedTitle = normalized.replace(/\s+/g, " ").slice(0, 80);
-      const title = normalizedTitle.length > 0 ? normalizedTitle : "Captured note";
+      const captureType = inferCaptureType(normalized);
 
       try {
-        const created = await createBrainItem<BrainItemDto>({ userId, type: "note", title, rawContent: normalized });
+        const intake = await createCaptureIntake<{ itemId: string; item: BrainItemDto }>({
+          userId,
+          type: captureType,
+          content: normalized,
+          source: "Web capture sheet"
+        });
+        const created = intake.item;
         setCaptureDraft("");
         setItems((current) => [created, ...current.filter((item) => item.id !== created.id)]);
         setSelectedItemId(created.id);

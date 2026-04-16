@@ -112,6 +112,18 @@ export function useYurbrainApi() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
+    summarizeCluster: <T>(payload: { itemIds: string[] }) =>
+      apiClient<T>(endpoints.aiSummarizeCluster, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    getNextStep: <T>(payload: { itemIds: string[] }) =>
+      apiClient<T>(endpoints.aiNextStep, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
     getUserPreference: <T>(userId: string) => apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`),
     updateUserPreference: <T>(userId: string, payload: unknown) =>
       apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`, {

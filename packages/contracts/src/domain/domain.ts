@@ -76,7 +76,9 @@ export const BrainItemSchema = z
     previewTitle: z.string().min(1).max(200).nullable().default(null),
     previewDescription: z.string().min(1).max(500).nullable().default(null),
     previewImageUrl: z.string().min(1).max(500).nullable().default(null),
+    note: z.string().min(1).max(1_000).nullable().default(null),
     topicGuess: z.string().min(1).max(120).nullable().default(null),
+    recencyWeight: z.number().min(0).max(1).default(1),
     clusterKey: z.string().min(1).max(120).nullable().default(null),
     founderModeAtCapture: z.boolean().default(false),
     executionMetadata: z.record(z.string(), z.unknown()).nullable().default(null),
@@ -131,8 +133,10 @@ export const FeedCardSchema = z
     snoozedUntil: z.string().datetime().nullable(),
     refreshCount: z.number().int().min(0),
     postponeCount: z.number().int().min(0),
+    relatedCount: z.number().int().min(0).nullable().default(null),
     lastPostponedAt: z.string().datetime().nullable(),
     lastRefreshedAt: z.string().datetime().nullable(),
+    lastTouched: z.string().datetime().nullable().default(null),
     availableActions: z.array(FeedActionSchema).min(1),
     explore: ExploreNodeSchema.optional(),
     stateFlags: z
@@ -145,6 +149,7 @@ export const FeedCardSchema = z
       })
       .strict(),
     whyShown: FeedWhyShownSchema,
+    whyShownText: z.string().min(1).max(160).optional(),
     createdAt: z.string().datetime()
   })
   .strict();

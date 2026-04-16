@@ -3,7 +3,7 @@ import React from "react";
 import { BrainItemDetail } from "./BrainItemDetail";
 import { CommentComposer, type CommentComposerMode } from "../feed/CommentComposer";
 
-type QuickAction = "summarize" | "classify" | "convert_to_task";
+type QuickAction = "summarize" | "classify" | "convert_to_task" | "next_step";
 
 type RelatedItem = {
   id: string;
@@ -45,6 +45,7 @@ type ItemDetailScreenProps = {
   onAskYurbrain?: (question: string) => void;
   onConvertCommentToTask?: (comment: string) => void;
   onOpenRelatedItem?: (itemId: string) => void;
+  onShowRelatedItems?: () => void;
   onStartSession?: () => void;
   canStartSession?: boolean;
 };
@@ -174,24 +175,19 @@ export function ItemDetailScreen({
   onAskYurbrain,
   onConvertCommentToTask,
   onOpenRelatedItem,
+  onShowRelatedItems,
   onStartSession,
   canStartSession = false
 }: ItemDetailScreenProps) {
   const [preferredComposerMode, setPreferredComposerMode] = React.useState<CommentComposerMode>("comment");
   const [composerFocusSignal, setComposerFocusSignal] = React.useState(0);
   const [showAllRelated, setShowAllRelated] = React.useState(false);
+  const relatedSectionRef = React.useRef<HTMLElement | null>(null);
 
   const timelineInReverse = React.useMemo(() => [...timeline].reverse(), [timeline]);
   const latestTimelineEntry = timelineInReverse[0];
-  const quickNextQuestion = `What should I do next on "${item.title}"? Give one recommendation, one reason, and one next move.`;
   const relatedItemsToShow = showAllRelated ? relatedItems : relatedItems.slice(0, 3);
   const canShowMoreRelated = relatedItems.length > 3;
-  const summarizeSimilarPrompt = relatedItems.length
-    ? `Summarize the shared continuity between "${item.title}" and these related items: ${relatedItems
-        .slice(0, 5)
-        .map((related) => `"${related.title}"`)
-        .join(", ")}. Focus on one connective theme and one next move.`
-    : `Summarize this item in continuity terms: one key theme and one next move.`;
 
   const focusComposer = (mode: CommentComposerMode) => {
     setPreferredComposerMode(mode);
@@ -269,8 +265,28 @@ export function ItemDetailScreen({
           <button type="button" onClick={() => focusComposer("comment")} style={styles.primaryAction}>
             Add Update
           </button>
-          <button type="button" onClick={() => onQuickAction("convert_to_task")} style={styles.primaryAction}>
-            Plan This
+          <button type="button" onClick={() => onQuickAction("summarize")} style={styles.secondaryAction}>
+            Summarize Progress
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onQuickAction("next_step");
+            }}
+            style={styles.secondaryAction}
+          >
+            What Should I Do Next?
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setShowAllRelated(true);
+              onShowRelatedItems?.();
+              relatedSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            style={styles.secondaryAction}
+          >
+            Show Related Items
           </button>
           <button
             type="button"
@@ -283,27 +299,6 @@ export function ItemDetailScreen({
             }}
           >
             Start Session
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (onAskYurbrain) {
-                onAskYurbrain(summarizeSimilarPrompt);
-                return;
-              }
-              onQuickAction("summarize");
-            }}
-            style={styles.secondaryAction}
-          >
-            Summarize Similar
-          </button>
-          <button
-            type="button"
-            onClick={() => onAskYurbrain?.(quickNextQuestion)}
-            disabled={!onAskYurbrain}
-            style={styles.secondaryAction}
-          >
-            What Should I Do Next?
           </button>
         </div>
         {!canStartSession ? (
@@ -399,7 +394,7 @@ export function ItemDetailScreen({
         ) : null}
       </div>
 
-      <div style={{ display: "grid", gap: "8px" }}>
+      <section ref={relatedSectionRef} style={{ display: "grid", gap: "8px" }}>
         <h3 style={{ margin: 0 }}>Related continuity</h3>
         {relatedItems.length === 0 ? <p style={{ margin: 0, color: "#475569" }}>No related items yet. Capture and update history will connect nearby thoughts over time.</p> : null}
         {relatedItems.length > 0 ? (
@@ -429,7 +424,7 @@ export function ItemDetailScreen({
             ) : null}
           </div>
         ) : null}
-      </div>
+      </section>
 
       {artifactHistory}
     </section>

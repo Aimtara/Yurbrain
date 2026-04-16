@@ -39,6 +39,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@yurbrain/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       '@yurbrain/ui':
         specifier: workspace:*
         version: link:../../packages/ui
