@@ -363,9 +363,8 @@ function inferVariant(card: FeedCardDto, relatedTask?: TaskDto, relatedSession?:
   if (card.stateFlags.dismissed) return "done";
   if (relatedTask?.status === "done") return "done";
   if (relatedSession?.state === "running") return "execution";
-  const postponeCount = card.postponeCount ?? 0;
   const blockedState = inferBlockedState(card, relatedTask, relatedSession);
-  if ((blockedState && relatedSession?.state !== "running") || postponeCount >= 2) return "blocked";
+  if (blockedState && relatedSession?.state !== "running") return "blocked";
   if (relatedTask?.status === "in_progress" || card.cardType === "resume") return "execution";
   if (card.cardType === "open_loop") return "resume";
   const summary = card.whyShown.summary.toLowerCase();
@@ -375,6 +374,7 @@ function inferVariant(card: FeedCardDto, relatedTask?: TaskDto, relatedSession?:
 }
 
 function inferBlockedState(card: FeedCardDto, relatedTask?: TaskDto, relatedSession?: SessionDto): string | undefined {
+  if (relatedSession?.state === "running") return undefined;
   const postponeCount = card.postponeCount ?? 0;
   if (postponeCount >= 2) {
     const lastPostponed = formatRelative(card.lastPostponedAt ?? undefined);
@@ -417,10 +417,19 @@ function inferNextStep(card: FeedCardDto, variant: FeedCardVariant, relatedTask?
   return "Open and add one continuation note.";
 }
 
-function inferContinuityNote(card: FeedCardDto, variant: FeedCardVariant, relatedTask?: TaskDto, relatedSession?: SessionDto): string | undefined {
+function inferContinuityNote(
+  card: FeedCardDto,
+  variant: FeedCardVariant,
+  relatedTask?: TaskDto,
+  relatedSession?: SessionDto,
+  relatedItem?: BrainItemDto
+): string | undefined {
   const blockedState = inferBlockedState(card, relatedTask, relatedSession);
   if (variant === "blocked" && blockedState) {
     return `Blocked signal: ${blockedState}`;
+  }
+  if (!card.itemId && relatedTask?.sourceItemId && relatedItem) {
+    return `Source item "${relatedItem.title}" was touched ${formatRelative(relatedItem.updatedAt) ?? "recently"}.`;
   }
   return card.whyShown.reasons.find((reason) => !/next|step|follow|continue|resume/i.test(reason));
 }
@@ -786,7 +795,7 @@ export default function Page() {
         continuity: {
           whyShown: card.whyShown.summary,
           whereLeftOff: inferWhereLeftOff(card, variant, linkedTask, linkedSession, linkedItem),
-          changedSince: inferContinuityNote(card, variant, linkedTask, linkedSession),
+          changedSince: inferContinuityNote(card, variant, linkedTask, linkedSession, linkedItem),
           blockedState: variant === "blocked" ? inferBlockedState(card, linkedTask, linkedSession) : undefined,
           nextStep: inferNextStep(card, variant, linkedTask, linkedSession, linkedItem),
           lastTouched: formatRelative(linkedItem?.updatedAt ?? linkedTask?.updatedAt ?? linkedSession?.startedAt),

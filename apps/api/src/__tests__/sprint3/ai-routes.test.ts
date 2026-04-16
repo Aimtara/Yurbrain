@@ -88,3 +88,56 @@ test("/ai/query uses fallback on timeout", async () => {
   assert.match(body.message.content, /Recommendation:/);
   assert.match(body.message.content, /Next move:/);
 });
+
+test("/ai/query next-step response reflects linked todo task", async () => {
+  const userId = "33333333-3333-4333-8333-333333333333";
+  const itemResponse = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    payload: {
+      userId,
+      type: "note",
+      title: "Prepare launch notes",
+      rawContent: "Need a concise launch summary and owner check."
+    }
+  });
+
+  assert.equal(itemResponse.statusCode, 201);
+  const item = itemResponse.json<{ id: string }>();
+
+  const taskResponse = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: {
+      userId,
+      title: "Draft launch summary",
+      sourceItemId: item.id
+    }
+  });
+  assert.equal(taskResponse.statusCode, 201);
+
+  const threadResp = await app.inject({
+    method: "POST",
+    url: "/threads",
+    payload: {
+      targetItemId: item.id,
+      kind: "item_chat"
+    }
+  });
+
+  const thread = threadResp.json<{ id: string }>();
+  const resp = await app.inject({
+    method: "POST",
+    url: "/ai/query",
+    payload: {
+      threadId: thread.id,
+      question: "What should I do next on this?"
+    }
+  });
+
+  assert.equal(resp.statusCode, 201);
+  const body = resp.json<{ message: { content: string } }>();
+  assert.match(body.message.content, /Recommendation: Start the linked task now\./);
+  assert.match(body.message.content, /Reason: A linked task already exists, so starting is the lowest-friction way forward\./);
+  assert.match(body.message.content, /Next move: Start the linked task with one short session\./);
+});

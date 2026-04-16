@@ -59,6 +59,9 @@ function describeDone(tasks: TaskRecord[]): string {
 }
 
 function describeBlocked(task: TaskRecord | null, session: SessionRecord | null, card: FeedCardRecord | null): string {
+  if (task?.status === "in_progress" && session?.state === "running") {
+    return "No strong blocker signal";
+  }
   const postponeCount = card?.postponeCount ?? 0;
   if (postponeCount >= 2) {
     return `Postponed ${postponeCount} times`;
@@ -70,6 +73,25 @@ function describeBlocked(task: TaskRecord | null, session: SessionRecord | null,
     return "Task exists but keeps getting deferred";
   }
   return "No strong blocker signal";
+}
+
+function describeRecommendation(task: TaskRecord | null, session: SessionRecord | null, blocked: string): string {
+  if (blocked.startsWith("Postponed")) {
+    return "Revisit this deferred item now";
+  }
+  if (task?.status === "in_progress" && session?.state === "paused") {
+    return "Resume the paused task now";
+  }
+  if (task?.status === "in_progress" && session?.state === "running") {
+    return "Keep the active task moving";
+  }
+  if (task?.status === "todo") {
+    return "Start the linked task now";
+  }
+  if (task?.status === "done") {
+    return "Close the loop with a reflection note";
+  }
+  return "Continue this item now";
 }
 
 function describeNextMove(task: TaskRecord | null, session: SessionRecord | null, blocked: string): string {
@@ -99,7 +121,7 @@ function describeReason(task: TaskRecord | null, blocked: string): string {
     return "Execution context already exists, so continuing is lower friction than switching";
   }
   if (task?.status === "todo") {
-    return "A linked task is already scoped and ready";
+    return "A linked task already exists, so starting is the lowest-friction way forward";
   }
   if (task?.status === "done") {
     return "Closure keeps this loop from resurfacing without context";
@@ -142,8 +164,8 @@ export async function buildItemExecutionContext(state: AppState, itemId: string)
     compactLine(latestUser?.content ?? latestAssistant?.content ?? item.rawContent) || "No continuation update captured yet";
   const done = describeDone(linkedTasks);
   const blocked = describeBlocked(primaryTask, primarySession, primaryCard);
+  const recommendation = describeRecommendation(primaryTask, primarySession, blocked);
   const nextMove = describeNextMove(primaryTask, primarySession, blocked);
-  const recommendation = primaryTask?.status === "done" ? "Close the loop with one reflection" : "Continue this item now";
   const reason = describeReason(primaryTask, blocked);
 
   return {
