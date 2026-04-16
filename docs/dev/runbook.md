@@ -1,6 +1,6 @@
 # Yurbrain Local Runbook (Current State)
 
-_Last verified: April 14, 2026 (UTC), after persistence hardening pass._
+_Last updated: April 16, 2026 (UTC), after Wave 3 completion and docs sync._
 
 This runbook lists only commands verified in the current repository state.
 
