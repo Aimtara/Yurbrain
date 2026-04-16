@@ -25,6 +25,7 @@ export const RenderModeSchema = z.enum(["focus", "explore"]);
 export const AiSummaryModeSchema = z.enum(["concise", "balanced", "detailed"]);
 export const FeedDensitySchema = z.enum(["comfortable", "compact"]);
 export const ResurfacingIntensitySchema = z.enum(["gentle", "balanced", "active"]);
+export const CaptureContentTypeSchema = z.enum(["text", "link", "image"]);
 export const ExploreRelationKindSchema = z.enum(["related", "depends_on", "contrasts", "expands"]);
 export const FeedWhyShownSchema = z
   .object({
@@ -67,8 +68,18 @@ export const BrainItemSchema = z
     id: z.string().uuid(),
     userId: z.string().uuid(),
     type: BrainItemTypeSchema,
+    contentType: CaptureContentTypeSchema.default("text"),
     title: z.string().min(1).max(200),
     rawContent: z.string().min(1),
+    sourceApp: z.string().min(1).max(80).nullable().default(null),
+    sourceLink: z.string().min(1).max(500).nullable().default(null),
+    previewTitle: z.string().min(1).max(200).nullable().default(null),
+    previewDescription: z.string().min(1).max(500).nullable().default(null),
+    previewImageUrl: z.string().min(1).max(500).nullable().default(null),
+    topicGuess: z.string().min(1).max(120).nullable().default(null),
+    clusterKey: z.string().min(1).max(120).nullable().default(null),
+    founderModeAtCapture: z.boolean().default(false),
+    executionMetadata: z.record(z.string(), z.unknown()).nullable().default(null),
     status: BrainItemStatusSchema,
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime()

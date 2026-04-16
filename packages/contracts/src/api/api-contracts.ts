@@ -4,6 +4,7 @@ import {
   ArtifactTypeSchema,
   BrainItemSchema,
   BrainItemTypeSchema,
+  CaptureContentTypeSchema,
   FeedDensitySchema,
   FeedCardSchema,
   FeedLensSchema,
@@ -25,6 +26,63 @@ export const CreateBrainItemRequestSchema = z
     type: BrainItemTypeSchema,
     title: z.string().min(1).max(200),
     rawContent: z.string().min(1)
+  })
+  .strict();
+
+const CaptureUrlSchema = z.string().trim().min(1).max(500);
+
+export const CaptureIntakeRequestSchema = z
+  .object({
+    userId: z.string().uuid(),
+    type: CaptureContentTypeSchema.optional(),
+    text: z.string().min(1).max(10_000).optional(),
+    link: CaptureUrlSchema.optional(),
+    image: CaptureUrlSchema.optional(),
+    source: z
+      .object({
+        app: z.string().min(1).max(80).optional(),
+        link: CaptureUrlSchema.optional()
+      })
+      .strict()
+      .optional(),
+    preview: z
+      .object({
+        title: z.string().min(1).max(200).optional(),
+        description: z.string().min(1).max(500).optional(),
+        imageUrl: CaptureUrlSchema.optional()
+      })
+      .strict()
+      .optional(),
+    topicGuess: z.string().min(1).max(120).optional(),
+    founderMode: z.boolean().optional(),
+    execution: z.record(z.string(), z.unknown()).optional()
+  })
+  .strict()
+  .refine((value) => Boolean(value.text || value.link || value.image), {
+    message: "At least one of text, link, or image is required"
+  });
+
+export const CaptureRelatedItemSchema = z
+  .object({
+    id: z.string().uuid(),
+    title: z.string().min(1),
+    topicGuess: z.string().nullable(),
+    score: z.number().min(0),
+    reason: z.string().min(1)
+  })
+  .strict();
+
+export const CaptureIntakeResponseSchema = z
+  .object({
+    item: BrainItemSchema,
+    relatedItems: z.array(CaptureRelatedItemSchema),
+    clusterCard: FeedCardSchema.nullable(),
+    enrichment: z
+      .object({
+        fallbackUsed: z.boolean(),
+        warnings: z.array(z.string())
+      })
+      .strict()
   })
   .strict();
 
@@ -211,6 +269,7 @@ export const UpdateUserPreferenceRequestSchema = z
   .refine((value) => Object.keys(value).length > 0, { message: "At least one field must be provided" });
 
 export type CreateBrainItemRequest = z.infer<typeof CreateBrainItemRequestSchema>;
+export type CaptureIntakeRequest = z.infer<typeof CaptureIntakeRequestSchema>;
 export type UpdateBrainItemRequest = z.infer<typeof UpdateBrainItemRequestSchema>;
 export type CreateThreadRequest = z.infer<typeof CreateThreadRequestSchema>;
 export type CreateMessageRequest = z.infer<typeof CreateMessageRequestSchema>;
@@ -239,3 +298,4 @@ export type AiArtifactResponse = z.infer<typeof AiArtifactResponseSchema>;
 export type QueryItemResponse = z.infer<typeof QueryItemResponseSchema>;
 export type UserPreferenceResponse = z.infer<typeof UserPreferenceResponseSchema>;
 export type UpdateUserPreferenceRequest = z.infer<typeof UpdateUserPreferenceRequestSchema>;
+export type CaptureIntakeResponse = z.infer<typeof CaptureIntakeResponseSchema>;
