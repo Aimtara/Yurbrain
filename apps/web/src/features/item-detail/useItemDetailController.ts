@@ -184,14 +184,29 @@ export function useItemDetailController({
           threadId: activeThreadId,
           question
         });
+        const continuityThreadId = await ensureThreadForItem(selectedItem.id, "item_comment");
+        await Promise.all([
+          sendMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
+          sendMessage<MessageDto>({ threadId: continuityThreadId, role: "assistant", content: response.message.content })
+        ]);
         setChatMessages((current) => [...current, response.userMessage, response.message]);
+        setCommentMessages((current) => [
+          ...current,
+          {
+            ...response.userMessage,
+            threadId: continuityThreadId
+          },
+          {
+            ...response.message,
+            threadId: continuityThreadId
+          }
+        ]);
         setChatFallbackNotice(response.fallbackUsed ? "AI fallback used for this response." : "");
         setItemActionNotice("Asked Yurbrain in-context.");
       } catch {
         setChatError("Could not reach AI query. Retry your last question.");
         setChatFallbackNotice("AI query unavailable; using local echo fallback.");
-        setChatMessages((current) => [
-          ...current,
+        const fallbackEntries: MessageDto[] = [
           { id: `local-user-${Date.now()}`, threadId: chatThreadId, role: "user", content: question, createdAt: new Date().toISOString() },
           {
             id: `local-assistant-${Date.now()}`,
@@ -204,7 +219,12 @@ export function useItemDetailController({
             } Next move: ${derivedItemContinuity.nextStep ?? "Write one continuation note, then return to feed."}`,
             createdAt: new Date().toISOString()
           }
+        ];
+        setChatMessages((current) => [
+          ...current,
+          ...fallbackEntries
         ]);
+        setCommentMessages((current) => [...current, ...fallbackEntries]);
         setItemActionNotice("Used local ask fallback.");
       }
     },

@@ -347,6 +347,9 @@ export function ItemDetailScreen({
         ) : (
           <p style={{ margin: 0 }}>No continuity entries yet. Add a quick update to preserve your next re-entry.</p>
         )}
+        {timelineInReverse.length > 1 ? (
+          <p style={{ margin: 0, color: "#64748b", fontSize: "12px" }}>Newest first. Scroll down for earlier thinking.</p>
+        ) : null}
         {timelineInReverse.length > 0 ? (
           <div style={styles.timelineTrack}>
             {timelineInReverse.map((entry) => (

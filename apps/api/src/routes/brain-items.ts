@@ -11,6 +11,7 @@ import {
   ListItemArtifactsQuerySchema,
   UpdateBrainItemRequestSchema
 } from "../../../../packages/contracts/src";
+import { generateCardFromItem } from "../services/feed/generate-card";
 import type { AppState } from "../state";
 
 export async function registerBrainItemRoutes(app: FastifyInstance, state: AppState) {
@@ -30,6 +31,19 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
     });
 
     await state.repo.createBrainItem(item);
+    const existingCards = await state.repo.listFeedCardsByUser(item.userId);
+    const hasCardForItem = existingCards.some((card) => card.itemId === item.id);
+    if (!hasCardForItem) {
+      await state.repo.createFeedCard(
+        generateCardFromItem({
+          id: item.id,
+          userId: item.userId,
+          title: item.title,
+          rawContent: item.rawContent,
+          createdAt: item.createdAt
+        })
+      );
+    }
     await state.repo.appendEvent({
       id: randomUUID(),
       userId: item.userId,
