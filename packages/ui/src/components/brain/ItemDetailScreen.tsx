@@ -36,7 +36,6 @@ type ItemDetailScreenProps = {
   loading?: boolean;
   errorMessage?: string;
   actionNotice?: string;
-  chatPanel?: React.ReactNode;
   artifactHistory?: React.ReactNode;
   suggestedPrompts?: string[];
   relatedItems?: RelatedItem[];
@@ -152,7 +151,6 @@ export function ItemDetailScreen({
   loading,
   errorMessage,
   actionNotice,
-  chatPanel,
   artifactHistory,
   suggestedPrompts = [],
   relatedItems = [],
@@ -243,7 +241,16 @@ export function ItemDetailScreen({
           <button type="button" onClick={() => onQuickAction("convert_to_task")} style={styles.primaryAction}>
             Plan This
           </button>
-          <button type="button" onClick={onStartSession} disabled={!canStartSession || !onStartSession} style={styles.primaryAction}>
+          <button
+            type="button"
+            onClick={onStartSession}
+            disabled={!canStartSession || !onStartSession}
+            style={{
+              ...styles.primaryAction,
+              opacity: canStartSession && onStartSession ? 1 : 0.55,
+              cursor: canStartSession && onStartSession ? "pointer" : "not-allowed"
+            }}
+          >
             Start Session
           </button>
           <button type="button" onClick={() => onQuickAction("summarize")} style={styles.secondaryAction}>
