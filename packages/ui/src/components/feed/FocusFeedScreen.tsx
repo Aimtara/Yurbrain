@@ -121,7 +121,7 @@ export function FocusFeedScreen({
         <FeedLensBar lenses={lenses} activeLens={activeLens} onChange={onLensChange} />
         {executionLens}
         <p style={{ margin: 0, fontSize: "14px", lineHeight: "20px", color: "#475569" }}>
-          Window shop your mind: recognize, continue lightly, return.
+          Each card answers what it is, why now, and your next light move.
         </p>
         {loading ? <p style={{ margin: 0 }}>Gathering the right threads for this moment...</p> : null}
         {errorMessage ? (
