@@ -1,9 +1,9 @@
 import { type ReactNode } from "react";
-import { ExecutionLensBar, FocusFeedScreen, FounderModeToggle, FounderSummarySurface, type ExecutionLens, type FeedLens } from "@yurbrain/ui";
+import { ExecutionLensBar, FocusFeedScreen, FounderModeToggle, type ExecutionLens, type FeedLens } from "@yurbrain/ui";
 
 import type { FeedCardDto, FeedCardModel } from "../shared/types";
-import { inferPrimaryActionLabel, supportsAction } from "./feed-model";
-import { FeedCard } from "@yurbrain/ui";
+import { FounderSummaryPanel } from "../founder/FounderSummaryPanel";
+import { FeedCardRenderer } from "./FeedCardRenderer";
 
 type FocusFeedSurfaceProps = {
   activeLens: FeedLens;
@@ -68,7 +68,7 @@ export function FocusFeedSurface({
     <>
       <FocusFeedScreen
         title="Focus Feed"
-        subtitle="Resurfaced thoughts worth revisiting, without pressure."
+        subtitle="Recognition first. Continue one thought at a time."
         reentryMessage={reentryMessage}
         activeLens={activeLens}
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
@@ -83,45 +83,26 @@ export function FocusFeedSurface({
         captureComposer={capturePanel}
         founderSummary={
           founderMode ? (
-            <FounderSummarySurface stats={founderStats} suggestedFocus={suggestedFocus} blockedItems={founderBlockedItems} summary={founderSummaryText} />
+            <FounderSummaryPanel
+              founderStats={founderStats}
+              suggestedFocus={suggestedFocus}
+              founderBlockedItems={founderBlockedItems}
+              founderSummaryText={founderSummaryText}
+            />
           ) : undefined
         }
         feedContent={visibleFeedModels.map((model) => (
-          <FeedCard
+          <FeedCardRenderer
             key={model.card.id}
-            variant={model.variant}
-            badge={activeLens === "all" ? undefined : activeLens.replaceAll("_", " ")}
-            cardType={model.card.cardType}
-            lens={model.card.lens}
-            title={model.card.title}
-            body={model.card.body}
-            createdAt={model.card.createdAt}
-            lastRefreshedAt={model.card.lastRefreshedAt}
-            whyShown={model.card.whyShown}
-            lastTouched={model.continuity.lastTouched}
-            whereLeftOff={model.continuity.whereLeftOff}
-            continuityNote={model.continuity.changedSince}
-            nextStep={model.continuity.nextStep}
-            availableActions={model.card.availableActions}
-            primaryActionLabel={inferPrimaryActionLabel(model.card, Boolean(model.continuity.sourceItemId))}
-            onOpen={
-              model.continuity.sourceItemId
-                ? () => onOpenItem(model)
-                : model.card.taskId
-                  ? () => onOpenTask(model.card.taskId ?? "")
-                  : undefined
-            }
-            onConvertToTask={model.card.itemId ? () => onConvertToTask(model.card.itemId ?? "", model.card.body) : undefined}
-            onStartSession={
-              model.card.itemId && supportsAction(model.card, "start_session")
-                ? () => {
-                    onStartSession(model.card);
-                  }
-                : undefined
-            }
-            onDismiss={() => onDismiss(model.card.id)}
-            onSnooze={() => onSnooze(model.card)}
-            onRefresh={() => onRefresh(model.card.id)}
+            model={model}
+            activeLensLabel={activeLens.replaceAll("_", " ")}
+            onOpenItem={onOpenItem}
+            onOpenTask={onOpenTask}
+            onConvertToTask={onConvertToTask}
+            onStartSession={onStartSession}
+            onDismiss={onDismiss}
+            onSnooze={onSnooze}
+            onRefresh={onRefresh}
           />
         ))}
       />
