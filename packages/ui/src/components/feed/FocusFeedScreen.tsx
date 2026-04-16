@@ -123,14 +123,14 @@ export function FocusFeedScreen({
         <p style={{ margin: 0, fontSize: "14px", lineHeight: "20px", color: "#475569" }}>
           Each card answers what it is, why now, and your next light move.
         </p>
-        {loading ? <p style={{ margin: 0 }}>Gathering the right threads for this moment...</p> : null}
+        {loading ? <p style={{ margin: 0 }}>Gathering a few thoughts worth resurfacing...</p> : null}
         {errorMessage ? (
           <div style={styles.stateCard}>
             <p style={{ margin: 0, fontWeight: 600 }}>Your feed took a pause.</p>
             <p style={{ margin: "6px 0 0", color: "#475569" }}>{errorMessage}</p>
             {onRetry ? (
               <button type="button" onClick={onRetry} style={{ marginTop: "12px" }}>
-                Try again
+                Try again gently
               </button>
             ) : null}
           </div>
@@ -138,9 +138,7 @@ export function FocusFeedScreen({
         {!loading && !errorMessage && !hasCards ? (
           <div style={styles.stateCard}>
             <p style={{ margin: 0, fontWeight: 600 }}>This lens is quiet right now.</p>
-            <p style={{ margin: "8px 0 0", color: "#475569" }}>
-              Keep capturing. Yurbrain will bring thoughts back when they are ready to re-enter.
-            </p>
+            <p style={{ margin: "8px 0 0", color: "#475569" }}>Capture freely. Your feed will repopulate when threads are ready to revisit.</p>
           </div>
         ) : null}
         {!loading && !errorMessage && hasCards ? <div style={styles.cardStack}>{feedContent}</div> : null}

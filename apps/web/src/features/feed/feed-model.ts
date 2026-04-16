@@ -70,22 +70,22 @@ export function inferNextStep(
   const blockedState = inferBlockedState(card, relatedTask, relatedSession);
   if (relatedTask?.status === "todo") {
     if (relatedItem) {
-      return `Open "${relatedItem.title}" and start the linked task with one focused 15-minute session.`;
+      return `Start a 15-minute session from "${relatedItem.title}".`;
     }
-    return "Start the linked task with one focused 15-minute session.";
+    return "Start a focused 15-minute session.";
   }
-  if (relatedTask?.status === "in_progress" && relatedSession?.state === "paused") return "Resume your paused session and finish one concrete sub-step.";
-  if (relatedTask?.status === "in_progress") return "Resume execution and finish one concrete sub-step.";
-  if (relatedTask?.status === "done") return "Close the loop with one reflection note.";
+  if (relatedTask?.status === "in_progress" && relatedSession?.state === "paused") return "Resume your paused session.";
+  if (relatedTask?.status === "in_progress") return "Continue with one concrete sub-step.";
+  if (relatedTask?.status === "done") return "Add one short reflection note.";
   const reasonWithStep = card.whyShown.reasons.find((reason) => /next|step|follow|continue|resume/i.test(reason));
-  if (reasonWithStep) return reasonWithStep;
+  if (reasonWithStep) return reasonWithStep.length <= 100 ? reasonWithStep : `${reasonWithStep.slice(0, 97).trimEnd()}...`;
   if (variant === "blocked") {
     if (blockedState?.startsWith("Postponed")) {
-      return "Re-open this and write one unblock note before postponing again.";
+      return "Re-open and write one unblock note.";
     }
-    return "Resolve the blocker with one message or one smaller scope cut.";
+    return "Send one unblock message or narrow the scope.";
   }
-  if (variant === "done") return "Close the loop with a reflection note, then return to feed.";
+  if (variant === "done") return "Close the loop with one reflection note.";
   return "Open and add one continuation note.";
 }
 
@@ -98,7 +98,7 @@ export function inferContinuityNote(
 ): string | undefined {
   const blockedState = inferBlockedState(card, relatedTask, relatedSession);
   if (variant === "blocked" && blockedState) {
-    return `Blocked signal: ${blockedState}`;
+    return `Current blocker: ${blockedState}`;
   }
   if (!card.itemId && relatedTask?.sourceItemId && relatedItem) {
     return `Source item "${relatedItem.title}" was touched ${formatRelative(relatedItem.updatedAt) ?? "recently"}.`;
@@ -120,18 +120,18 @@ export function inferWhereLeftOff(
   if (!card.itemId && relatedTask?.sourceItemId && relatedItem) {
     return `Converted from "${relatedItem.title}" and queued for execution.`;
   }
-  if (relatedTask?.status === "in_progress" && relatedSession?.state === "paused") return "Execution is paused and ready to resume.";
+  if (relatedTask?.status === "in_progress" && relatedSession?.state === "paused") return "Session is paused and ready to resume.";
   if (relatedTask?.status === "in_progress") return "Execution is already in progress.";
-  if (relatedTask?.status === "todo") return "You already converted this into a lightweight task.";
-  if (relatedTask?.status === "done") return "The linked task is done; this is back for closure.";
+  if (relatedTask?.status === "todo") return "Already converted into a lightweight task.";
+  if (relatedTask?.status === "done") return "Linked task is done; this is back for closure.";
   return card.whyShown.reasons.find((reason) => /left|last|previous|revisit|resume/i.test(reason));
 }
 
 export function inferPrimaryActionLabel(card: FeedCardDto, canOpenContinuity: boolean): string {
   if (supportsAction(card, "start_session")) return "Start Session";
-  if (canOpenContinuity) return "Open continuity";
-  if (card.stateFlags.hasSourceTask) return "Open execution";
-  if (card.stateFlags.hasSourceItem) return "Open continuity";
+  if (canOpenContinuity) return "Continue";
+  if (card.stateFlags.hasSourceTask) return "Continue";
+  if (card.stateFlags.hasSourceItem) return "Continue";
   return "Open";
 }
 

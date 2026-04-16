@@ -1,4 +1,4 @@
-import { FeedCard } from "@yurbrain/ui";
+import { ClusterCard, FeedCard } from "@yurbrain/ui";
 
 import type { FeedCardDto, FeedCardModel } from "../shared/types";
 import { inferPrimaryActionLabel, supportsAction } from "./feed-model";
@@ -14,6 +14,25 @@ type FeedCardRendererProps = {
   onSnooze: (card: FeedCardDto) => void;
   onRefresh: (cardId: string) => void;
 };
+
+function buildClusterMeta(model: FeedCardModel): { topicLabel: string; itemCount: number; description: string } {
+  const reasons = model.card.whyShown.reasons;
+  const fromTitle = model.card.title.split(":")[0]?.trim();
+  const topicCandidate = [fromTitle, ...reasons].find((value) => value && value.length <= 26);
+  const topicLabel = (topicCandidate ?? "Related thread").replace(/[.]/g, "").trim() || "Related thread";
+  const inferredCount =
+    (() => {
+      const counted = model.card.body.match(/(\d+)\s+(items|notes|threads|themes)/i);
+      if (!counted) return null;
+      const parsed = Number.parseInt(counted[1] ?? "", 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    })() ?? Math.min(6, Math.max(2, reasons.length + (model.card.itemId ? 1 : 2)));
+  return {
+    topicLabel,
+    itemCount: inferredCount,
+    description: model.card.body
+  };
+}
 
 function renderOpenHandler(model: FeedCardModel, onOpenItem: (model: FeedCardModel) => void, onOpenTask: (taskId: string) => void) {
   if (model.continuity.sourceItemId) {
@@ -72,36 +91,24 @@ function renderStandardCard({
 
 function renderClusterPlaceholderCard({
   model,
-  activeLensLabel,
   onOpenItem,
-  onOpenTask,
-  onDismiss,
-  onSnooze,
+  onConvertToTask,
   onRefresh
 }: FeedCardRendererProps) {
-  const placeholderBody = `${model.card.body}\n\nCluster view placeholder: open the linked continuity thread while grouped rendering is being introduced.`;
+  const clusterMeta = buildClusterMeta(model);
   return (
-    <FeedCard
+    <ClusterCard
       key={model.card.id}
-      variant={model.variant}
-      badge={activeLensLabel}
-      cardType={model.card.cardType}
-      lens={model.card.lens}
-      title={`${model.card.title} (cluster placeholder)`}
-      body={placeholderBody}
-      createdAt={model.card.createdAt}
-      lastRefreshedAt={model.card.lastRefreshedAt}
-      whyShown={model.card.whyShown}
+      title={model.card.title}
+      description={clusterMeta.description}
+      whyShown={model.card.whyShown.summary}
+      topicLabel={clusterMeta.topicLabel}
+      itemCount={clusterMeta.itemCount}
       lastTouched={model.continuity.lastTouched}
-      whereLeftOff={model.continuity.whereLeftOff}
-      continuityNote={model.continuity.changedSince}
-      nextStep={model.continuity.nextStep}
-      availableActions={model.card.availableActions}
-      primaryActionLabel="Open cluster thread"
-      onOpen={renderOpenHandler(model, onOpenItem, onOpenTask)}
-      onDismiss={() => onDismiss(model.card.id)}
-      onSnooze={() => onSnooze(model.card)}
-      onRefresh={() => onRefresh(model.card.id)}
+      onSeeHighlights={model.continuity.sourceItemId ? () => onOpenItem(model) : undefined}
+      onCompare={model.continuity.sourceItemId ? () => onOpenItem(model) : undefined}
+      onTryOneToday={model.card.itemId ? () => onConvertToTask(model.card.itemId ?? "", model.card.body) : undefined}
+      onKeepInMind={() => onRefresh(model.card.id)}
     />
   );
 }

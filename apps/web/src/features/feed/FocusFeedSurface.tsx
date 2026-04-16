@@ -68,7 +68,7 @@ export function FocusFeedSurface({
     <>
       <FocusFeedScreen
         title="Focus Feed"
-        subtitle="Recognition first. Continue one thought at a time."
+        subtitle="Resurfaced thoughts worth revisiting, without pressure."
         reentryMessage={reentryMessage}
         activeLens={activeLens}
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
@@ -127,3 +127,4 @@ export function FocusFeedSurface({
     </>
   );
 }
+
