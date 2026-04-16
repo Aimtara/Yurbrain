@@ -109,9 +109,7 @@ export async function registerCaptureRoutes(app: FastifyInstance, state: AppStat
       const clusterTopic = item.topicGuess ?? "Related captures";
       const clusterTitle = `Cluster: ${clusterTopic}`;
       const clusterBody = `${relatedItems.length + 1} captures align around ${clusterTopic}.`;
-      const hasMatchingCluster = existingCards.some(
-        (card) => card.cardType === "cluster" && card.title === clusterTitle && card.body === clusterBody
-      );
+      const hasMatchingCluster = existingCards.some((card) => card.cardType === "cluster" && card.title === clusterTitle);
       if (!hasMatchingCluster) {
         clusterCard = await state.repo.createFeedCard({
           id: randomUUID(),
