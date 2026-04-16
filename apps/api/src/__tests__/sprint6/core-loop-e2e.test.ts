@@ -72,7 +72,8 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
   assert.equal(summarizeResponse.statusCode, 201);
   const summary = summarizeResponse.json<{ type: string; ai: { content: string } }>();
   assert.equal(summary.type, "summary");
-  assert.match(summary.ai.content, /SUMMARIZE:/);
+  assert.match(summary.ai.content, /Changed:/);
+  assert.match(summary.ai.content, /Next:/);
 
   const convertResponse = await app.inject({
     method: "POST",

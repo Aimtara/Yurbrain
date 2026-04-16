@@ -27,6 +27,7 @@ type ItemDetailScreenProps = {
   lastTouched?: string;
   whereLeftOff?: string;
   changedSince?: string;
+  blockedState?: string;
   nextStep?: string;
   executionHint?: string;
   summary?: string;
@@ -79,6 +80,7 @@ export function ItemDetailScreen({
   lastTouched,
   whereLeftOff,
   changedSince,
+  blockedState,
   nextStep,
   executionHint,
   summary,
@@ -130,6 +132,11 @@ export function ItemDetailScreen({
         {changedSince ? (
           <p style={{ margin: 0 }}>
             <strong>What changed:</strong> {changedSince}
+          </p>
+        ) : null}
+        {blockedState ? (
+          <p style={{ margin: 0 }}>
+            <strong>Blocked now:</strong> {blockedState}
           </p>
         ) : null}
         {nextStep ? (

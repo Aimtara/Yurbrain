@@ -20,7 +20,8 @@ test("/ai/summarize returns validated output", async () => {
   assert.equal(resp.statusCode, 201);
   const body = resp.json<{ fallbackUsed: boolean; ai: { content: string } }>();
   assert.equal(body.fallbackUsed, false);
-  assert.match(body.ai.content, /SUMMARIZE:/);
+  assert.match(body.ai.content, /Changed:/);
+  assert.match(body.ai.content, /Next:/);
 });
 
 test("/ai/summarize uses fallback on invalid output", async () => {
@@ -37,7 +38,8 @@ test("/ai/summarize uses fallback on invalid output", async () => {
   const body = resp.json<{ fallbackUsed: boolean; fallbackReason?: string; ai: { content: string } }>();
   assert.equal(body.fallbackUsed, true);
   assert.equal(body.fallbackReason, "invalid_or_runner_error");
-  assert.match(body.ai.content, /Fallback summary/);
+  assert.match(body.ai.content, /Changed:/);
+  assert.match(body.ai.content, /Next:/);
 });
 
 test("/ai/classify returns classification artifact", async () => {
@@ -83,5 +85,6 @@ test("/ai/query uses fallback on timeout", async () => {
   assert.equal(body.fallbackReason, "timeout");
   assert.equal(body.userMessage.role, "user");
   assert.equal(body.message.role, "assistant");
-  assert.match(body.message.content, /deterministic fallback/i);
+  assert.match(body.message.content, /Recommendation:/);
+  assert.match(body.message.content, /Next move:/);
 });
