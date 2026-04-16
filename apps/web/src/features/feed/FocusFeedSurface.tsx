@@ -187,19 +187,3 @@ export function FocusFeedSurface({
   );
 }
 
-function buildClusterMeta(model: FeedCardModel): { topicLabel: string; itemCount: number; description: string } {
-  const reasons = model.card.whyShown.reasons;
-  const topicLabel = reasons.find((reason) => reason.length <= 26) ?? "Related thread";
-  const inferredCount =
-    (() => {
-      const counted = model.card.body.match(/(\d+)\s+(items|notes|threads|themes)/i);
-      if (!counted) return null;
-      const parsed = Number.parseInt(counted[1] ?? "", 10);
-      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    })() ?? Math.min(6, Math.max(2, reasons.length + (model.card.itemId ? 1 : 2)));
-  return {
-    topicLabel: topicLabel.replace(/[.]/g, "").trim() || "Related thread",
-    itemCount: inferredCount,
-    description: model.card.body
-  };
-}
