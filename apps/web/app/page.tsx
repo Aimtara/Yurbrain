@@ -1670,8 +1670,26 @@ export default function Page() {
   function openItemFromModel(model: FeedCardModel) {
     const itemId = model.continuity.sourceItemId ?? model.card.itemId;
     if (!itemId) return;
+    const continuityFromTask = !model.card.itemId && model.continuity.sourceItemId;
     setSelectedItemId(itemId);
-    setSelectedContinuity(model.continuity);
+    setSelectedContinuity(
+      continuityFromTask
+        ? {
+            ...model.continuity,
+            whyShown:
+              model.continuity.whyShown ??
+              `Opened from execution task${model.card.title ? `: ${model.card.title}` : ""}.`,
+            whereLeftOff:
+              model.continuity.whereLeftOff ??
+              `Opened from task "${model.card.title}" to restore source continuity.`,
+            changedSince:
+              model.continuity.changedSince ??
+              (model.continuity.sourceItemTitle
+                ? `Source item: ${model.continuity.sourceItemTitle}.`
+                : `Source item opened from task "${model.card.title}".`)
+          }
+        : model.continuity
+    );
     setActiveSurface("item");
   }
 
