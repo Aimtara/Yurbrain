@@ -154,6 +154,7 @@ export function useItemDetailController({
               [selectedItem.id]: { summary: [response.ai.content, ...existing.summary], classification: existing.classification }
             };
           });
+          setItemActionNotice("Summarized recent progress for faster re-entry.");
         } else {
           const response = await classifyBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
           setArtifactHistoryByItem((current) => {
@@ -163,12 +164,13 @@ export function useItemDetailController({
               [selectedItem.id]: { summary: existing.summary, classification: [response.ai.content, ...existing.classification] }
             };
           });
+          setItemActionNotice("Generated an updated framing for this item.");
         }
       } catch {
         setLastAction(`${action}_failed`);
       }
     },
-    [runConvert, selectedItem, setArtifactHistoryByItem, setLastAction]
+    [runConvert, selectedItem, setArtifactHistoryByItem, setItemActionNotice, setLastAction]
   );
 
   const runAiQuery = useCallback(
@@ -230,16 +232,11 @@ export function useItemDetailController({
     [setItemActionNotice, setSelectedContinuity, setSelectedItemId]
   );
 
-  const handleKeepInMind = useCallback(() => {
-    setItemActionNotice("Marked as keep in mind. You can switch to that lens in feed anytime.");
-  }, [setItemActionNotice]);
-
   return {
     loadSelectedItemContext,
     createComment,
     runQuickAction,
     runAiQuery,
-    handleOpenRelatedItem,
-    handleKeepInMind
+    handleOpenRelatedItem
   };
 }
