@@ -86,7 +86,7 @@ export function ClusterCard({
         ) : null}
         {onCompare && canUse("compare") ? (
           <button type="button" onClick={onCompare} style={actionStyles.secondary}>
-            Compare
+            Compare Items
           </button>
         ) : null}
         {onTryOneToday && canUse("try_one_today") ? (

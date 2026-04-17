@@ -7,21 +7,17 @@ test.after(async () => {
   await app.close();
 });
 
-test("POST /capture/intake accepts minimal link payload and persists metadata", async () => {
+test("POST /capture/intake accepts near-zero-friction payload and persists continuity metadata", async () => {
   const userId = "88888888-8888-4888-8888-888888888888";
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
     payload: {
       userId,
-      link: "https://example.com/docs/intake-foundation",
-      source: {
-        app: "Slack",
-        link: "https://example.com/thread/123"
-      },
-      preview: {
-        description: "Capture context preview"
-      },
+      type: "link",
+      content: "https://example.com/docs/intake-foundation",
+      source: "Slack",
+      note: "Revisit this for launch planning",
       founderMode: true,
       execution: {
         taskId: "99999999-9999-4999-8999-999999999999",
@@ -32,22 +28,30 @@ test("POST /capture/intake accepts minimal link payload and persists metadata", 
 
   assert.equal(response.statusCode, 201);
   const body = response.json<{
+    itemId: string;
     item: {
       id: string;
       contentType: string;
       sourceApp: string | null;
       sourceLink: string | null;
+      note: string | null;
+      recencyWeight: number;
       previewTitle: string | null;
-      previewDescription: string | null;
       founderModeAtCapture: boolean;
       executionMetadata: Record<string, unknown> | null;
     };
+    preview: { title: string; source: string | null; contentType: string };
     enrichment: { fallbackUsed: boolean };
   }>();
+  assert.equal(body.itemId, body.item.id);
   assert.equal(body.item.contentType, "link");
   assert.equal(body.item.sourceApp, "Slack");
-  assert.equal(body.item.sourceLink, "https://example.com/thread/123");
-  assert.equal(body.item.previewDescription, "Capture context preview");
+  assert.equal(body.item.sourceLink, "https://example.com/docs/intake-foundation");
+  assert.equal(body.item.note, "Revisit this for launch planning");
+  assert.equal(body.item.recencyWeight, 0.85);
+  assert.equal(body.preview.contentType, "link");
+  assert.equal(body.preview.source, "Slack");
+  assert.ok(body.preview.title.length > 0);
   assert.equal(body.item.founderModeAtCapture, true);
   assert.equal((body.item.executionMetadata ?? {}).state, "in_progress");
   assert.equal(body.enrichment.fallbackUsed, false);
@@ -99,7 +103,7 @@ test("POST /capture/intake accepts simplified deferred-capture payload", async (
   assert.ok(body.preview.title.length > 0);
   assert.ok(body.preview.snippet.length > 0);
   assert.equal(body.item.executionMetadata?.captureContext?.note, "Revisit for planning later");
-  assert.equal(body.item.executionMetadata?.captureContext?.recencyWeight, 1);
+  assert.equal(body.item.executionMetadata?.captureContext?.recencyWeight, 0.85);
 });
 
 test("capture enrichment failures do not block persistence", async () => {
@@ -109,7 +113,8 @@ test("capture enrichment failures do not block persistence", async () => {
     url: "/capture/intake",
     payload: {
       userId,
-      link: "http://[broken-url"
+      type: "link",
+      content: "http://[broken-url"
     }
   });
 
@@ -131,17 +136,20 @@ test("capture intake creates relation artifacts and a cluster feed card at thres
   const payloads = [
     {
       userId,
-      text: "API migration checklist for incident readiness",
+      type: "text",
+      content: "API migration checklist for incident readiness",
       topicGuess: "Engineering"
     },
     {
       userId,
-      text: "Backend incident runbook updates for migration rollout",
+      type: "text",
+      content: "Backend incident runbook updates for migration rollout",
       topicGuess: "Engineering"
     },
     {
       userId,
-      text: "Production API bug triage and migration notes",
+      type: "text",
+      content: "Production API bug triage and migration notes",
       topicGuess: "Engineering"
     }
   ];
@@ -156,13 +164,15 @@ test("capture intake creates relation artifacts and a cluster feed card at thres
   const thirdBody = third.json<{
     item: { id: string };
     relatedItems: Array<{ id: string; score: number }>;
-    clusterCard: { cardType: string; title: string } | null;
+    clusterCard: { cardType: string; title: string; relatedCount: number | null; lastTouched: string | null; whyShownText?: string } | null;
   }>();
   assert.ok(thirdBody.relatedItems.length >= 2);
   assert.ok(thirdBody.relatedItems.every((entry) => entry.score >= 2));
   assert.ok(thirdBody.clusterCard);
   assert.equal(thirdBody.clusterCard?.cardType, "cluster");
   assert.ok(thirdBody.clusterCard?.title.includes("Engineering"));
+  assert.ok((thirdBody.clusterCard?.relatedCount ?? 0) >= 3);
+  assert.ok(Boolean(thirdBody.clusterCard?.lastTouched));
 
   const feed = await app.inject({
     method: "GET",

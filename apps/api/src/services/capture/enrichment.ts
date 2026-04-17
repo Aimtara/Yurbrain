@@ -96,7 +96,7 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
 
   const topicGuess = normalizeText(payload.topicGuess) ?? inferTopicGuess(rawForInference);
   const clusterKey = topicGuess ? toClusterKey(topicGuess) : null;
-  const recencyWeight = 1;
+  const recencyWeight = inferRecencyWeight(contentType);
   const title = buildCaptureTitle({
     contentType,
     text: textContent,
@@ -126,6 +126,7 @@ function resolveContentType(payload: CaptureIntakeRequest): "text" | "link" | "i
   if (payload.type) return payload.type;
   if (payload.content) {
     const normalized = payload.content.trim();
+    if (/\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(normalized)) return "image";
     if (/^https?:\/\//i.test(normalized)) return "link";
   }
   if (payload.image) return "image";
@@ -186,6 +187,12 @@ function inferSourceApp(link: string | null): string | null {
   } catch {
     return null;
   }
+}
+
+function inferRecencyWeight(contentType: "text" | "link" | "image"): number {
+  if (contentType === "text") return 1;
+  if (contentType === "image") return 0.9;
+  return 0.85;
 }
 
 function toClusterKey(topicGuess: string): string {

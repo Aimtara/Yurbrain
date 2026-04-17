@@ -11,8 +11,10 @@ export type StoredFeedCard = {
   snoozedUntil?: string | null;
   refreshCount?: number;
   postponeCount?: number;
+  relatedCount?: number | null;
   lastPostponedAt?: string | null;
   lastRefreshedAt?: string | null;
+  lastTouched?: string | null;
   createdAt: string;
 };
 

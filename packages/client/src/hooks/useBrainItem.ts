@@ -18,6 +18,10 @@ export async function listBrainItemArtifacts<T>(itemId: string, type?: "summary"
   return apiClient<T>(`${endpoints.brainItems}/${itemId}/artifacts${query}`);
 }
 
+export async function listRelatedBrainItems<T>(itemId: string) {
+  return apiClient<T>(`${endpoints.brainItems}/${itemId}/related`);
+}
+
 export async function summarizeBrainItem<T>(payload: { itemId: string; rawContent: string; timeoutMs?: number }) {
   return apiClient<T>(endpoints.aiSummarize, {
     method: "POST",
@@ -36,6 +40,22 @@ export async function classifyBrainItem<T>(payload: { itemId: string; rawContent
 
 export async function queryBrainItemThread<T>(payload: { threadId: string; question: string; timeoutMs?: number }) {
   return apiClient<T>(endpoints.aiQuery, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function summarizeBrainItemCluster<T>(payload: { itemIds: string[] }) {
+  return apiClient<T>(endpoints.aiSummarizeCluster, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getBrainItemNextStep<T>(payload: { itemIds: string[] }) {
+  return apiClient<T>(endpoints.aiNextStep, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)

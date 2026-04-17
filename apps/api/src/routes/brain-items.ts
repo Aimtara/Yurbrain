@@ -9,8 +9,10 @@ import {
   ItemArtifactListResponseSchema,
   EventTypeSchema,
   ListItemArtifactsQuerySchema,
+  RelatedItemsResponseSchema,
   UpdateBrainItemRequestSchema
 } from "../../../../packages/contracts/src";
+import { detectRelatedItems } from "../services/capture/related-items";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import type { AppState } from "../state";
 
@@ -84,6 +86,23 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
     const query = ListItemArtifactsQuerySchema.parse(request.query ?? {});
     const artifacts = await state.repo.listArtifactsByItem(id, query.type ? { type: query.type } : undefined);
     return reply.send(ItemArtifactListResponseSchema.parse(artifacts));
+  });
+
+  app.get("/brain-items/:id/related", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const item = await state.repo.getBrainItemById(id);
+    if (!item) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    const relatedItemIds = detectRelatedItems(item, await state.repo.listBrainItemsByUser(item.userId), { limit: 8 }).map(
+      (related) => related.id
+    );
+    return reply.send(
+      RelatedItemsResponseSchema.parse({
+        itemId: id,
+        relatedItemIds
+      })
+    );
   });
 
   app.patch("/brain-items/:id", async (request, reply) => {

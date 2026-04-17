@@ -100,6 +100,13 @@ export const CaptureIntakeResponseSchema = z
   })
   .strict();
 
+export const RelatedItemsResponseSchema = z
+  .object({
+    itemId: z.string().uuid(),
+    relatedItemIds: z.array(z.string().uuid())
+  })
+  .strict();
+
 export const UpdateBrainItemRequestSchema = z
   .object({
     title: z.string().min(1).max(200).optional(),
@@ -314,6 +321,7 @@ export type ClassifyItemRequest = z.infer<typeof ClassifyItemRequestSchema>;
 export type QueryItemRequest = z.infer<typeof QueryItemRequestSchema>;
 export type AiSynthesisRequest = z.infer<typeof AiSynthesisRequestSchema>;
 export type AiSynthesisResponse = z.infer<typeof AiSynthesisResponseSchema>;
+export type RelatedItemsResponse = z.infer<typeof RelatedItemsResponseSchema>;
 export type ListItemArtifactsQuery = z.infer<typeof ListItemArtifactsQuerySchema>;
 export type BrainItemResponse = z.infer<typeof BrainItemResponseSchema>;
 export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;

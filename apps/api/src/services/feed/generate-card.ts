@@ -28,8 +28,10 @@ export function generateCardFromItem(item: FeedSourceItem): StoredFeedCard {
     snoozedUntil: null,
     refreshCount: 0,
     postponeCount: 0,
+    relatedCount: null,
     lastPostponedAt: null,
     lastRefreshedAt: null,
+    lastTouched: item.createdAt,
     createdAt: item.createdAt
   };
 }
