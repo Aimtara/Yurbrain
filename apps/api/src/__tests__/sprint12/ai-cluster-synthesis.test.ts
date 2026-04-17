@@ -37,7 +37,7 @@ test("POST /ai/summarize-cluster and /ai/next-step produce grounded short output
     url: "/ai/summarize-cluster",
     payload: { itemIds: createdItemIds }
   });
-  assert.equal(summarize.statusCode, 200);
+  assert.equal(summarize.statusCode, 201);
   const summaryBody = summarize.json<{
     summary: string;
     repeatedIdeas?: string[];
@@ -54,7 +54,7 @@ test("POST /ai/summarize-cluster and /ai/next-step produce grounded short output
     url: "/ai/next-step",
     payload: { itemIds: createdItemIds }
   });
-  assert.equal(nextStep.statusCode, 200);
+  assert.equal(nextStep.statusCode, 201);
   const nextStepBody = nextStep.json<{
     summary: string;
     suggestedNextAction: string;
@@ -129,7 +129,7 @@ test("cluster synthesis uses thread/task/session signals for grounded reasons", 
     url: "/ai/next-step",
     payload: { itemIds: [intakeBody.itemId] }
   });
-  assert.equal(nextStep.statusCode, 200);
+  assert.equal(nextStep.statusCode, 201);
   const body = nextStep.json<{ suggestedNextAction: string; reason: string }>();
   assert.ok(/paused|session|task|thread/i.test(body.reason));
 });

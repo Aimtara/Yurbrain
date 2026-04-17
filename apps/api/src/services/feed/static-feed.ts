@@ -27,10 +27,8 @@ export type FeedCardResponse = StoredFeedCard & {
   snoozedUntil: string | null;
   refreshCount: number;
   postponeCount: number;
-  relatedCount: number | null;
   lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
-  lastTouched: string | null;
   availableActions: Array<"open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh">;
   stateFlags: {
     dismissed: boolean;
@@ -40,26 +38,33 @@ export type FeedCardResponse = StoredFeedCard & {
     hasSourceTask: boolean;
   };
   whyShown: FeedWhyShown;
-  whyShownText: string;
+  relatedCount: number | null;
+  clusterTopic: string | null;
+  clusterItemIds: string[] | null;
+  lastTouched: string | null;
+};
+
+export type FeedCardMeta = {
+  relatedCount?: number | null;
+  clusterTopic?: string | null;
+  clusterItemIds?: string[] | null;
+  lastTouched?: string | null;
 };
 
 export function isCardSnoozed(card: StoredFeedCard, now = new Date()): boolean {
   return Boolean(card.snoozedUntil && new Date(card.snoozedUntil).getTime() > now.getTime());
 }
 
-export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown): FeedCardResponse {
+export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown, meta: FeedCardMeta = {}): FeedCardResponse {
   const snoozedUntil = card.snoozedUntil ?? null;
   const hasSourceItem = Boolean(card.itemId);
   const hasSourceTask = Boolean(card.taskId);
-  const availableActions: FeedCardResponse["availableActions"] =
-    card.cardType === "cluster" ? ["open_item", "convert_to_task", "dismiss", "refresh"] : ["dismiss", "snooze", "refresh"];
-  if (card.cardType !== "cluster") {
-    if (hasSourceItem) {
-      availableActions.unshift("open_item", "comment", "ask_ai", "convert_to_task");
-    }
-    if (hasSourceTask) {
-      availableActions.unshift("open_task", "start_session");
-    }
+  const availableActions: FeedCardResponse["availableActions"] = ["dismiss", "snooze", "refresh"];
+  if (hasSourceItem) {
+    availableActions.unshift("open_item", "comment", "ask_ai", "convert_to_task");
+  }
+  if (hasSourceTask) {
+    availableActions.unshift("open_task", "start_session");
   }
 
   return {
@@ -67,10 +72,8 @@ export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown)
     snoozedUntil,
     refreshCount: card.refreshCount ?? 0,
     postponeCount: card.postponeCount ?? 0,
-    relatedCount: card.relatedCount ?? null,
     lastPostponedAt: card.lastPostponedAt ?? null,
     lastRefreshedAt: card.lastRefreshedAt ?? null,
-    lastTouched: card.lastTouched ?? null,
     availableActions,
     stateFlags: {
       dismissed: card.dismissed,
@@ -80,7 +83,10 @@ export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown)
       hasSourceTask
     },
     whyShown,
-    whyShownText: whyShown.summary
+    relatedCount: meta.relatedCount ?? null,
+    clusterTopic: meta.clusterTopic ?? null,
+    clusterItemIds: meta.clusterItemIds ?? null,
+    lastTouched: meta.lastTouched ?? card.lastRefreshedAt ?? card.lastPostponedAt ?? card.createdAt
   };
 }
 

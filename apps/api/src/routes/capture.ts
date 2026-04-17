@@ -10,23 +10,18 @@ import {
   FeedCardSchema
 } from "../../../../packages/contracts/src";
 import { enrichCapture } from "../services/capture/enrichment";
-import { detectRelatedItems } from "../services/capture/related-items";
+import { getRelatedItems } from "../services/capture/related-items";
 import { generateCardFromItem } from "../services/feed/generate-card";
-import type { FeedWhyShown, StoredFeedCard } from "../services/feed/static-feed";
+import type { FeedCardMeta, FeedWhyShown, StoredFeedCard } from "../services/feed/static-feed";
 import { toFeedCardResponse } from "../services/feed/static-feed";
 import type { AppState } from "../state";
 
 const clusterThreshold = 3;
 
-function buildClusterWhyShown(topic: string): FeedWhyShown {
-  return {
-    summary: `You've been saving similar ${topic.toLowerCase()} recently.`,
-    reasons: [
-      `Grouped captures around ${topic.toLowerCase()} so continuity is easier to restore.`,
-      "Shown now so you can compare them in one pass."
-    ]
-  };
-}
+const clusterWhyShown: FeedWhyShown = {
+  summary: "Multiple captures are converging on the same thread.",
+  reasons: ["Multiple captures are converging on the same thread.", "Grouped so you can process related context in one pass."]
+};
 
 function mapContentTypeToBrainItemType(contentType: "text" | "link" | "image") {
   if (contentType === "link") {
@@ -38,37 +33,53 @@ function mapContentTypeToBrainItemType(contentType: "text" | "link" | "image") {
   return BrainItemTypeSchema.parse("note");
 }
 
-function toFeedCardContract(card: StoredFeedCard, whyShown: FeedWhyShown) {
-  return FeedCardSchema.parse(toFeedCardResponse(card, whyShown));
+function toFeedCardContract(card: StoredFeedCard, whyShown: FeedWhyShown, meta: FeedCardMeta = {}) {
+  return FeedCardSchema.parse(toFeedCardResponse(card, whyShown, meta));
+}
+
+function truncate(value: string, limit: number): string {
+  if (value.length <= limit) return value;
+  return `${value.slice(0, Math.max(1, limit - 1)).trimEnd()}…`;
+}
+
+function normalizeOptionalText(value: string | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function resolveSourcePreview(value: string | { app?: string; link?: string } | undefined, fallback: string | null): string | null {
+  if (!value) return fallback;
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : fallback;
+  }
+  return value.app?.trim() || value.link?.trim() || fallback;
+}
+
+function buildExecutionMetadata(
+  payload: { execution?: Record<string, unknown>; note?: string; source?: string | { app?: string; link?: string } },
+  enriched: { contentType: "text" | "link" | "image"; topicGuess: string | null; recencyWeight: number }
+) {
+  const note = normalizeOptionalText(payload.note);
+  const base = payload.execution ?? {};
+  return {
+    ...base,
+    captureContext: {
+      contentType: enriched.contentType,
+      topicGuess: enriched.topicGuess,
+      recencyWeight: enriched.recencyWeight,
+      source: resolveSourcePreview(payload.source, null),
+      note
+    }
+  };
 }
 
 export async function registerCaptureRoutes(app: FastifyInstance, state: AppState) {
   app.post("/capture/intake", async (request, reply) => {
     const payload = CaptureIntakeRequestSchema.parse(request.body);
     const now = new Date().toISOString();
-    const enriched = (() => {
-      try {
-        return enrichCapture(payload);
-      } catch {
-        return {
-          contentType: payload.type ?? "text",
-          title: "Captured item",
-          rawContent: payload.content ?? payload.text ?? payload.link ?? payload.image ?? "(empty capture)",
-          source: typeof payload.source === "string" ? payload.source : payload.source?.app ?? payload.source?.link ?? null,
-          sourceApp: typeof payload.source === "string" ? payload.source : payload.source?.app ?? null,
-          sourceLink: payload.link ?? (typeof payload.source === "object" ? payload.source?.link : null) ?? null,
-          previewTitle: null,
-          previewDescription: null,
-          previewImageUrl: null,
-          note: payload.note ?? null,
-          topicGuess: payload.topicGuess ?? null,
-          recencyWeight: 1,
-          clusterKey: payload.topicGuess ? payload.topicGuess.toLowerCase().replace(/[^a-z0-9]+/g, "-") : null,
-          fallbackUsed: true,
-          warnings: ["capture_enrichment_failed"]
-        };
-      }
-    })();
+    const enriched = enrichCapture(payload);
     const preference = payload.founderMode === undefined ? await state.repo.getUserPreference(payload.userId) : null;
     const founderModeAtCapture = payload.founderMode ?? preference?.founderMode ?? false;
 
@@ -84,12 +95,12 @@ export async function registerCaptureRoutes(app: FastifyInstance, state: AppStat
       previewTitle: enriched.previewTitle,
       previewDescription: enriched.previewDescription,
       previewImageUrl: enriched.previewImageUrl,
-      note: enriched.note,
+      note: normalizeOptionalText(payload.note),
       topicGuess: enriched.topicGuess,
       recencyWeight: enriched.recencyWeight,
       clusterKey: enriched.clusterKey,
       founderModeAtCapture,
-      executionMetadata: payload.execution ?? null,
+      executionMetadata: buildExecutionMetadata(payload, enriched),
       status: BrainItemStatusSchema.parse("active"),
       createdAt: now,
       updatedAt: now
@@ -110,12 +121,7 @@ export async function registerCaptureRoutes(app: FastifyInstance, state: AppStat
       );
     }
 
-    const allItems = await state.repo.listBrainItemsByUser(item.userId);
-    const relatedItems = detectRelatedItems(
-      item,
-      allItems.filter((candidate) => candidate.id !== item.id),
-      { limit: 5 }
-    );
+    const relatedItems = await getRelatedItems(state.repo, item.id, { limit: 5 });
 
     if (relatedItems.length > 0) {
       const topScore = relatedItems[0]?.score ?? 0;
@@ -134,13 +140,11 @@ export async function registerCaptureRoutes(app: FastifyInstance, state: AppStat
     }
 
     let clusterCard: StoredFeedCard | null = null;
-    let clusterTopicForResponse = "related captures";
+    const clusterItemIds = [item.id, ...relatedItems.map((entry) => entry.id)];
     if ((relatedItems.length + 1 >= clusterThreshold) && item.clusterKey) {
       const clusterTopic = item.topicGuess ?? "Related captures";
-      clusterTopicForResponse = clusterTopic;
-      const relatedCount = relatedItems.length + 1;
-      const clusterTitle = clusterTopic;
-      const clusterBody = `${relatedCount} captures are converging on this theme.`;
+      const clusterTitle = `Cluster: ${clusterTopic}`;
+      const clusterBody = `${relatedItems.length + 1} captures align around ${clusterTopic}.`;
       const hasMatchingCluster = existingCards.some((card) => card.cardType === "cluster" && card.title === clusterTitle);
       if (!hasMatchingCluster) {
         clusterCard = await state.repo.createFeedCard({
@@ -156,10 +160,8 @@ export async function registerCaptureRoutes(app: FastifyInstance, state: AppStat
           snoozedUntil: null,
           refreshCount: 0,
           postponeCount: 0,
-          relatedCount,
           lastPostponedAt: null,
           lastRefreshedAt: null,
-          lastTouched: now,
           createdAt: now
         });
       }
@@ -181,15 +183,24 @@ export async function registerCaptureRoutes(app: FastifyInstance, state: AppStat
     return reply.code(201).send(
       CaptureIntakeResponseSchema.parse({
         itemId: item.id,
-        item,
         preview: {
           title: item.previewTitle ?? item.title,
-          snippet: item.previewDescription ?? item.rawContent.slice(0, 160),
-          source: enriched.source ?? item.sourceApp ?? item.sourceLink,
-          contentType: item.contentType
+          snippet: truncate(item.rawContent, 180),
+          contentType: item.contentType,
+          topicGuess: item.topicGuess,
+          source: resolveSourcePreview(payload.source, item.sourceApp ?? item.sourceLink),
+          note: normalizeOptionalText(payload.note)
         },
+        item,
         relatedItems,
-        clusterCard: clusterCard ? toFeedCardContract(clusterCard, buildClusterWhyShown(clusterTopicForResponse)) : null,
+        clusterCard: clusterCard
+          ? toFeedCardContract(clusterCard, clusterWhyShown, {
+              relatedCount: clusterItemIds.length,
+              clusterTopic: item.topicGuess,
+              clusterItemIds,
+              lastTouched: now
+            })
+          : null,
         enrichment: {
           fallbackUsed: enriched.fallbackUsed,
           warnings: enriched.warnings

@@ -16,8 +16,11 @@ type FeedCardRendererProps = {
 };
 
 function buildClusterMeta(model: FeedCardModel): { topicLabel: string; itemCount: number; description: string } {
-  const topicLabel = model.card.title.trim() || "Related thread";
-  const inferredCount = model.card.relatedCount ?? Math.min(6, Math.max(2, model.card.whyShown.reasons.length + (model.card.itemId ? 1 : 2)));
+  const reasons = model.card.whyShown.reasons;
+  const fromTitle = model.card.title.split(":").slice(1).join(":").trim();
+  const topicCandidate = [model.card.clusterTopic, fromTitle, ...reasons].find((value) => value && value.length <= 40);
+  const topicLabel = (topicCandidate ?? "Related thread").replace(/[.]/g, "").trim() || "Related thread";
+  const inferredCount = model.card.relatedCount ?? Math.min(6, Math.max(2, reasons.length + (model.card.itemId ? 1 : 2)));
   return {
     topicLabel,
     itemCount: inferredCount,
@@ -84,7 +87,8 @@ function renderClusterPlaceholderCard({
   model,
   onOpenItem,
   onConvertToTask,
-  onDismiss
+  onDismiss,
+  onRefresh
 }: FeedCardRendererProps) {
   const clusterMeta = buildClusterMeta(model);
   return (
@@ -92,7 +96,7 @@ function renderClusterPlaceholderCard({
       key={model.card.id}
       title={model.card.title}
       description={clusterMeta.description}
-      whyShown={model.card.whyShownText ?? model.card.whyShown.summary}
+      whyShown={model.card.whyShown.summary}
       topicLabel={clusterMeta.topicLabel}
       itemCount={clusterMeta.itemCount}
       lastTouched={model.continuity.lastTouched}

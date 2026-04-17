@@ -1,16 +1,16 @@
-import { CaptureComposer, type CaptureSubmitIntent } from "@yurbrain/ui";
+import { CaptureComposer, type CaptureComposerValue, type CaptureSubmitIntent } from "@yurbrain/ui";
 
 type CapturePanelProps = {
   captureLoading: boolean;
   captureStatusNotice: string;
   captureSheetOpen: boolean;
-  captureDraft: string;
+  captureDraft: CaptureComposerValue;
   captureError: string;
   captureSuccessNotice: string;
   onOpenTimeHome: () => void;
   onOpenMe: () => void;
   onOpenCaptureSheet: () => void;
-  onCaptureDraftChange: (value: string) => void;
+  onCaptureDraftChange: (value: CaptureComposerValue) => void;
   onCaptureSubmit: (intent: CaptureSubmitIntent) => void;
   onCaptureClose: () => void;
   onVoiceCaptureStub: () => void;

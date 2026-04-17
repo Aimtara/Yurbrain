@@ -2,23 +2,23 @@ import { useCallback } from "react";
 import {
   classifyBrainItem,
   createThread,
-  getBrainItemNextStep,
   listBrainItemArtifacts,
-  listRelatedBrainItems,
   listThreadMessages,
   listThreadsByTarget,
   queryBrainItemThread,
+  requestNextStep,
   sendMessage,
-  summarizeBrainItemCluster
+  summarizeCluster
 } from "@yurbrain/client";
 
-import type { BrainItemDto, ClusterSynthesisDto, ContinuityContext, ItemArtifactDto, MessageDto, ThreadDto } from "../shared/types";
+import type { BrainItemDto, ContinuityContext, ItemArtifactDto, MessageDto, ThreadDto } from "../shared/types";
 import { deriveArtifactHistory } from "./item-detail-model";
 
 type UseItemDetailControllerInput = {
   selectedItem: BrainItemDto | null;
   selectedItemId: string;
   chatThreadId: string;
+  relatedItemIds: string[];
   derivedItemContinuity: { nextStep?: string; blockedState?: string };
   setCommentThreadId: (threadId: string) => void;
   setChatThreadId: (threadId: string) => void;
@@ -44,6 +44,7 @@ export function useItemDetailController({
   selectedItem,
   selectedItemId,
   chatThreadId,
+  relatedItemIds,
   derivedItemContinuity,
   setCommentThreadId,
   setChatThreadId,
@@ -84,7 +85,7 @@ export function useItemDetailController({
 
         if (commentThread) {
           const comments = await listThreadMessages<MessageDto[]>(commentThread.id);
-          setCommentMessages(comments.filter((message) => message.role === "user" || message.role === "assistant"));
+          setCommentMessages(comments.filter((message) => message.role === "user"));
         } else {
           setCommentMessages([]);
         }
@@ -147,7 +148,7 @@ export function useItemDetailController({
   );
 
   const runQuickAction = useCallback(
-    async (action: "summarize" | "classify" | "convert_to_task" | "next_step") => {
+    async (action: "summarize_progress" | "next_step" | "classify" | "convert_to_task") => {
       if (!selectedItem) return;
       setLastAction(action);
       if (action === "convert_to_task") {
@@ -155,11 +156,15 @@ export function useItemDetailController({
         return;
       }
 
+      const synthesisItemIds = Array.from(new Set([selectedItem.id, ...relatedItemIds]));
       try {
-        if (action === "summarize") {
-          const related = await listRelatedBrainItems<{ relatedItemIds: string[] }>(selectedItem.id).catch(() => ({ relatedItemIds: [] }));
-          const itemIds = [selectedItem.id, ...related.relatedItemIds].slice(0, 8);
-          const response = await summarizeBrainItemCluster<ClusterSynthesisDto>({ itemIds });
+        if (action === "summarize_progress") {
+          const response = await summarizeCluster<{
+            summary: string;
+            repeatedIdeas?: string[];
+            suggestedNextAction: string;
+            reason: string;
+          }>({ itemIds: synthesisItemIds });
           setArtifactHistoryByItem((current) => {
             const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
             return {
@@ -167,20 +172,20 @@ export function useItemDetailController({
               [selectedItem.id]: { summary: [response.summary, ...existing.summary], classification: existing.classification }
             };
           });
-          setItemActionNotice(`Summarized cluster continuity. Next action: ${response.suggestedNextAction}`);
+          const repeatedIdeas = response.repeatedIdeas?.slice(0, 3).join(", ");
+          setItemActionNotice(
+            repeatedIdeas
+              ? `Progress summary ready. Repeated ideas: ${repeatedIdeas}. Next: ${response.suggestedNextAction}`
+              : `Progress summary ready. Next: ${response.suggestedNextAction}`
+          );
         } else if (action === "next_step") {
-          const related = await listRelatedBrainItems<{ relatedItemIds: string[] }>(selectedItem.id).catch(() => ({ relatedItemIds: [] }));
-          const itemIds = [selectedItem.id, ...related.relatedItemIds].slice(0, 8);
-          const response = await getBrainItemNextStep<ClusterSynthesisDto>({ itemIds });
-          const recommendation = `Next step: ${response.suggestedNextAction} Reason: ${response.reason}`;
-          const continuityThreadId = await ensureThreadForItem(selectedItem.id, "item_comment");
-          const storedAssistantMessage = await sendMessage<MessageDto>({
-            threadId: continuityThreadId,
-            role: "assistant",
-            content: recommendation
-          });
-          setCommentMessages((current) => [...current, storedAssistantMessage]);
-          setItemActionNotice(recommendation);
+          const response = await requestNextStep<{
+            summary: string;
+            repeatedIdeas?: string[];
+            suggestedNextAction: string;
+            reason: string;
+          }>({ itemIds: synthesisItemIds });
+          setItemActionNotice(`Next step: ${response.suggestedNextAction} Reason: ${response.reason}`);
         } else {
           const response = await classifyBrainItem<{ ai: { content: string } }>({ itemId: selectedItem.id, rawContent: selectedItem.rawContent });
           setArtifactHistoryByItem((current) => {
@@ -194,18 +199,9 @@ export function useItemDetailController({
         }
       } catch {
         setLastAction(`${action}_failed`);
-        if (action === "summarize") {
-          setItemActionNotice("Could not summarize progress right now. You can continue by adding a short update manually.");
-          return;
-        }
-        if (action === "next_step") {
-          setItemActionNotice("Could not generate a next step right now. Add one concrete next move manually to keep continuity.");
-          return;
-        }
-        setItemActionNotice("Could not complete this AI action right now. Continue in the timeline and retry later.");
       }
     },
-    [ensureThreadForItem, runConvert, selectedItem, setArtifactHistoryByItem, setCommentMessages, setItemActionNotice, setLastAction]
+    [relatedItemIds, runConvert, selectedItem, setArtifactHistoryByItem, setItemActionNotice, setLastAction]
   );
 
   const runAiQuery = useCallback(

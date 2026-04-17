@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@yurbrain/ui"],
   async rewrites() {
     return [
+      { source: "/capture/:path*", destination: `${apiOrigin}/capture/:path*` },
       { source: "/brain-items/:path*", destination: `${apiOrigin}/brain-items/:path*` },
       { source: "/capture/:path*", destination: `${apiOrigin}/capture/:path*` },
       { source: "/feed/:path*", destination: `${apiOrigin}/feed/:path*` },

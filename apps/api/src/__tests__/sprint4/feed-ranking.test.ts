@@ -42,6 +42,8 @@ test("GET /feed applies lens + limit deterministically", async () => {
   assert.ok(body.every((card) => card.whyShown.reasons.length >= 1));
   assert.ok(body.every((card) => card.availableActions.includes("dismiss")));
   assert.ok(body.every((card) => typeof card.stateFlags.snoozed === "boolean"));
+  assert.ok(body.every((card) => (card as { relatedCount?: number | null }).relatedCount === null || typeof (card as { relatedCount?: number | null }).relatedCount === "number"));
+  assert.ok(body.every((card) => typeof (card as { lastTouched?: string | null }).lastTouched !== "undefined"));
 
   const respAgain = await app.inject({ method: "GET", url: `/feed?userId=${userId}&limit=2` });
   assert.equal(respAgain.statusCode, 200);

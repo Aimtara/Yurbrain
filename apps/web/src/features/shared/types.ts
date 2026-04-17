@@ -2,6 +2,13 @@ import type { FeedCardVariant, FeedLens } from "@yurbrain/ui";
 
 export type Surface = "feed" | "item" | "session" | "time" | "me";
 
+export type CaptureDraft = {
+  type: "text" | "link" | "image";
+  content: string;
+  source: string;
+  note: string;
+};
+
 export type FeedCardDto = {
   id: string;
   cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
@@ -14,10 +21,8 @@ export type FeedCardDto = {
   snoozedUntil: string | null;
   refreshCount: number;
   postponeCount: number;
-  relatedCount: number | null;
   lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
-  lastTouched: string | null;
   availableActions: Array<
     "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh"
   >;
@@ -32,7 +37,10 @@ export type FeedCardDto = {
     summary: string;
     reasons: string[];
   };
-  whyShownText?: string;
+  relatedCount: number | null;
+  clusterTopic: string | null;
+  clusterItemIds: string[] | null;
+  lastTouched: string | null;
   createdAt: string;
 };
 
@@ -52,24 +60,12 @@ export type BrainItemDto = {
   contentType?: "text" | "link" | "image";
   title: string;
   rawContent: string;
+  topicGuess?: string | null;
   sourceApp?: string | null;
   sourceLink?: string | null;
-  previewTitle?: string | null;
-  previewDescription?: string | null;
-  previewImageUrl?: string | null;
-  note?: string | null;
-  topicGuess?: string | null;
-  recencyWeight?: number;
   status: "active" | "archived";
   createdAt: string;
   updatedAt: string;
-};
-
-export type ClusterSynthesisDto = {
-  summary: string;
-  repeatedIdeas?: string[];
-  suggestedNextAction: string;
-  reason: string;
 };
 
 export type ThreadDto = {

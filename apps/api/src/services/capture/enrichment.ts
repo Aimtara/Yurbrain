@@ -4,16 +4,14 @@ type EnrichmentResult = {
   contentType: "text" | "link" | "image";
   title: string;
   rawContent: string;
-  source: string | null;
   sourceApp: string | null;
   sourceLink: string | null;
   previewTitle: string | null;
   previewDescription: string | null;
   previewImageUrl: string | null;
-  note: string | null;
   topicGuess: string | null;
-  recencyWeight: number;
   clusterKey: string | null;
+  recencyWeight: number;
   fallbackUsed: boolean;
   warnings: string[];
 };
@@ -65,17 +63,19 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
   let fallbackUsed = false;
 
   const contentType = resolveContentType(payload);
-  const canonicalContent = extractCanonicalContent(payload, contentType);
-  const note = normalizeText(payload.note);
-  const source = normalizeSource(payload.source);
-  const sourceLink = resolveSourceLink(payload, contentType, canonicalContent);
-  const sourceApp = resolveSourceApp(payload.source, sourceLink);
-  const rawContent = canonicalContent ?? "(empty capture)";
-  const rawForInference = [canonicalContent, note, source, sourceLink, payload.preview?.title, payload.preview?.description].filter(Boolean).join(" ");
+  const sourceFromPayload = parseSourcePayload(payload.source);
+  const sourceLink = sourceFromPayload.sourceLink ?? payload.link?.trim() ?? (contentType === "link" ? normalizeText(payload.content) : null);
+  const sourceApp = sourceFromPayload.sourceApp ?? inferSourceApp(sourceLink);
+
+  const normalizedContent = normalizeText(payload.content);
+  const textContent = normalizeText(payload.text) ?? (contentType === "text" ? normalizedContent : null);
+  const imageContent = normalizeText(payload.image) ?? (contentType === "image" ? normalizedContent : null);
+  const rawContent = textContent ?? sourceLink ?? imageContent ?? "(empty capture)";
+  const rawForInference = [textContent, sourceLink, payload.preview?.title, payload.preview?.description, payload.note].filter(Boolean).join(" ");
 
   let previewTitle = normalizeText(payload.preview?.title);
   let previewDescription = normalizeText(payload.preview?.description);
-  let previewImageUrl = normalizeText(payload.preview?.imageUrl) ?? (contentType === "image" ? canonicalContent : null);
+  let previewImageUrl = normalizeText(payload.preview?.imageUrl) ?? (contentType === "image" ? imageContent : null);
 
   if (sourceLink) {
     try {
@@ -95,11 +95,11 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
   }
 
   const topicGuess = normalizeText(payload.topicGuess) ?? inferTopicGuess(rawForInference);
-  const recencyWeight = inferRecencyWeight(contentType);
   const clusterKey = topicGuess ? toClusterKey(topicGuess) : null;
+  const recencyWeight = inferRecencyWeight(contentType);
   const title = buildCaptureTitle({
     contentType,
-    text: canonicalContent,
+    text: textContent,
     previewTitle,
     sourceApp,
     topicGuess
@@ -109,16 +109,14 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
     contentType,
     title,
     rawContent,
-    source,
     sourceApp,
     sourceLink,
     previewTitle,
     previewDescription,
     previewImageUrl,
-    note,
     topicGuess,
-    recencyWeight,
     clusterKey,
+    recencyWeight,
     fallbackUsed,
     warnings
   };
@@ -126,64 +124,30 @@ export function enrichCapture(payload: CaptureIntakeRequest): EnrichmentResult {
 
 function resolveContentType(payload: CaptureIntakeRequest): "text" | "link" | "image" {
   if (payload.type) return payload.type;
-  if (looksLikeImageUrl(payload.content)) return "image";
-  if (looksLikeUrl(payload.content)) return "link";
+  if (payload.content) {
+    const normalized = payload.content.trim();
+    if (/\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(normalized)) return "image";
+    if (/^https?:\/\//i.test(normalized)) return "link";
+  }
   if (payload.image) return "image";
   if (payload.link) return "link";
   return "text";
 }
 
-function extractCanonicalContent(payload: CaptureIntakeRequest, contentType: "text" | "link" | "image"): string | null {
-  const explicit = normalizeText(payload.content);
-  if (explicit) return explicit;
-  if (contentType === "link") {
-    return normalizeText(payload.link) ?? normalizeText(payload.text);
-  }
-  if (contentType === "image") {
-    return normalizeText(payload.image) ?? normalizeText(payload.text);
-  }
-  return normalizeText(payload.text) ?? normalizeText(payload.link) ?? normalizeText(payload.image);
-}
-
-function normalizeSource(source: CaptureIntakeRequest["source"]): string | null {
-  if (!source) return null;
+function parseSourcePayload(source: CaptureIntakeRequest["source"]): { sourceApp: string | null; sourceLink: string | null } {
+  if (!source) return { sourceApp: null, sourceLink: null };
   if (typeof source === "string") {
-    const normalized = normalizeText(source);
-    return normalized ? truncate(normalized, 500) : null;
-  }
-  const fromApp = normalizeText(source.app);
-  if (fromApp) return truncate(fromApp, 500);
-  const fromLink = normalizeText(source.link);
-  return fromLink ? truncate(fromLink, 500) : null;
-}
-
-function resolveSourceLink(
-  payload: CaptureIntakeRequest,
-  contentType: "text" | "link" | "image",
-  canonicalContent: string | null
-): string | null {
-  if (typeof payload.source === "object" && payload.source) {
-    const sourceLink = normalizeText(payload.source.link);
-    if (sourceLink) return sourceLink;
-  }
-  if (contentType === "link" && canonicalContent) {
-    return canonicalContent;
-  }
-  return normalizeText(payload.link);
-}
-
-function resolveSourceApp(source: CaptureIntakeRequest["source"], sourceLink: string | null): string | null {
-  if (typeof source === "string") {
-    if (!looksLikeUrl(source)) {
-      const normalized = normalizeText(source);
-      return normalized ? truncate(normalized, 80) : null;
+    const normalized = source.trim();
+    if (!normalized) return { sourceApp: null, sourceLink: null };
+    if (/^https?:\/\//i.test(normalized)) {
+      return { sourceApp: null, sourceLink: normalized };
     }
+    return { sourceApp: normalized, sourceLink: null };
   }
-  if (typeof source === "object" && source) {
-    const sourceApp = normalizeText(source.app);
-    if (sourceApp) return truncate(sourceApp, 80);
-  }
-  return inferSourceApp(sourceLink);
+  return {
+    sourceApp: normalizeText(source.app),
+    sourceLink: source.link?.trim() ?? null
+  };
 }
 
 function buildCaptureTitle(input: {
@@ -261,21 +225,6 @@ function normalizeText(value: string | undefined): string | null {
   if (!value) return null;
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
-}
-
-function looksLikeUrl(value: string | null | undefined): boolean {
-  if (!value) return false;
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function looksLikeImageUrl(value: string | null | undefined): boolean {
-  if (!value) return false;
-  return /\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(value.trim());
 }
 
 function toTitleCase(input: string): string {

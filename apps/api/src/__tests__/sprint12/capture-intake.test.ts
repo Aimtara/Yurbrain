@@ -67,6 +67,45 @@ test("POST /capture/intake accepts near-zero-friction payload and persists conti
   assert.equal(fetchedItem.founderModeAtCapture, true);
 });
 
+test("POST /capture/intake accepts simplified deferred-capture payload", async () => {
+  const userId = "8b8b8b8b-8b8b-48b8-8b8b-8b8b8b8b8b8b";
+  const response = await app.inject({
+    method: "POST",
+    url: "/capture/intake",
+    payload: {
+      userId,
+      type: "link",
+      content: "https://example.com/continuity-loop",
+      source: "Browser share sheet",
+      note: "Revisit for planning later"
+    }
+  });
+
+  assert.equal(response.statusCode, 201);
+  const body = response.json<{
+    itemId: string;
+    preview: {
+      title: string;
+      snippet: string;
+      contentType: string;
+      source: string | null;
+      note: string | null;
+    };
+    item: {
+      id: string;
+      executionMetadata: { captureContext?: { recencyWeight?: number; note?: string | null } } | null;
+    };
+  }>();
+  assert.equal(body.itemId, body.item.id);
+  assert.equal(body.preview.contentType, "link");
+  assert.equal(body.preview.source, "Browser share sheet");
+  assert.equal(body.preview.note, "Revisit for planning later");
+  assert.ok(body.preview.title.length > 0);
+  assert.ok(body.preview.snippet.length > 0);
+  assert.equal(body.item.executionMetadata?.captureContext?.note, "Revisit for planning later");
+  assert.equal(body.item.executionMetadata?.captureContext?.recencyWeight, 0.85);
+});
+
 test("capture enrichment failures do not block persistence", async () => {
   const userId = "89898989-8989-4898-8989-898989898989";
   const response = await app.inject({

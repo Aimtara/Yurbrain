@@ -30,30 +30,24 @@ export const CreateBrainItemRequestSchema = z
   .strict();
 
 const CaptureUrlSchema = z.string().trim().min(1).max(500);
-const CaptureSourceTextSchema = z.string().trim().min(1).max(500);
-const DEFAULT_CAPTURE_USER_ID = "11111111-1111-1111-1111-111111111111";
+const CaptureSourceObjectSchema = z
+  .object({
+    app: z.string().min(1).max(80).optional(),
+    link: CaptureUrlSchema.optional()
+  })
+  .strict();
+const CaptureSourceSchema = z.union([z.string().min(1).max(500), CaptureSourceObjectSchema]);
 
 export const CaptureIntakeRequestSchema = z
   .object({
-    userId: z.string().uuid().optional().default(DEFAULT_CAPTURE_USER_ID),
+    userId: z.string().uuid(),
     type: CaptureContentTypeSchema.optional(),
     content: z.string().min(1).max(10_000).optional(),
-    note: z.string().min(1).max(1_000).optional(),
-    source: z
-      .union([
-        CaptureSourceTextSchema,
-        z
-          .object({
-            app: z.string().min(1).max(80).optional(),
-            link: CaptureUrlSchema.optional()
-          })
-          .strict()
-      ])
-      .optional(),
-    // Legacy payload support while existing callers migrate to content/source.
     text: z.string().min(1).max(10_000).optional(),
     link: CaptureUrlSchema.optional(),
     image: CaptureUrlSchema.optional(),
+    source: CaptureSourceSchema.optional(),
+    note: z.string().min(1).max(500).optional(),
     preview: z
       .object({
         title: z.string().min(1).max(200).optional(),
@@ -84,15 +78,17 @@ export const CaptureRelatedItemSchema = z
 export const CaptureIntakeResponseSchema = z
   .object({
     itemId: z.string().uuid(),
-    item: BrainItemSchema,
     preview: z
       .object({
-        title: z.string().min(1).max(200),
-        snippet: z.string().min(1).max(240),
-        source: z.string().min(1).max(500).nullable(),
-        contentType: CaptureContentTypeSchema
+        title: z.string().min(1),
+        snippet: z.string().min(1),
+        contentType: CaptureContentTypeSchema,
+        topicGuess: z.string().nullable(),
+        source: z.string().nullable(),
+        note: z.string().nullable()
       })
       .strict(),
+    item: BrainItemSchema,
     relatedItems: z.array(CaptureRelatedItemSchema),
     clusterCard: FeedCardSchema.nullable(),
     enrichment: z
@@ -242,18 +238,18 @@ export const QueryItemRequestSchema = z
   })
   .strict();
 
-export const AiClusterSynthesisRequestSchema = z
+export const AiSynthesisRequestSchema = z
   .object({
-    itemIds: z.array(z.string().uuid()).min(1).max(12)
+    itemIds: z.array(z.string().uuid()).min(1).max(24)
   })
   .strict();
 
-export const AiClusterSynthesisResponseSchema = z
+export const AiSynthesisResponseSchema = z
   .object({
-    summary: z.string().min(1).max(1_500),
-    repeatedIdeas: z.array(z.string().min(1).max(220)).max(5).optional(),
-    suggestedNextAction: z.string().min(1).max(220),
-    reason: z.string().min(1).max(220)
+    summary: z.string().min(1).max(1_200),
+    repeatedIdeas: z.array(z.string().min(1).max(180)).max(5).optional(),
+    suggestedNextAction: z.string().min(1).max(240),
+    reason: z.string().min(1).max(240)
   })
   .strict();
 
@@ -310,7 +306,6 @@ export const UpdateUserPreferenceRequestSchema = z
 
 export type CreateBrainItemRequest = z.infer<typeof CreateBrainItemRequestSchema>;
 export type CaptureIntakeRequest = z.infer<typeof CaptureIntakeRequestSchema>;
-export type RelatedItemsResponse = z.infer<typeof RelatedItemsResponseSchema>;
 export type UpdateBrainItemRequest = z.infer<typeof UpdateBrainItemRequestSchema>;
 export type CreateThreadRequest = z.infer<typeof CreateThreadRequestSchema>;
 export type CreateMessageRequest = z.infer<typeof CreateMessageRequestSchema>;
@@ -324,7 +319,9 @@ export type AiConvertResponse = z.infer<typeof AiConvertResponseSchema>;
 export type SummarizeItemRequest = z.infer<typeof SummarizeItemRequestSchema>;
 export type ClassifyItemRequest = z.infer<typeof ClassifyItemRequestSchema>;
 export type QueryItemRequest = z.infer<typeof QueryItemRequestSchema>;
-export type AiClusterSynthesisRequest = z.infer<typeof AiClusterSynthesisRequestSchema>;
+export type AiSynthesisRequest = z.infer<typeof AiSynthesisRequestSchema>;
+export type AiSynthesisResponse = z.infer<typeof AiSynthesisResponseSchema>;
+export type RelatedItemsResponse = z.infer<typeof RelatedItemsResponseSchema>;
 export type ListItemArtifactsQuery = z.infer<typeof ListItemArtifactsQuerySchema>;
 export type BrainItemResponse = z.infer<typeof BrainItemResponseSchema>;
 export type BrainItemListResponse = z.infer<typeof BrainItemListResponseSchema>;
@@ -338,7 +335,6 @@ export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export type ListSessionsQuery = z.infer<typeof ListSessionsQuerySchema>;
 export type AiArtifactResponse = z.infer<typeof AiArtifactResponseSchema>;
 export type QueryItemResponse = z.infer<typeof QueryItemResponseSchema>;
-export type AiClusterSynthesisResponse = z.infer<typeof AiClusterSynthesisResponseSchema>;
 export type UserPreferenceResponse = z.infer<typeof UserPreferenceResponseSchema>;
 export type UpdateUserPreferenceRequest = z.infer<typeof UpdateUserPreferenceRequestSchema>;
 export type CaptureIntakeResponse = z.infer<typeof CaptureIntakeResponseSchema>;

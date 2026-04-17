@@ -22,12 +22,11 @@ type ItemDetailSurfaceProps = {
   timelineEntries: Array<{ id: string; label: string; role: "user" | "assistant" | "system"; timestamp?: string }>;
   canStartSession: boolean;
   onBackToFeed: () => void;
-  onQuickAction: (action: "summarize" | "classify" | "convert_to_task" | "next_step") => void;
+  onQuickAction: (action: "summarize_progress" | "next_step" | "classify" | "convert_to_task") => void;
   onAddComment: (itemId: string, comment: string) => void;
   onConvertCommentToTask: (itemId: string, comment: string) => void;
   onAskYurbrain: (question: string) => void;
   onOpenRelatedItem: (itemId: string) => void;
-  onShowRelatedItems: () => void;
   onStartSession: () => void;
 };
 
@@ -48,7 +47,6 @@ export function ItemDetailSurface({
   onConvertCommentToTask,
   onAskYurbrain,
   onOpenRelatedItem,
-  onShowRelatedItems,
   onStartSession
 }: ItemDetailSurfaceProps) {
   return (
@@ -77,7 +75,6 @@ export function ItemDetailSurface({
           onConvertCommentToTask={(comment) => onConvertCommentToTask(selectedItem.id, comment)}
           onAskYurbrain={onAskYurbrain}
           onOpenRelatedItem={onOpenRelatedItem}
-          onShowRelatedItems={onShowRelatedItems}
           onStartSession={onStartSession}
           canStartSession={canStartSession}
           artifactHistory={

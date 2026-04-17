@@ -149,10 +149,8 @@ export function buildSyntheticDetailCard(item: BrainItemDto | null, task: TaskDt
     snoozedUntil: null,
     refreshCount: 0,
     postponeCount: 0,
-    relatedCount: null,
     lastPostponedAt: null,
     lastRefreshedAt: null,
-    lastTouched: item?.updatedAt ?? null,
     availableActions: ["open_item", "comment", "convert_to_task", "dismiss", "snooze", "refresh"],
     stateFlags: {
       dismissed: false,
@@ -165,7 +163,10 @@ export function buildSyntheticDetailCard(item: BrainItemDto | null, task: TaskDt
       summary: continuity?.whyShown ?? "Continue this item in one small step.",
       reasons: continuityReasons
     },
-    whyShownText: continuity?.whyShown ?? "Continue this item in one small step.",
+    relatedCount: null,
+    clusterTopic: item?.topicGuess ?? null,
+    clusterItemIds: item ? [item.id] : null,
+    lastTouched: item?.updatedAt ?? null,
     createdAt: item?.createdAt ?? new Date().toISOString()
   };
 }
