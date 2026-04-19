@@ -483,7 +483,8 @@ export function buildFounderReviewFromSignals(
       signalNote:
         "Platform continuity uses persisted source + interaction proxies (deterministic MVP) until richer per-event platform telemetry is added."
     },
-    riskFlags
+    riskFlags,
+    aiReadout: null
   };
 
   // These system score values are intentionally computed but not returned yet to keep the API UI-ready and lightweight.
@@ -493,5 +494,40 @@ export function buildFounderReviewFromSignals(
   void emotionalUsability;
 
   return response;
+}
+
+export function summarizeFounderSignals(signals: FounderReviewSignals): {
+  strongestKeywords: string[];
+  latestItemTitles: string[];
+  itemCount: number;
+  taskCount: number;
+  sessionCount: number;
+} {
+  const itemText = signals.items
+    .map((item) => `${item.title} ${item.id}`)
+    .join(" ")
+    .toLowerCase();
+  const words = itemText.split(/[^a-z0-9]+/).filter((token) => token.length >= 4);
+  const stopwords = new Set(["item", "founder", "review", "with", "from", "that", "this", "mode", "flow"]);
+  const counts = new Map<string, number>();
+  for (const token of words) {
+    if (stopwords.has(token)) continue;
+    counts.set(token, (counts.get(token) ?? 0) + 1);
+  }
+  const strongestKeywords = [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 4)
+    .map(([token]) => token);
+  const latestItemTitles = [...signals.items]
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 4)
+    .map((item) => item.title);
+  return {
+    strongestKeywords,
+    latestItemTitles,
+    itemCount: signals.items.length,
+    taskCount: signals.tasks.length,
+    sessionCount: signals.sessions.length
+  };
 }
 

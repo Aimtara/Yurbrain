@@ -15,20 +15,25 @@ export function useFounderReviewController({
 }: UseFounderReviewControllerInput) {
   const [review, setReview] = useState<FounderReviewModel | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingAiReadout, setLoadingAiReadout] = useState(false);
   const [error, setError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
 
-  const loadFounderReview = useCallback(async () => {
+  const loadFounderReview = useCallback(async (includeAiReadout = false) => {
     setLoading(true);
+    setLoadingAiReadout(includeAiReadout);
     setError("");
     try {
-      const data = await apiClient<FounderReviewModel>(`${endpoints.founderReview}?window=7d&userId=${encodeURIComponent(userId)}`);
+      const data = await apiClient<FounderReviewModel>(
+        `${endpoints.founderReview}?window=7d&userId=${encodeURIComponent(userId)}${includeAiReadout ? "&includeAi=1" : ""}`
+      );
       setReview(data);
     } catch {
       setReview(null);
       setError("Founder Review could not load right now.");
     } finally {
       setLoading(false);
+      setLoadingAiReadout(false);
     }
   }, []);
 
@@ -48,6 +53,7 @@ export function useFounderReviewController({
   return {
     founderReview: review,
     founderReviewLoading: loading,
+    founderReviewAiReadoutLoading: loadingAiReadout,
     founderReviewError: error,
     founderReviewActionNotice: actionNotice,
     loadFounderReview,

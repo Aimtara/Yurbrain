@@ -2,3 +2,4 @@ import type { FounderReviewAction, FounderReviewResponse } from "../../../../../
 
 export type FounderReviewModel = FounderReviewResponse;
 export type FounderReviewActionModel = FounderReviewAction;
+export type FounderReviewAiReadoutModel = FounderReviewModel["aiReadout"];

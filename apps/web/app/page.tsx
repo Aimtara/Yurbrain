@@ -317,6 +317,7 @@ export default function Page() {
   const {
     founderReview,
     founderReviewLoading,
+    founderReviewAiReadoutLoading,
     founderReviewError,
     founderReviewActionNotice,
     loadFounderReview,
@@ -529,10 +530,10 @@ export default function Page() {
       {activeSurface === "founder_review" ? (
         <FounderReviewSurface
           review={founderReview}
-          loading={founderReviewLoading}
+          loading={founderReviewLoading || founderReviewAiReadoutLoading}
           error={founderReviewError}
           actionNotice={founderReviewActionNotice}
-          onRefresh={() => void loadFounderReview()}
+          onRefresh={() => void loadFounderReview(true)}
           onRunAction={(action) => void applyFounderReviewAction(action)}
         />
       ) : null}

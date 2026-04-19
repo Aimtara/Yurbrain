@@ -3,8 +3,10 @@ import type { FounderReviewActionModel, FounderReviewModel } from "./types";
 type FounderReviewSurfaceProps = {
   review: FounderReviewModel | null;
   loading: boolean;
+  loadingAiReadout?: boolean;
   error: string;
   onRefresh: () => void;
+  onRefreshWithAiReadout?: () => void;
   onRunAction: (action: FounderReviewActionModel) => void;
   actionNotice?: string;
 };
@@ -15,7 +17,16 @@ function scoreColor(score: number): string {
   return "#991b1b";
 }
 
-export function FounderReviewSurface({ review, loading, error, onRefresh, onRunAction, actionNotice = "" }: FounderReviewSurfaceProps) {
+export function FounderReviewSurface({
+  review,
+  loading,
+  loadingAiReadout = false,
+  error,
+  onRefresh,
+  onRefreshWithAiReadout,
+  onRunAction,
+  actionNotice = ""
+}: FounderReviewSurfaceProps) {
   if (!review) {
     return (
       <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
@@ -28,6 +39,11 @@ export function FounderReviewSurface({ review, loading, error, onRefresh, onRunA
             <button type="button" onClick={onRefresh} disabled={loading}>
               {loading ? "Refreshing..." : "Load review"}
             </button>
+            {onRefreshWithAiReadout ? (
+              <button type="button" onClick={onRefreshWithAiReadout} disabled={loadingAiReadout || loading}>
+                {loadingAiReadout ? "Generating AI readout..." : "Generate AI readout (optional)"}
+              </button>
+            ) : null}
           </div>
           {error ? <p style={{ margin: 0, color: "#991b1b" }}>{error}</p> : <p style={{ margin: 0, color: "#475569" }}>No review model yet.</p>}
         </div>
@@ -46,10 +62,27 @@ export function FounderReviewSurface({ review, loading, error, onRefresh, onRunA
           <button type="button" onClick={onRefresh} disabled={loading}>
             {loading ? "Refreshing..." : "Refresh review"}
           </button>
+          {onRefreshWithAiReadout ? (
+            <button type="button" onClick={onRefreshWithAiReadout} disabled={loadingAiReadout || loading}>
+              {loadingAiReadout ? "Generating AI readout..." : "Generate AI readout (optional)"}
+            </button>
+          ) : null}
         </div>
         {error ? <p style={{ margin: 0, color: "#991b1b" }}>{error}</p> : null}
         {actionNotice ? <p style={{ margin: 0, color: "#334155" }}>{actionNotice}</p> : null}
       </div>
+      {review.aiReadout ? (
+        <div style={{ borderRadius: "20px", border: "1px solid #dbeafe", background: "#eff6ff", padding: "16px", display: "grid", gap: "8px" }}>
+          <h3 style={{ margin: 0, fontSize: "17px", lineHeight: "22px", color: "#1e3a8a" }}>AI Readout (optional)</h3>
+          <p style={{ margin: 0, color: "#1e3a8a" }}>{review.aiReadout.summary}</p>
+          <p style={{ margin: 0, color: "#1e3a8a" }}>
+            <strong>Suggested wording:</strong> {review.aiReadout.recommendedNextMoveWording}
+          </p>
+          <p style={{ margin: 0, fontSize: "12px", color: "#1d4ed8" }}>
+            {review.aiReadout.groundingNote}
+          </p>
+        </div>
+      ) : null}
 
       <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "12px" }}>
         <h3 style={{ margin: 0, fontSize: "18px", lineHeight: "24px" }}>Overall score strip</h3>

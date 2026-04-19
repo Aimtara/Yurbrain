@@ -6,6 +6,17 @@ export const FounderReviewExecutionLensSchema = z.enum(["all", "ready_to_move", 
 export const FounderReviewScoreStatusSchema = z.enum(["strong", "watch", "weak"]);
 export const FounderReviewRiskSeveritySchema = z.enum(["low", "medium", "high"]);
 
+const FounderReviewIncludeAiInputSchema = z.preprocess((value) => {
+  if (value === undefined || value === null || value === "") return false;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.toLowerCase();
+    if (normalized === "1" || normalized === "true") return true;
+    if (normalized === "0" || normalized === "false") return false;
+  }
+  return value;
+}, z.boolean());
+
 export const FounderReviewActionSchema = z
   .object({
     id: z.string().min(1),
@@ -79,6 +90,14 @@ export const FounderReviewCrossPlatformSchema = z
   })
   .strict();
 
+export const FounderReviewAiReadoutSchema = z
+  .object({
+    summary: z.string().min(1).max(320),
+    recommendedNextMoveWording: z.string().min(1).max(260),
+    groundingNote: z.string().min(1).max(220)
+  })
+  .strict();
+
 export const FounderReviewResponseSchema = z
   .object({
     generatedAt: z.string().datetime(),
@@ -101,14 +120,16 @@ export const FounderReviewResponseSchema = z
     currentReadout: FounderReviewCurrentReadoutSchema,
     founderExecutionSummary: FounderReviewExecutionSummarySchema,
     crossPlatformContinuity: FounderReviewCrossPlatformSchema,
-    riskFlags: z.array(FounderReviewRiskFlagSchema).max(8)
+    riskFlags: z.array(FounderReviewRiskFlagSchema).max(8),
+    aiReadout: FounderReviewAiReadoutSchema.nullable()
   })
   .strict();
 
 export const FounderReviewQuerySchema = z
   .object({
     window: FounderReviewWindowSchema.optional().default("7d"),
-    userId: z.string().uuid().optional()
+    userId: z.string().uuid().optional(),
+    includeAi: FounderReviewIncludeAiInputSchema.optional().default(false)
   })
   .strict();
 

@@ -36,3 +36,24 @@ test("GET /founder-review returns a UI-ready deterministic model", async () => {
   assert.ok(body.founderExecutionSummary.stale >= 0);
   assert.ok(body.currentReadout.recommendedNextMove.action.target === "feed" || body.currentReadout.recommendedNextMove.action.target === "item");
 });
+
+test("GET /founder-review with ai wording adds concise explanatory copy", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/founder-review?window=7d&includeAi=1"
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json<{
+    aiReadout?: {
+      summary: string;
+      recommendedNextMoveWording: string;
+      groundingNote: string;
+    };
+  }>();
+
+  assert.ok(body.aiReadout);
+  assert.ok((body.aiReadout?.summary.length ?? 0) > 0);
+  assert.ok((body.aiReadout?.recommendedNextMoveWording.length ?? 0) > 0);
+  assert.ok((body.aiReadout?.groundingNote.length ?? 0) > 0);
+});

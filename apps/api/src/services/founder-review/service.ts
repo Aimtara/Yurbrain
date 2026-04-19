@@ -4,12 +4,14 @@ import { FounderReviewResponseSchema } from "../../../../../packages/contracts/s
 import { buildFounderReviewFromSignals } from "./scoring";
 import { createMockFounderReviewSignals } from "./mock-signals";
 import type { FounderPlatform, FounderReviewSignals } from "./types";
+import { buildFounderReviewAiWording } from "./ai-wording";
 
 type BuildFounderReviewOptions = {
   repo: DbRepository;
   userId: string;
   window: FounderReviewQuery["window"];
   now?: Date;
+  includeAi?: boolean;
 };
 
 const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -160,10 +162,22 @@ export async function collectFounderReviewSignals(options: BuildFounderReviewOpt
 export async function buildFounderReview(options: BuildFounderReviewOptions): Promise<FounderReviewResponse> {
   const signals = await collectFounderReviewSignals(options);
   const review = buildFounderReviewFromSignals(signals);
-  return FounderReviewResponseSchema.parse({
+  const baseReview = FounderReviewResponseSchema.parse({
     ...review,
     generatedAt: options.now?.toISOString() ?? review.generatedAt,
     window: options.window
+  });
+  if (!options.includeAi) {
+    return baseReview;
+  }
+  const aiReadout = await buildFounderReviewAiWording({
+    repo: options.repo,
+    userId: options.userId,
+    review: baseReview
+  });
+  return FounderReviewResponseSchema.parse({
+    ...baseReview,
+    aiReadout
   });
 }
 
