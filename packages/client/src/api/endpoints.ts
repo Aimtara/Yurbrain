@@ -2,6 +2,7 @@ export const endpoints = {
   captureIntake: "/capture/intake",
   brainItems: "/brain-items",
   feed: "/feed",
+  founderReview: "/founder-review",
   threads: "/threads",
   messages: "/messages",
   preferences: "/preferences",

@@ -8,6 +8,9 @@ import { useCaptureController } from "../src/features/capture/useCaptureControll
 import { matchesExecutionLens, deriveFeedRequestLimit, formatRelative, inferBlockedState, inferContinuityNote, inferNextStep, inferVariant, inferWhereLeftOff, buildSyntheticDetailCard } from "../src/features/feed/feed-model";
 import { FocusFeedSurface } from "../src/features/feed/FocusFeedSurface";
 import { useFeedController } from "../src/features/feed/useFeedController";
+import { FounderReviewSurface } from "../src/features/founder-review/FounderReviewSurface";
+import { createFounderActionHandlers } from "../src/features/founder-review/founder-review-actions";
+import { useFounderReviewController } from "../src/features/founder-review/useFounderReviewController";
 import { useFounderSummaryController } from "../src/features/founder/useFounderSummaryController";
 import { ItemDetailSurface } from "../src/features/item-detail/ItemDetailSurface";
 import { buildRelatedItems, buildSuggestedPrompts } from "../src/features/item-detail/item-detail-model";
@@ -298,6 +301,30 @@ export default function Page() {
     setSelectedContinuity,
     setActiveSurface
   });
+  const founderActionHandlers = useMemo(
+    () =>
+      createFounderActionHandlers({
+        setActiveSurface,
+        setActiveLens,
+        setExecutionLens,
+        setFounderMode,
+        setSelectedItemId,
+        setSelectedContinuity,
+        loadFeed
+      }),
+    [loadFeed, setActiveLens, setActiveSurface, setExecutionLens, setFounderMode, setSelectedContinuity, setSelectedItemId]
+  );
+  const {
+    founderReview,
+    founderReviewLoading,
+    founderReviewError,
+    founderReviewActionNotice,
+    loadFounderReview,
+    applyFounderReviewAction
+  } = useFounderReviewController({
+    activeSurface,
+    onRunAction: founderActionHandlers.run
+  });
 
   const { loadTasks, loadSessionsForTask, loadAllSessionsForUser, runConvert, startSessionFromFeedCard, updatePlanStepMinutes, acceptPlanPreview, startPlanFirstStep, handleFinishAction, startTimeTask, startWithoutPlanning, openPostponeSheet, applyPostponeMinutes, applyCustomPostpone, breakIntoSmallerStep, startSelectedTaskSession, markTaskDone, pauseSelectedSession, finishSelectedSession } = useSessionController({
     activeLens,
@@ -462,6 +489,7 @@ export default function Page() {
               captureSuccessNotice={captureSuccessNotice}
               onOpenTimeHome={() => setActiveSurface("time")}
               onOpenMe={() => setActiveSurface("me")}
+              onOpenFounderReview={() => setActiveSurface("founder_review")}
               onOpenCaptureSheet={openCaptureSheet}
               onCaptureDraftChange={setCaptureDraft}
               onCaptureSubmit={(intent) => void captureItem(intent)}
@@ -495,6 +523,17 @@ export default function Page() {
           onDismiss={(cardId) => void dismissCard(cardId)}
           onSnooze={openPostponeSheet}
           onRefresh={(cardId) => void refreshCard(cardId)}
+        />
+      ) : null}
+
+      {activeSurface === "founder_review" ? (
+        <FounderReviewSurface
+          review={founderReview}
+          loading={founderReviewLoading}
+          error={founderReviewError}
+          actionNotice={founderReviewActionNotice}
+          onRefresh={() => void loadFounderReview()}
+          onRunAction={(action) => void applyFounderReviewAction(action)}
         />
       ) : null}
 
