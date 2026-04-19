@@ -61,6 +61,7 @@ export type MobileLoopController = {
   suggestedTasksForWindow: Array<{ task: TaskDto; minutes: number }>;
   meTopInsight: string;
   meRecommendation: string;
+  sessionTabVisible: boolean;
   blockedReasonDraft: string;
   setCaptureDraft: (draft: CaptureDraft) => void;
   setBlockedReasonDraft: (value: string) => void;

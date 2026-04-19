@@ -29,11 +29,12 @@ import {
 } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
-import { demoUserId } from "../shared/constants";
+import { demoUserId, mobileStorageKeys } from "../shared/constants";
+import { getStoredState, setStoredState } from "../shared/storage";
 import { buildFounderSummary } from "../shared/founder";
 import { buildFeedCardModel } from "../shared/continuity";
 import { formatIsoRelative, formatSessionDuration } from "../shared/time";
-import type { BrainItemDto, CaptureDraft, ContinuityContext, FeedCardDto, ItemArtifactDto, MessageDto, MobileSurface, SessionDto, TaskDto, UserPreferenceDto } from "../shared/types";
+import type { BrainItemDto, CaptureDraft, ContinuityContext, FeedCardDto, FeedLens, ItemArtifactDto, MessageDto, MobileSurface, SessionDto, TaskDto, UserPreferenceDto } from "../shared/types";
 import type { MobileLoopController } from "./types";
 
 declare const process:
@@ -152,6 +153,7 @@ export function useMobileLoopController(): MobileLoopController {
   const [taskError, setTaskError] = useState("");
   const [timeNotice, setTimeNotice] = useState("");
   const [surfaceNotice, setSurfaceNotice] = useState("");
+  const [stateRehydrated, setStateRehydrated] = useState(false);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
@@ -241,6 +243,10 @@ export function useMobileLoopController(): MobileLoopController {
     if (activeSession?.taskId === selectedTask.id) return activeSession;
     return sessionHistory.find((session) => session.taskId === selectedTask.id) ?? null;
   }, [activeSession, selectedTask, sessionHistory]);
+  const sessionTabVisible = useMemo(
+    () => Boolean(activeSession || selectedTask || selectedTaskSession || tasks.some((task) => task.status !== "done")),
+    [activeSession, selectedTask, selectedTaskSession, tasks]
+  );
 
   const executionContext = useMemo(() => {
     if (!selectedTask?.sourceItemId) return null;
@@ -834,6 +840,39 @@ export function useMobileLoopController(): MobileLoopController {
   }, []);
 
   useEffect(() => {
+    if (stateRehydrated) return;
+    const restoredSurface = getStoredState<MobileSurface>("activeSurface");
+    if (restoredSurface && ["feed", "item", "session", "time", "me"].includes(restoredSurface)) {
+      setActiveSurface(restoredSurface);
+    }
+    const restoredLens = getStoredState<FeedLens>("activeLens");
+    if (restoredLens && ["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"].includes(restoredLens)) {
+      setActiveLens(restoredLens);
+    }
+    const restoredFounderMode = getStoredState<boolean>("founderMode");
+    if (typeof restoredFounderMode === "boolean") {
+      setFounderMode(restoredFounderMode);
+    }
+    const restoredTimeWindow = getStoredState<"2h" | "4h" | "6h" | "8h" | "24h" | "custom">("timeWindow");
+    if (restoredTimeWindow && ["2h", "4h", "6h", "8h", "24h", "custom"].includes(restoredTimeWindow)) {
+      setTimeWindow(restoredTimeWindow);
+    }
+    const restoredCustomMinutes = getStoredState<string>("customWindowMinutes");
+    if (typeof restoredCustomMinutes === "string" && restoredCustomMinutes.trim().length > 0) {
+      setCustomWindowMinutes(restoredCustomMinutes);
+    }
+    const restoredItemId = getStoredState<string>("selectedItemId");
+    if (typeof restoredItemId === "string") {
+      setSelectedItemId(restoredItemId);
+    }
+    const restoredTaskId = getStoredState<string>("selectedTaskId");
+    if (typeof restoredTaskId === "string") {
+      setSelectedTaskId(restoredTaskId);
+    }
+    setStateRehydrated(true);
+  }, [stateRehydrated]);
+
+  useEffect(() => {
     void (async () => {
       try {
         const preferences = await getUserPreference<UserPreferenceDto>(demoUserId);
@@ -858,6 +897,41 @@ export function useMobileLoopController(): MobileLoopController {
     if (!hydrated) return;
     void loadFeed(activeLens);
   }, [activeLens, hydrated, loadFeed]);
+
+  useEffect(() => {
+    if (!stateRehydrated) return;
+    setStoredState("activeSurface", activeSurface);
+  }, [activeSurface, stateRehydrated]);
+
+  useEffect(() => {
+    if (!stateRehydrated) return;
+    setStoredState("activeLens", activeLens);
+  }, [activeLens, stateRehydrated]);
+
+  useEffect(() => {
+    if (!stateRehydrated) return;
+    setStoredState("founderMode", founderMode);
+  }, [founderMode, stateRehydrated]);
+
+  useEffect(() => {
+    if (!stateRehydrated) return;
+    setStoredState("timeWindow", timeWindow);
+  }, [stateRehydrated, timeWindow]);
+
+  useEffect(() => {
+    if (!stateRehydrated) return;
+    setStoredState("customWindowMinutes", customWindowMinutes);
+  }, [customWindowMinutes, stateRehydrated]);
+
+  useEffect(() => {
+    if (!stateRehydrated) return;
+    setStoredState("selectedItemId", selectedItemId || null);
+  }, [selectedItemId, stateRehydrated]);
+
+  useEffect(() => {
+    if (!stateRehydrated) return;
+    setStoredState("selectedTaskId", selectedTaskId || null);
+  }, [selectedTaskId, stateRehydrated]);
 
   const controller: MobileLoopController = {
     activeSurface,
@@ -898,6 +972,7 @@ export function useMobileLoopController(): MobileLoopController {
     suggestedTasksForWindow,
     meTopInsight: meInsights.topInsight,
     meRecommendation: meInsights.recommendation,
+    sessionTabVisible,
     setCaptureDraft,
     closeCaptureSheet,
     openCaptureSheet,

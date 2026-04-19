@@ -27,7 +27,7 @@ export default function App() {
         {controller.activeSurface === "time" ? <TimeSurface controller={controller} /> : null}
         {controller.activeSurface === "me" ? <MeSurface controller={controller} /> : null}
       </View>
-      <MobileTabBar activeSurface={controller.activeSurface} onNavigate={controller.navigateToPrimarySurface} />
+      <MobileTabBar activeSurface={controller.activeSurface} onNavigate={controller.navigateToPrimarySurface} sessionTabEnabled={controller.sessionTabVisible} />
       <AppCaptureSheet
         open={controller.captureSheetOpen}
         draft={controller.captureDraft}
