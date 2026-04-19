@@ -1,4 +1,5 @@
-import type { FeedCardModel } from "./types";
+import { formatIsoRelative } from "./time";
+import type { BrainItemDto, FeedCardModel, TaskDto } from "./types";
 
 function scoreCard(model: FeedCardModel): number {
   let score = 0;
@@ -8,7 +9,31 @@ function scoreCard(model: FeedCardModel): number {
   return score;
 }
 
-export function buildFounderSummary(models: FeedCardModel[]): {
+function buildFounderSummaryText(models: FeedCardModel[], items: BrainItemDto[], tasks: TaskDto[]): string {
+  if (models.length === 0) {
+    return "Capture a few thoughts first. Founder mode will summarize execution signals once your feed has continuity history.";
+  }
+  const mostRecentItem = [...items]
+    .filter((item) => Boolean(item.updatedAt))
+    .sort((left, right) => (right.updatedAt ?? "").localeCompare(left.updatedAt ?? ""))[0];
+  const changedSignal = mostRecentItem ? `${mostRecentItem.title} touched ${formatIsoRelative(mostRecentItem.updatedAt)}` : "No recent updates yet";
+  const doneCount = tasks.filter((task) => task.status === "done").length;
+  const blockedCount = models.filter((model) => model.variant === "blocked").length;
+  const ready = models.filter((model) => model.variant === "execution" || model.variant === "resume");
+  const nextSignal =
+    models.find((model) => model.variant === "blocked")?.continuity.nextStep ??
+    ready[0]?.continuity.nextStep ??
+    "Open one item and leave one continuation note.";
+  return `Changed: ${changedSignal}. Done: ${doneCount} tasks. Blocked: ${blockedCount} cards. Next: ${nextSignal}`;
+}
+
+export function buildFounderSummary(
+  models: FeedCardModel[],
+  context: {
+    items: BrainItemDto[];
+    tasks: TaskDto[];
+  } = { items: [], tasks: [] }
+): {
   stats: Array<{ label: string; value: string }>;
   summary: string;
   suggested: FeedCardModel | null;
@@ -24,8 +49,6 @@ export function buildFounderSummary(models: FeedCardModel[]): {
     { label: "Ready to move", value: String(ready) },
     { label: "Needs unblock", value: String(blocked.length) }
   ];
-  const summary = suggested
-    ? `Suggested focus: ${suggested.card.title}. Next: ${suggested.continuity.nextStep ?? "Open and continue with one update."}`
-    : "Capture a thought to start founder execution signals.";
+  const summary = buildFounderSummaryText(models, context?.items ?? [], context?.tasks ?? []);
   return { stats, summary, suggested, blocked };
 }
