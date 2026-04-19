@@ -240,3 +240,163 @@ Definition of done:
 - failures degrade gracefully
 - task conversion outputs are realistic and actionable
 ```
+
+## Prompt 7 — New Captures Review + Feed Slicers
+
+```text
+You are working in the Yurbrain monorepo.
+
+Your task is to implement/finish:
+1. New Captures Review layer
+2. Feed slicer alignment only where gaps still exist
+
+This is part of the core Yurbrain loop:
+Capture → Review → Resurface → Continue → Act
+
+FIRST: AUDIT BEFORE CHANGING
+
+1. Inspect contracts, API routes, and web/mobile feed surfaces.
+2. Confirm what is already shipped for lens-based feed browsing.
+3. Implement only missing deltas (do not rewrite already-working lens flow).
+
+PART 1 — New Captures Review
+
+Goal:
+Allow users to lightly review recent captures without forcing processing.
+
+Backend:
+1. Extend BrainItem:
+   - add field: `isNew` (boolean) OR `lastViewedAt` (preferred if you want better auditability)
+2. Add endpoint:
+   - `GET /brain-items/new`
+   - returns items created within recent window (recommend 24–72h) and not yet seen by user
+3. Add endpoint:
+   - `POST /brain-items/mark-seen`
+   - payload: `{ itemIds: string[] }`
+
+PART 2 — Feed Integration
+
+Add New Captures Shelf:
+- If user has new items, show at top of feed:
+  - `New Captures (N)`
+  - horizontal scroll list
+
+Each card should include:
+- title/snippet
+- timestamp
+- minimal UI
+
+PART 3 — Review Panel
+
+Create component:
+- `NewCapturesPanel`
+
+Triggered by:
+- tapping “New Captures”
+- optional prompt on app open
+
+Show:
+- list of new items
+
+Per-item actions:
+- Keep (default)
+- Add note
+- Ask Yurbrain
+- Dismiss
+
+Bulk actions:
+- Mark all as seen
+- Summarize these
+- Show similar
+
+PART 4 — Feed Slicers
+
+Goal:
+Enable browsing by mental categories.
+
+Add to Feed UI:
+- top horizontal lens selector:
+  - All
+  - Keep in Mind
+  - Open Loops
+  - In Progress
+  - Learning
+  - Recently Commented
+
+Optional future lens (only if truly needed after audit):
+- New
+
+Backend:
+- extend feed endpoint:
+  - `GET /feed?lens=...`
+
+Filter logic:
+- Keep in Mind → low-action items
+- Open Loops → incomplete threads
+- In Progress → execution items
+- Learning → inferred topic / learning-oriented items
+- Recently Commented → recent interaction
+
+PART 5 — State Handling
+
+- persist selected lens locally
+- persist dismissed “new captures” prompt
+- mark items as seen when:
+  - opened
+  - or explicitly marked seen
+
+PART 6 — UX Rules
+
+Do NOT:
+- require categorization
+- create inbox workflows
+- add task creation prompts
+- add dashboards
+- add complex filtering UI
+
+Keep the experience:
+- lightweight
+- fast
+- optional
+- calm
+
+OPTIONAL GUIDANCE — MAP TO EXISTING COMPONENT STRUCTURE
+
+Use these likely integration points:
+- Web feature orchestration:
+  - `apps/web/src/features/feed/FocusFeedSurface.tsx`
+  - `apps/web/src/features/feed/useFeedController.ts`
+- Shared feed UI:
+  - `packages/ui/src/components/feed/FocusFeedScreen.tsx`
+  - `packages/ui/src/components/feed/FeedLensBar.tsx`
+  - `packages/ui/src/components/feed/ClusterCard.tsx`
+- API routes:
+  - `apps/api/src/routes/brain-items.ts`
+  - `apps/api/src/routes/feed.ts`
+- Contracts + client:
+  - `packages/contracts/src/domain/domain.ts`
+  - `packages/contracts/src/api/api-contracts.ts`
+  - `packages/client/src/api/endpoints.ts`
+
+OUTPUT FORMAT
+
+Before coding:
+- outline implementation plan + explicit "already implemented vs missing" checklist
+
+After coding:
+- list files changed
+- describe UX flow
+- identify any gaps or follow-up work
+
+SUCCESS CRITERIA
+
+User can:
+1. Capture items without friction
+2. See “new captures” later
+3. Browse them lightly
+4. Ignore them if desired
+5. Explore feed by human-readable lens instead of search
+
+Final note:
+This closes the post-capture gap by defining a soft, optional review layer and clearer feed slicing behavior.
+```
