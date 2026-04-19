@@ -483,6 +483,30 @@ export function useMobileLoopController(): MobileLoopController {
     []
   );
 
+  const updateFounderProgressFromCard = useCallback(
+    async (card: FeedCardDto) => {
+      if (!card.itemId) return;
+      const reason = card.whyShown.reasons[0] ?? card.whyShown.summary;
+      const note = `Progress: moved ${card.title.toLowerCase()} forward. ${clampText(reason, 120)}`;
+      try {
+        setSelectedItemId(card.itemId);
+        const threadId = commentThreadId || (await ensureThreadForItem(card.itemId, "item_comment"));
+        if (!commentThreadId) setCommentThreadId(threadId);
+        const created = await sendMessage<MessageDto>({ threadId, role: "user", content: note });
+        setCommentMessages((current) => [...current, created]);
+        setSelectedContinuity({
+          ...buildContinuityFromFeedCard(card),
+          changedSince: "Founder update logged just now.",
+          nextStep: "Keep momentum with one more concrete move."
+        });
+        setSurfaceNotice("Founder update saved. Keep momentum.");
+      } catch {
+        setTaskError("Could not log founder update.");
+      }
+    },
+    [commentThreadId]
+  );
+
   const openTask = useCallback((taskId: string) => {
     setSelectedTaskId(taskId);
     setActiveSurface("session");
@@ -982,6 +1006,7 @@ export function useMobileLoopController(): MobileLoopController {
     setExecutionLens,
     captureItem,
     openItemFromFeed,
+    updateFounderProgressFromCard,
     openTask,
     runFeedAction,
     runQuickAction,

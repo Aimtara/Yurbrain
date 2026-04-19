@@ -74,6 +74,7 @@ export type MobileLoopController = {
   captureItem: (intent: CaptureSubmitIntent) => Promise<void>;
   openItemFromFeed: (card: FeedCardDto) => void;
   openTask: (taskId: string) => void;
+  updateFounderProgressFromCard: (card: FeedCardDto) => Promise<void>;
   runFeedAction: (card: FeedCardDto, action: "continue" | "keep_in_focus" | "revisit_later" | "dismiss") => Promise<void>;
   runQuickAction: (action: "summarize_progress" | "next_step" | "classify" | "convert_to_task") => Promise<void>;
   updateItemComment: (value: string) => Promise<void>;

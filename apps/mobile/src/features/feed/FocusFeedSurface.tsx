@@ -28,6 +28,13 @@ function executionStatusLabel(variant: MobileLoopController["feedCards"][number]
   return "Keep in mind";
 }
 
+function founderProgressLabel(model: MobileLoopController["feedCards"][number]): string {
+  if (model.variant === "blocked") return "Unblock";
+  if (model.card.taskId) return "Start session";
+  if (model.variant === "execution" || model.variant === "resume") return "Plan step";
+  return "Log progress";
+}
+
 export function FocusFeedSurface({ controller }: { controller: MobileLoopController }) {
   return (
     <ScrollView contentContainerStyle={{ padding: 14, gap: 10 }}>
@@ -178,6 +185,32 @@ export function FocusFeedSurface({ controller }: { controller: MobileLoopControl
                 <ActionButton label="Later" onPress={() => void controller.runFeedAction(model.card, "revisit_later")} />
                 <ActionButton label="Dismiss" onPress={() => void controller.runFeedAction(model.card, "dismiss")} />
               </View>
+              {controller.founderMode ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  <ActionButton
+                    label={founderProgressLabel(model)}
+                    onPress={() => {
+                      if (model.variant === "blocked") {
+                        void controller.runFeedAction(model.card, "continue");
+                        return;
+                      }
+                      if (model.card.taskId) {
+                        controller.openTask(model.card.taskId);
+                        return;
+                      }
+                      if (model.variant === "execution" || model.variant === "resume") {
+                        void controller.runQuickAction("convert_to_task");
+                        return;
+                      }
+                      void controller.runFeedAction(model.card, "continue");
+                    }}
+                  />
+                  <ActionButton
+                    label={model.variant === "blocked" ? "Log blocker note" : "Log progress"}
+                    onPress={() => void controller.runFeedAction(model.card, "continue")}
+                  />
+                </View>
+              ) : null}
             </View>
           ))}
         </View>
