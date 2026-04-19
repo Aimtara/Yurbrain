@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "echo \"@yurbrain/ui is a component library (run app dev scripts)\"",
     "start": "echo \"@yurbrain/ui has no standalone runtime\"",
-    "test": "echo \"No package-specific tests for @yurbrain/ui yet\""
+    "test": "tsx --test src/__tests__/*.test.ts"
   },
   "dependencies": {
     "react": "19.0.0"
   },
   "devDependencies": {
-    "@types/react": "^19.0.4"
+    "@types/react": "^19.0.4",
+    "tsx": "^4.19.2"
   }
 }
