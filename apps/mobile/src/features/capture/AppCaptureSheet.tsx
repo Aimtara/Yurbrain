@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
@@ -42,6 +42,7 @@ export function AppCaptureSheet({
   onChangeDraft,
   onSubmit
 }: AppCaptureSheetProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const canSubmit = useMemo(() => draft.content.trim().length > 0, [draft.content]);
 
   return (
@@ -84,26 +85,7 @@ export function AppCaptureSheet({
             </Pressable>
           </View>
 
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {captureTypeOptions.map((type) => (
-              <Pressable
-                key={type}
-                onPress={() => onChangeDraft({ ...draft, type })}
-                accessibilityRole="button"
-                accessibilityState={{ selected: draft.type === type }}
-                style={{
-                  borderWidth: 1,
-                  borderColor: draft.type === type ? "#93c5fd" : "#d8dce8",
-                  backgroundColor: draft.type === type ? "#eff6ff" : "#ffffff",
-                  borderRadius: 999,
-                  paddingVertical: 6,
-                  paddingHorizontal: 10
-                }}
-              >
-                <Text style={{ color: "#1e293b", fontWeight: draft.type === type ? "700" : "500" }}>{captureTypeLabels[type]}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <Text style={{ color: "#64748b" }}>Quick capture first. Add details only if useful.</Text>
 
           <TextInput
             multiline
@@ -128,40 +110,85 @@ export function AppCaptureSheet({
             }}
           />
 
-          <TextInput
-            value={draft.source}
-            onChangeText={(source) => onChangeDraft({ ...draft, source })}
-            placeholder="Source (optional)"
-            accessibilityLabel="Capture source optional"
-            style={{
-              borderWidth: 1,
-              borderColor: "#d8dce8",
-              borderRadius: 12,
-              backgroundColor: "#ffffff",
-              paddingHorizontal: 12,
-              paddingVertical: 9,
-              color: "#0f172a"
-            }}
-          />
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={{ color: "#64748b" }}>
+              Mode: <Text style={{ color: "#1e293b", fontWeight: "700" }}>{captureTypeLabels[draft.type]}</Text>
+            </Text>
+            <Pressable
+              onPress={() => setAdvancedOpen((current) => !current)}
+              accessibilityRole="button"
+              style={{
+                borderWidth: 1,
+                borderColor: "#d8dce8",
+                borderRadius: 999,
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                backgroundColor: "#ffffff"
+              }}
+            >
+              <Text style={{ color: "#334155", fontWeight: "600" }}>{advancedOpen ? "Hide options" : "More options"}</Text>
+            </Pressable>
+          </View>
 
-          <TextInput
-            multiline
-            value={draft.note}
-            onChangeText={(note) => onChangeDraft({ ...draft, note })}
-            placeholder="Why this matters later (optional)"
-            accessibilityLabel="Capture note optional"
-            style={{
-              minHeight: 70,
-              textAlignVertical: "top",
-              borderWidth: 1,
-              borderColor: "#d8dce8",
-              borderRadius: 12,
-              backgroundColor: "#ffffff",
-              paddingHorizontal: 12,
-              paddingVertical: 9,
-              color: "#0f172a"
-            }}
-          />
+          {advancedOpen ? (
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {captureTypeOptions.map((type) => (
+                  <Pressable
+                    key={type}
+                    onPress={() => onChangeDraft({ ...draft, type })}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: draft.type === type }}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: draft.type === type ? "#93c5fd" : "#d8dce8",
+                      backgroundColor: draft.type === type ? "#eff6ff" : "#ffffff",
+                      borderRadius: 999,
+                      paddingVertical: 6,
+                      paddingHorizontal: 10
+                    }}
+                  >
+                    <Text style={{ color: "#1e293b", fontWeight: draft.type === type ? "700" : "500" }}>{captureTypeLabels[type]}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <TextInput
+                value={draft.source}
+                onChangeText={(source) => onChangeDraft({ ...draft, source })}
+                placeholder="Source (optional)"
+                accessibilityLabel="Capture source optional"
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#d8dce8",
+                  borderRadius: 12,
+                  backgroundColor: "#ffffff",
+                  paddingHorizontal: 12,
+                  paddingVertical: 9,
+                  color: "#0f172a"
+                }}
+              />
+
+              <TextInput
+                multiline
+                value={draft.note}
+                onChangeText={(note) => onChangeDraft({ ...draft, note })}
+                placeholder="Why this matters later (optional)"
+                accessibilityLabel="Capture note optional"
+                style={{
+                  minHeight: 70,
+                  textAlignVertical: "top",
+                  borderWidth: 1,
+                  borderColor: "#d8dce8",
+                  borderRadius: 12,
+                  backgroundColor: "#ffffff",
+                  paddingHorizontal: 12,
+                  paddingVertical: 9,
+                  color: "#0f172a"
+                }}
+              />
+            </View>
+          ) : null}
 
           {loading ? <Text style={{ color: "#334155" }}>Saving capture...</Text> : null}
           {statusMessage ? <Text style={{ color: "#334155" }}>{statusMessage}</Text> : null}
@@ -169,9 +196,13 @@ export function AppCaptureSheet({
           {errorMessage ? <Text style={{ color: "#991b1b" }}>{errorMessage}</Text> : null}
 
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <CaptureActionButton disabled={loading || !canSubmit} label="Save" onPress={() => void onSubmit("save")} />
-            <CaptureActionButton disabled={loading || !canSubmit} label="Save + Plan" onPress={() => void onSubmit("save_and_plan")} />
-            <CaptureActionButton disabled={loading || !canSubmit} label="Save + Remind" onPress={() => void onSubmit("save_and_remind")} />
+            <CaptureActionButton disabled={loading || !canSubmit} label="Save" onPress={() => void onSubmit("save")} primary />
+            {advancedOpen ? (
+              <>
+                <CaptureActionButton disabled={loading || !canSubmit} label="Save + Plan" onPress={() => void onSubmit("save_and_plan")} />
+                <CaptureActionButton disabled={loading || !canSubmit} label="Save + Remind" onPress={() => void onSubmit("save_and_remind")} />
+              </>
+            ) : null}
           </View>
         </View>
       </View>
@@ -179,7 +210,7 @@ export function AppCaptureSheet({
   );
 }
 
-function CaptureActionButton({ disabled, label, onPress }: { disabled: boolean; label: string; onPress: () => void }) {
+function CaptureActionButton({ disabled, label, onPress, primary = false }: { disabled: boolean; label: string; onPress: () => void; primary?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
@@ -187,15 +218,15 @@ function CaptureActionButton({ disabled, label, onPress }: { disabled: boolean; 
       accessibilityRole="button"
       style={{
         borderWidth: 1,
-        borderColor: "#cbd5e1",
+        borderColor: primary ? "#0f172a" : "#cbd5e1",
         borderRadius: 999,
-        backgroundColor: disabled ? "#f1f5f9" : "#ffffff",
+        backgroundColor: disabled ? "#f1f5f9" : primary ? "#0f172a" : "#ffffff",
         paddingVertical: 8,
         paddingHorizontal: 12,
         opacity: disabled ? 0.7 : 1
       }}
     >
-      <Text style={{ color: "#1e293b", fontWeight: "700" }}>{label}</Text>
+      <Text style={{ color: primary ? "#ffffff" : "#1e293b", fontWeight: "700" }}>{label}</Text>
     </Pressable>
   );
 }
