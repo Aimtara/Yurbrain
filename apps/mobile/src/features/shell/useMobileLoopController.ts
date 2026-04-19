@@ -61,6 +61,14 @@ function clampText(value: string, maxLength: number): string {
   return `${value.slice(0, maxLength - 1).trimEnd()}…`;
 }
 
+function compactText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function conciseAiText(value: string, maxLength = 240): string {
+  return clampText(compactText(value), maxLength);
+}
+
 function inferNextStep(card: FeedCardDto): string {
   if (card.taskId) return "Continue execution for this item.";
   if (card.cardType === "open_loop") return "Add one short update to close this loop.";
@@ -554,29 +562,32 @@ export function useMobileLoopController(): MobileLoopController {
             setActiveSurface("session");
             await Promise.all([loadTasks(), loadFeed(activeLens)]);
           } else {
-            setSurfaceNotice(`Not recommended: ${converted.reason}`);
+            setSurfaceNotice(`Not recommended: ${clampText(compactText(converted.reason), 120)}`);
           }
           return;
         }
         const itemIds = Array.from(new Set([selectedItem.id, ...relatedItems.map((item) => item.id)]));
         if (action === "summarize_progress") {
           const summary = await summarizeCluster<{ summary: string; suggestedNextAction: string }>({ itemIds });
+          const conciseSummary = conciseAiText(summary.summary, 240);
+          const conciseNextAction = conciseAiText(summary.suggestedNextAction, 120);
           setArtifactHistoryByItem((current) => {
             const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
             return {
               ...current,
-              [selectedItem.id]: { summary: [summary.summary, ...existing.summary], classification: existing.classification }
+              [selectedItem.id]: { summary: [conciseSummary, ...existing.summary], classification: existing.classification }
             };
           });
-          setSurfaceNotice(`Summary: ${summary.suggestedNextAction}`);
+          setSurfaceNotice(`Summary: ${conciseNextAction}`);
           return;
         }
         if (action === "next_step") {
           const next = await requestNextStep<{ suggestedNextAction: string; reason: string }>({ itemIds });
-          setSurfaceNotice(`Next: ${next.suggestedNextAction}`);
+          const conciseNextStep = conciseAiText(next.suggestedNextAction, 120);
+          setSurfaceNotice(`Next: ${conciseNextStep}`);
           setSelectedContinuity((current) => ({
             ...(current ?? {}),
-            nextStep: next.suggestedNextAction
+            nextStep: conciseNextStep
           }));
           return;
         }
@@ -584,16 +595,17 @@ export function useMobileLoopController(): MobileLoopController {
           itemId: selectedItem.id,
           rawContent: selectedItem.rawContent
         });
+        const conciseClassification = conciseAiText(classification.ai.content, 220);
         setArtifactHistoryByItem((current) => {
           const existing = current[selectedItem.id] ?? { summary: [], classification: [] };
           return {
             ...current,
-            [selectedItem.id]: { summary: existing.summary, classification: [classification.ai.content, ...existing.classification] }
+            [selectedItem.id]: { summary: existing.summary, classification: [conciseClassification, ...existing.classification] }
           };
         });
-        setSurfaceNotice("Updated framing generated.");
+        setSurfaceNotice("Updated framing.");
       } catch {
-        setAiError("AI support is unavailable right now.");
+        setAiError("AI support is unavailable. Try again in a moment.");
       } finally {
         setAiBusy(false);
       }
@@ -639,15 +651,19 @@ export function useMobileLoopController(): MobileLoopController {
           threadId: activeThreadId,
           question: normalized
         });
-        setChatMessages((current) => [...current, response.userMessage, response.message]);
-        setCommentMessages((current) => [...current, response.userMessage, response.message]);
+        const conciseAssistantMessage: MessageDto = {
+          ...response.message,
+          content: conciseAiText(response.message.content, 240)
+        };
+        setChatMessages((current) => [...current, response.userMessage, conciseAssistantMessage]);
+        setCommentMessages((current) => [...current, response.userMessage, conciseAssistantMessage]);
         await Promise.all([
           sendMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
-          sendMessage<MessageDto>({ threadId: continuityThreadId, role: "assistant", content: response.message.content })
+          sendMessage<MessageDto>({ threadId: continuityThreadId, role: "assistant", content: conciseAssistantMessage.content })
         ]);
-        setSurfaceNotice("AI response added to continuity timeline.");
+        setSurfaceNotice("Yurbrain reply added to timeline.");
       } catch {
-        setAiError("Could not ask Yurbrain right now.");
+        setAiError("Could not ask Yurbrain right now. Please retry.");
       } finally {
         setAiBusy(false);
       }
@@ -856,6 +872,7 @@ export function useMobileLoopController(): MobileLoopController {
     captureSuccessNotice,
     feedLoading,
     itemLoading,
+    aiBusy,
     aiError,
     feedError,
     itemError,

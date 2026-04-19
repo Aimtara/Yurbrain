@@ -62,11 +62,12 @@ export function ItemDetailSurface({ controller }: Props) {
           <View style={{ borderWidth: 1, borderColor: "#d1fae5", borderRadius: 12, backgroundColor: "#ecfdf5", padding: 12, gap: 8 }}>
             <Text style={{ color: "#065f46", fontWeight: "700" }}>Continue from here</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              <ActionChip label="Summarize Progress" onPress={() => void controller.runQuickAction("summarize_progress")} />
-              <ActionChip label="What Should I Do Next?" onPress={() => void controller.runQuickAction("next_step")} />
-              <ActionChip label="Plan This" onPress={() => void controller.runQuickAction("convert_to_task")} />
+              <ActionChip label="Summarize Progress" onPress={() => void controller.runQuickAction("summarize_progress")} disabled={controller.aiBusy} />
+              <ActionChip label="What Should I Do Next?" onPress={() => void controller.runQuickAction("next_step")} disabled={controller.aiBusy} />
+              <ActionChip label="Plan This" onPress={() => void controller.runQuickAction("convert_to_task")} disabled={controller.aiBusy} />
               <ActionChip label={canStartSession ? "Start Session" : "Plan first"} onPress={() => void controller.startSessionFromItem()} disabled={!canStartSession} />
             </View>
+            {controller.aiBusy ? <Text style={{ color: "#065f46" }}>Yurbrain is thinking…</Text> : null}
           </View>
 
           <View style={{ borderWidth: 1, borderColor: "#d8dce8", borderRadius: 12, backgroundColor: "#ffffff", padding: 12, gap: 8 }}>
@@ -116,9 +117,12 @@ export function ItemDetailSurface({ controller }: Props) {
                 }
                 setDraft("");
               }}
+              disabled={controller.aiBusy && composerMode === "ask"}
               style={{ alignSelf: "flex-start", borderWidth: 1, borderColor: "#d8dce8", borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10, backgroundColor: "#ffffff" }}
             >
-              <Text style={{ color: "#2d3448", fontWeight: "600" }}>{composerMode === "ask" ? "Ask Yurbrain" : "Send update"}</Text>
+              <Text style={{ color: "#2d3448", fontWeight: "600", opacity: controller.aiBusy && composerMode === "ask" ? 0.6 : 1 }}>
+                {composerMode === "ask" ? (controller.aiBusy ? "Thinking…" : "Ask Yurbrain") : "Send update"}
+              </Text>
             </Pressable>
           </View>
 

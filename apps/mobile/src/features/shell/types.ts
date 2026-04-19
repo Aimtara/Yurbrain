@@ -30,6 +30,7 @@ export type MobileLoopController = {
   captureSuccessNotice: string;
   feedLoading: boolean;
   itemLoading: boolean;
+  aiBusy: boolean;
   aiError: string;
   feedError: string;
   itemError: string;
