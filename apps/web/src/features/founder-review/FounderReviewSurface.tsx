@@ -71,7 +71,7 @@ export function FounderReviewSurface({ review, loading, error, onRefresh, onRunA
       <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "12px" }}>
         <h3 style={{ margin: 0, fontSize: "18px", lineHeight: "24px" }}>Loop Health</h3>
         <div style={{ display: "grid", gap: "8px", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))" }}>
-          {review.loopHealth.map((entry) => (
+          {review.loopHealth.map((entry: FounderReviewModel["loopHealth"][number]) => (
             <button
               key={entry.key}
               type="button"
@@ -132,7 +132,7 @@ export function FounderReviewSurface({ review, loading, error, onRefresh, onRunA
       <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "8px" }}>
         <h3 style={{ margin: 0, fontSize: "18px", lineHeight: "24px" }}>Risk Flags</h3>
         {review.riskFlags.length === 0 ? <p style={{ margin: 0, color: "#475569" }}>No critical flags this window.</p> : null}
-        {review.riskFlags.map((flag) => (
+        {review.riskFlags.map((flag: FounderReviewModel["riskFlags"][number]) => (
           <button key={flag.id} type="button" onClick={() => onRunAction(flag.action)} style={{ textAlign: "left" }}>
             {flag.severity.toUpperCase()}: {flag.title} — {flag.detail}
           </button>

@@ -1,5 +1,5 @@
-import type { ExecutionLens } from "@yurbrain/ui";
-import type { Surface, FeedLens, ContinuityContext } from "../shared/types";
+import type { ExecutionLens, FeedLens } from "@yurbrain/ui";
+import type { Surface, ContinuityContext } from "../shared/types";
 import type { FounderReviewActionModel } from "./types";
 
 type FounderActionDeps = {
