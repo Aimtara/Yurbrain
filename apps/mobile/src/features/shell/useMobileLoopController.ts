@@ -841,31 +841,31 @@ export function useMobileLoopController(): MobileLoopController {
 
   useEffect(() => {
     if (stateRehydrated) return;
-    const restoredSurface = getStoredState<MobileSurface>("activeSurface");
+    const restoredSurface = getStoredState<MobileSurface>(mobileStorageKeys.activeSurface);
     if (restoredSurface && ["feed", "item", "session", "time", "me"].includes(restoredSurface)) {
       setActiveSurface(restoredSurface);
     }
-    const restoredLens = getStoredState<FeedLens>("activeLens");
+    const restoredLens = getStoredState<FeedLens>(mobileStorageKeys.activeLens);
     if (restoredLens && ["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"].includes(restoredLens)) {
       setActiveLens(restoredLens);
     }
-    const restoredFounderMode = getStoredState<boolean>("founderMode");
+    const restoredFounderMode = getStoredState<boolean>(mobileStorageKeys.founderMode);
     if (typeof restoredFounderMode === "boolean") {
       setFounderMode(restoredFounderMode);
     }
-    const restoredTimeWindow = getStoredState<"2h" | "4h" | "6h" | "8h" | "24h" | "custom">("timeWindow");
+    const restoredTimeWindow = getStoredState<"2h" | "4h" | "6h" | "8h" | "24h" | "custom">(mobileStorageKeys.timeWindow);
     if (restoredTimeWindow && ["2h", "4h", "6h", "8h", "24h", "custom"].includes(restoredTimeWindow)) {
       setTimeWindow(restoredTimeWindow);
     }
-    const restoredCustomMinutes = getStoredState<string>("customWindowMinutes");
+    const restoredCustomMinutes = getStoredState<string>(mobileStorageKeys.customWindowMinutes);
     if (typeof restoredCustomMinutes === "string" && restoredCustomMinutes.trim().length > 0) {
       setCustomWindowMinutes(restoredCustomMinutes);
     }
-    const restoredItemId = getStoredState<string>("selectedItemId");
+    const restoredItemId = getStoredState<string>(mobileStorageKeys.selectedItemId);
     if (typeof restoredItemId === "string") {
       setSelectedItemId(restoredItemId);
     }
-    const restoredTaskId = getStoredState<string>("selectedTaskId");
+    const restoredTaskId = getStoredState<string>(mobileStorageKeys.selectedTaskId);
     if (typeof restoredTaskId === "string") {
       setSelectedTaskId(restoredTaskId);
     }
@@ -900,37 +900,37 @@ export function useMobileLoopController(): MobileLoopController {
 
   useEffect(() => {
     if (!stateRehydrated) return;
-    setStoredState("activeSurface", activeSurface);
+    setStoredState(mobileStorageKeys.activeSurface, activeSurface);
   }, [activeSurface, stateRehydrated]);
 
   useEffect(() => {
     if (!stateRehydrated) return;
-    setStoredState("activeLens", activeLens);
+    setStoredState(mobileStorageKeys.activeLens, activeLens);
   }, [activeLens, stateRehydrated]);
 
   useEffect(() => {
     if (!stateRehydrated) return;
-    setStoredState("founderMode", founderMode);
+    setStoredState(mobileStorageKeys.founderMode, founderMode);
   }, [founderMode, stateRehydrated]);
 
   useEffect(() => {
     if (!stateRehydrated) return;
-    setStoredState("timeWindow", timeWindow);
+    setStoredState(mobileStorageKeys.timeWindow, timeWindow);
   }, [stateRehydrated, timeWindow]);
 
   useEffect(() => {
     if (!stateRehydrated) return;
-    setStoredState("customWindowMinutes", customWindowMinutes);
+    setStoredState(mobileStorageKeys.customWindowMinutes, customWindowMinutes);
   }, [customWindowMinutes, stateRehydrated]);
 
   useEffect(() => {
     if (!stateRehydrated) return;
-    setStoredState("selectedItemId", selectedItemId || null);
+    setStoredState(mobileStorageKeys.selectedItemId, selectedItemId || null);
   }, [selectedItemId, stateRehydrated]);
 
   useEffect(() => {
     if (!stateRehydrated) return;
-    setStoredState("selectedTaskId", selectedTaskId || null);
+    setStoredState(mobileStorageKeys.selectedTaskId, selectedTaskId || null);
   }, [selectedTaskId, stateRehydrated]);
 
   const controller: MobileLoopController = {
