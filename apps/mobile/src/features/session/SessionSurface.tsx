@@ -31,6 +31,13 @@ export function SessionSurface({ controller }: SessionSurfaceProps) {
           <TouchableOpacity onPress={() => void controller.pauseSessionForSelectedTask()} disabled={!session || session.state !== "running"} style={actionButtonStyle}>
             <Text style={actionButtonTextStyle}>Pause</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => void controller.blockSessionForSelectedTask("Blocked while executing from mobile session.")}
+            disabled={!task}
+            style={actionButtonStyle}
+          >
+            <Text style={actionButtonTextStyle}>Blocked</Text>
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => void controller.finishSessionForSelectedTask()} disabled={!session || session.state === "finished"} style={actionButtonStyle}>
             <Text style={actionButtonTextStyle}>Finish</Text>
           </TouchableOpacity>

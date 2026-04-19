@@ -56,6 +56,11 @@ function defaultCaptureDraft(): CaptureDraft {
   };
 }
 
+function clampText(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 function inferNextStep(card: FeedCardDto): string {
   if (card.taskId) return "Continue execution for this item.";
   if (card.cardType === "open_loop") return "Add one short update to close this loop.";
@@ -131,6 +136,7 @@ export function useMobileLoopController(): MobileLoopController {
   const [itemLoading, setItemLoading] = useState(false);
   const [taskLoading, setTaskLoading] = useState(false);
   const [sessionBusy, setSessionBusy] = useState(false);
+  const [blockedReasonDraft, setBlockedReasonDraft] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
   const [aiError, setAiError] = useState("");
   const [feedError, setFeedError] = useState("");
@@ -649,6 +655,52 @@ export function useMobileLoopController(): MobileLoopController {
     [chatThreadId, commentThreadId, selectedItem]
   );
 
+  const blockSessionForSelectedTask = useCallback(
+    async (reason?: string) => {
+      if (!selectedTask) return;
+      const normalizedReason = reason?.trim() || "Blocked due to unresolved dependency.";
+      setSessionBusy(true);
+      setTaskError("");
+      try {
+        if (selectedTaskSession && selectedTaskSession.state === "running") {
+          await pauseSession<SessionDto>(selectedTaskSession.id);
+        }
+        await updateTask<TaskDto>(selectedTask.id, { status: "todo" });
+        if (selectedTask.sourceItemId) {
+          const sourceItem = items.find((item) => item.id === selectedTask.sourceItemId) ?? null;
+          const threadId = commentThreadId || (await ensureThreadForItem(selectedTask.sourceItemId, "item_comment"));
+          if (!commentThreadId) setCommentThreadId(threadId);
+          const blockedMessage = await sendMessage<MessageDto>({
+            threadId,
+            role: "user",
+            content: `Blocked: ${clampText(normalizedReason, 240)}`
+          });
+          setCommentMessages((current) => [...current, blockedMessage]);
+          setSelectedContinuity({
+            whyShown: selectedContinuity?.whyShown ?? "Execution blocked and needs a re-entry plan.",
+            whereLeftOff: selectedContinuity?.whereLeftOff ?? `Blocked while working on: ${selectedTask.title}`,
+            changedSince: `Blocked update logged: ${clampText(normalizedReason, 120)}`,
+            blockedState: normalizedReason,
+            nextStep: "Unblock one dependency, then restart a lightweight session.",
+            lastTouched: "just now",
+            sourceItemId: selectedTask.sourceItemId,
+            sourceItemTitle: sourceItem?.title
+          });
+          setSelectedItemId(selectedTask.sourceItemId);
+        }
+        setBlockedReasonDraft("");
+        await Promise.all([loadTasks(), loadSessionsForUser(), loadFeed(activeLens)]);
+        setActiveSurface("feed");
+        setSurfaceNotice("Blocked update saved. Return to Focus Feed.");
+      } catch {
+        setTaskError("Could not mark session blocked.");
+      } finally {
+        setSessionBusy(false);
+      }
+    },
+    [activeLens, commentThreadId, items, loadFeed, loadSessionsForUser, loadTasks, selectedContinuity, selectedTask, selectedTaskSession]
+  );
+
   const openRelatedItem = useCallback((itemId: string) => {
     if (!itemId) return;
     setSelectedItemId(itemId);
@@ -850,7 +902,10 @@ export function useMobileLoopController(): MobileLoopController {
     finishActiveSession: finishSessionForSelectedTask,
     pauseSessionForSelectedTask,
     finishSessionForSelectedTask,
+    blockedReasonDraft,
+    setBlockedReasonDraft,
     markTaskDone,
+    blockSessionForSelectedTask,
     setTimeWindow,
     setCustomWindowMinutes,
     startWithoutPlanning,

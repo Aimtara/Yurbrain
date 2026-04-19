@@ -60,7 +60,9 @@ export type MobileLoopController = {
   suggestedTasksForWindow: Array<{ task: TaskDto; minutes: number }>;
   meTopInsight: string;
   meRecommendation: string;
+  blockedReasonDraft: string;
   setCaptureDraft: (draft: CaptureDraft) => void;
+  setBlockedReasonDraft: (value: string) => void;
   closeCaptureSheet: () => void;
   openCaptureSheet: () => void;
   navigateToPrimarySurface: (surface: MobilePrimarySurface) => void;
@@ -81,6 +83,7 @@ export type MobileLoopController = {
   finishActiveSession: () => Promise<void>;
   pauseSessionForSelectedTask: () => Promise<void>;
   finishSessionForSelectedTask: () => Promise<void>;
+  blockSessionForSelectedTask: (blockedReason: string) => Promise<void>;
   markTaskDone: () => Promise<void>;
   setTimeWindow: (value: "2h" | "4h" | "6h" | "8h" | "24h" | "custom") => void;
   setCustomWindowMinutes: (value: string) => void;
