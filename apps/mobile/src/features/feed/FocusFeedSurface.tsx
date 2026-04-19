@@ -20,6 +20,14 @@ const executionLensLabels: Record<MobileLoopController["executionLens"], string>
   momentum: "Momentum"
 };
 
+function executionStatusLabel(variant: MobileLoopController["feedCards"][number]["variant"]): string {
+  if (variant === "blocked") return "Needs unblock";
+  if (variant === "execution") return "Ready to move";
+  if (variant === "resume") return "Momentum";
+  if (variant === "done") return "Done";
+  return "Keep in mind";
+}
+
 export function FocusFeedSurface({ controller }: { controller: MobileLoopController }) {
   return (
     <ScrollView contentContainerStyle={{ padding: 14, gap: 10 }}>
@@ -80,7 +88,16 @@ export function FocusFeedSurface({ controller }: { controller: MobileLoopControl
       </View>
       {controller.founderMode ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {executionLenses.map((lens) => (
+          {executionLenses.map((lens) => {
+            const count =
+              lens === "all"
+                ? controller.feedCards.length
+                : lens === "ready_to_move"
+                  ? controller.feedCards.filter((card) => card.variant === "execution" || card.variant === "resume").length
+                  : lens === "needs_unblock"
+                    ? controller.feedCards.filter((card) => card.variant === "blocked").length
+                    : controller.feedCards.filter((card) => card.variant === "execution" || card.variant === "done").length;
+            return (
             <Pressable
               key={lens}
               onPress={() => controller.setExecutionLens(lens)}
@@ -95,9 +112,12 @@ export function FocusFeedSurface({ controller }: { controller: MobileLoopControl
                 backgroundColor: controller.executionLens === lens ? "#e0e7ff" : "#ffffff"
               }}
             >
-              <Text style={{ color: "#2d3448", fontWeight: controller.executionLens === lens ? "700" : "500" }}>{executionLensLabels[lens]}</Text>
+              <Text style={{ color: "#2d3448", fontWeight: controller.executionLens === lens ? "700" : "500" }}>
+                {executionLensLabels[lens]} ({count})
+              </Text>
             </Pressable>
-          ))}
+            );
+          })}
         </View>
       ) : null}
       {controller.founderMode && controller.founderSummary.suggested ? (
@@ -140,6 +160,11 @@ export function FocusFeedSurface({ controller }: { controller: MobileLoopControl
         <View style={{ gap: 10 }}>
           {controller.feedCards.map((model) => (
             <View key={model.card.id} style={{ borderWidth: 1, borderColor: "#d8dce8", borderRadius: 12, backgroundColor: "#ffffff", padding: 12, gap: 8 }}>
+              {controller.founderMode ? (
+                <View style={{ alignSelf: "flex-start", borderWidth: 1, borderColor: "#c7d2fe", borderRadius: 999, paddingVertical: 3, paddingHorizontal: 8, backgroundColor: "#eef2ff" }}>
+                  <Text style={{ color: "#3730a3", fontSize: 12, fontWeight: "700" }}>{executionStatusLabel(model.variant)}</Text>
+                </View>
+              ) : null}
               <Text style={{ fontSize: 16, fontWeight: "700", color: "#1f2937" }}>{model.card.title}</Text>
               <Text style={{ color: "#374151" }}>{model.card.body}</Text>
               <Text style={{ color: "#4d5468" }}>Why now: {model.continuity.whyShown ?? model.card.whyShown.summary}</Text>
