@@ -24,6 +24,20 @@ export function createServer(options: ServerOptions = {}) {
   const app = Fastify({ logger: !isTestEnvironment });
   registerObservability(app);
 
+  app.addHook("onRequest", async (request, reply) => {
+    const requestOrigin = typeof request.headers.origin === "string" ? request.headers.origin : "";
+    const allowOrigin = resolveAllowedOrigin(requestOrigin);
+
+    reply.header("Access-Control-Allow-Origin", allowOrigin);
+    reply.header("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
+    reply.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id");
+    reply.header("Access-Control-Allow-Credentials", "true");
+
+    if (request.method === "OPTIONS") {
+      return reply.code(204).send();
+    }
+  });
+
   app.setErrorHandler((error, request, reply) => {
     const requestIdHeader = (request.headers["x-request-id"] as string | undefined)?.trim() || request.id;
     reply.header("x-request-id", requestIdHeader);
@@ -66,6 +80,14 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   return { app, state };
+}
+
+function resolveAllowedOrigin(requestOrigin: string): string {
+  if (!requestOrigin) return "*";
+  if (requestOrigin.startsWith("http://localhost:")) return requestOrigin;
+  if (requestOrigin.startsWith("http://127.0.0.1:")) return requestOrigin;
+  if (requestOrigin.startsWith("exp://")) return requestOrigin;
+  return "*";
 }
 
 const server = createServer();
