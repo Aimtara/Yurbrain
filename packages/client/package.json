@@ -6,6 +6,9 @@
   "scripts": {
     "dev": "echo \"@yurbrain/client is a library package (no runtime dev server)\"",
     "start": "echo \"@yurbrain/client is consumed by app packages\"",
-    "test": "echo \"No package-specific tests for @yurbrain/client yet\""
+    "test": "tsx --test src/__tests__/*.test.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
   }
 }
