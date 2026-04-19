@@ -12,6 +12,13 @@ const lensLabels: Record<MobileLoopController["activeLens"], string> = {
 };
 
 const feedLenses: MobileLoopController["activeLens"][] = ["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"];
+const executionLenses: MobileLoopController["executionLens"][] = ["all", "ready_to_move", "needs_unblock", "momentum"];
+const executionLensLabels: Record<MobileLoopController["executionLens"], string> = {
+  all: "All",
+  ready_to_move: "Ready",
+  needs_unblock: "Needs unblock",
+  momentum: "Momentum"
+};
 
 export function FocusFeedSurface({ controller }: { controller: MobileLoopController }) {
   return (
@@ -38,6 +45,17 @@ export function FocusFeedSurface({ controller }: { controller: MobileLoopControl
         <Text style={{ color: "#4d5468" }}>
           {controller.founderMode ? `Founder summary: ${controller.founderSummary.summary}` : "Resurfaced thoughts with gentle next moves."}
         </Text>
+        {controller.founderMode ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {controller.founderStats.map((stat) => (
+              <View key={stat.label} style={{ borderWidth: 1, borderColor: "#d8dce8", borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10 }}>
+                <Text style={{ color: "#475569", fontSize: 12 }}>
+                  {stat.label}: <Text style={{ color: "#1f2937", fontWeight: "700" }}>{stat.value}</Text>
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -60,6 +78,49 @@ export function FocusFeedSurface({ controller }: { controller: MobileLoopControl
           </Pressable>
         ))}
       </View>
+      {controller.founderMode ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {executionLenses.map((lens) => (
+            <Pressable
+              key={lens}
+              onPress={() => controller.setExecutionLens(lens)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: controller.executionLens === lens }}
+              style={{
+                borderWidth: 1,
+                borderColor: "#d8dce8",
+                borderRadius: 999,
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                backgroundColor: controller.executionLens === lens ? "#e0e7ff" : "#ffffff"
+              }}
+            >
+              <Text style={{ color: "#2d3448", fontWeight: controller.executionLens === lens ? "700" : "500" }}>{executionLensLabels[lens]}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      {controller.founderMode && controller.founderSummary.suggested ? (
+        <View style={{ borderWidth: 1, borderColor: "#dbeafe", borderRadius: 12, backgroundColor: "#eff6ff", padding: 12, gap: 6 }}>
+          <Text style={{ color: "#1e3a8a", fontWeight: "700" }}>Founder suggested focus</Text>
+          <Text style={{ color: "#1f2937", fontWeight: "700" }}>{controller.founderSummary.suggested.card.title}</Text>
+          <Text style={{ color: "#334155" }}>{controller.founderSummary.suggested.continuity.nextStep ?? "Open and continue with one update."}</Text>
+          <Pressable onPress={() => controller.openItemFromFeed(controller.founderSummary.suggested?.card ?? controller.feedCards[0].card)} style={secondaryButtonStyle}>
+            <Text style={{ color: "#1e3a8a", fontWeight: "700" }}>Open suggested item</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {controller.founderMode && controller.founderSummary.blocked.length > 0 ? (
+        <View style={{ borderWidth: 1, borderColor: "#fde68a", borderRadius: 12, backgroundColor: "#fffbeb", padding: 12, gap: 8 }}>
+          <Text style={{ color: "#92400e", fontWeight: "700" }}>Needs unblock</Text>
+          {controller.founderSummary.blocked.map((blocked) => (
+            <Pressable key={blocked.card.id} onPress={() => controller.openItemFromFeed(blocked.card)} style={{ gap: 2 }}>
+              <Text style={{ color: "#1f2937", fontWeight: "700" }}>{blocked.card.title}</Text>
+              <Text style={{ color: "#475569" }}>{blocked.continuity.blockedState ?? blocked.continuity.nextStep ?? "Open and unblock with one note."}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       {controller.feedLoading ? <Text style={{ color: "#4d5468" }}>Gathering continuity signals...</Text> : null}
       {controller.feedError ? (
