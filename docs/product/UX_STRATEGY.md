@@ -368,3 +368,182 @@ Prefer:
 Yurbrain should feel like a place where your thoughts don’t disappear,
 where your past thinking comes back at the right time,
 and where moving forward feels obvious, not forced.
+
+## 11. Formal UX Spec — New Captures Review + Feed Slicers
+
+### Feature Name
+**New Captures Review (Soft Intake Layer)**
+
+### Reality Check (Codebase Alignment — April 2026)
+- Feed slicers already exist in product contracts + API + web/mobile UI.
+- Cluster cards are already generated in capture/feed flows.
+- The primary gap remains the **post-capture soft review layer** (`new captures` shelf + panel + seen-state lifecycle).
+
+### Purpose
+Create a lightweight layer between:
+- frictionless capture
+- full feed resurfacing
+
+This prevents:
+- items getting lost
+- feed pollution
+- premature categorization
+
+### Core Principle
+> “Let me acknowledge what I saved, without forcing me to process it.”
+
+### A. Entry Points
+
+#### 1) App Open (Primary)
+When user opens Yurbrain **and** there are at least X new captures (recommended threshold: **3–5**), show a lightweight banner/sheet:
+
+`You have 8 new captures`
+
+Actions:
+- Browse now
+- Not now
+
+#### 2) Feed Inline Shelf (Secondary)
+If the prompt is dismissed, show a shelf at top of feed:
+
+`New Captures (8)` (horizontal scroll)
+
+#### Behavior Rules
+- Never block user
+- Never force interaction
+- Dismiss persists temporarily
+- Prompt can reappear if still unprocessed after a time window
+
+### B. New Captures Review Surface
+
+#### Layout
+Lightweight panel (not a full app screen).
+
+#### Header
+- `New Captures (8)`
+- `Things you saved recently`
+
+#### Item List
+Fast-scanning cards with:
+- title or snippet
+- source (optional)
+- relative time (e.g., `2h ago`)
+- small type icon (link/text/image)
+
+#### Per-Item Actions
+- Keep (default passive action)
+- Add note
+- Ask Yurbrain
+- Dismiss
+
+#### Bulk Actions
+- Mark all as seen
+- Summarize these
+- Show similar items
+
+#### UX Rules
+- No tagging
+- No folders
+- No forced classification
+- No task creation
+
+### C. Feed Slicers (Critical)
+
+#### Purpose
+Allow browsing by mental category, not search syntax or folder hierarchy.
+
+#### Placement
+Top of Feed as horizontal tabs/chips.
+
+#### Initial Lenses
+- All
+- Keep in Mind
+- Open Loops
+- In Progress
+- Learning
+- Recently Commented
+
+Optional future lens (only if validated by usage, not required for v1):
+- New
+
+#### Behavior
+- Filter feed instantly
+- Persist last selected lens
+- Combine with ranking logic (lens narrows candidates, ranking orders candidates)
+
+#### UX Rules
+- Labels must feel human, not technical
+- Avoid overwhelming filter systems
+- No advanced query-builder UI
+
+### D. Cluster Integration
+When the system detects:
+- at least 3 related items
+- low recent interaction
+
+Show a cluster card.
+
+Example:
+- Title: `AI Workflow Tips`
+- Subtext: `You saved 5 items about Gemini tricks`
+- Why shown: `You’ve been collecting similar ideas`
+
+Actions:
+- See highlights
+- Compare
+- Try one today
+- Keep in mind
+
+### E. Relationship to Core Loop
+This feature inserts a soft layer:
+
+Capture → **New Captures Review** → Feed (Flow) → Item Detail (Focus) → Optional Action
+
+### F. Emotional UX Targets
+The user should feel:
+- “I don’t need to deal with this now”
+- “Nothing gets lost”
+- “I can come back later”
+- “This is organized without effort”
+
+### G. Anti-Patterns
+Do **not**:
+- turn this into inbox zero
+- require processing
+- add sorting steps
+- add categories during capture
+- add task conversion prompts in this layer
+
+### Optional Guidance — Mapping to Existing Component Structure
+Use this as an implementation alignment reference:
+
+#### Web/UI Surface Mapping
+- `apps/web/src/features/feed/FocusFeedSurface.tsx`
+  - add New Captures shelf and lens bar placement
+- `apps/web/src/features/feed/useFeedController.ts`
+  - wire `lens` selection, fetches, and shelf state orchestration
+- `packages/ui/src/components/feed/FeedLensBar.tsx`
+  - host lens chips (`All`, `New`, etc.) and selected-state behavior
+- `packages/ui/src/components/feed/FocusFeedScreen.tsx`
+  - pass shelf + lens state into shared feed presentation
+- `packages/ui/src/components/feed/ClusterCard.tsx`
+  - render the cluster affordance when criteria are met
+
+#### New Panel + Item Interactions
+- Add `NewCapturesPanel` under web feed feature or shared UI feed components
+- Reuse existing item detail + chat pathways for:
+  - Add note
+  - Ask Yurbrain
+- Keep `Dismiss` and `Mark all as seen` within lightweight state transitions, not task systems
+
+#### API/Domain Mapping
+- `apps/api/src/routes/brain-items.ts`
+  - add `/brain-items/new` and `/brain-items/mark-seen`
+- `apps/api/src/routes/feed.ts`
+  - `GET /feed?lens=...` already exists; only extend if “new” lens is truly added
+- `packages/contracts/src/api/api-contracts.ts`
+  - extend contracts for new-captures endpoints
+- `packages/contracts/src/domain/domain.ts`
+  - add `isNew` or `lastViewedAt` (lens enum update only if introducing a real new lens)
+- `packages/client/src/api/endpoints.ts`
+  - add client wrappers for new routes/query params
