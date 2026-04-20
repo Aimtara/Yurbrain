@@ -1,10 +1,4 @@
-export * from "./api/client";
-export * from "./api/endpoints";
-export * from "./auth/current-user";
-export * from "./auth/nhost";
-export * from "./domain";
-export * from "./graphql";
-export * from "./hooks/useYurbrainApi";
-export * from "./hooks/useFeed";
-export * from "./hooks/useBrainItem";
-export * from "./hooks/useMutations";
+export { configureApiBaseUrl } from "./api/client";
+export * from "./createYurbrainClient";
+export * from "./provider";
+export * from "./yurbrainClient";

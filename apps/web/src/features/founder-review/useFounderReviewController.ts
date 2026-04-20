@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchCurrentUser, getCurrentUserId, yurbrainDomainClient } from "@yurbrain/client";
+import type { YurbrainClient } from "@yurbrain/client";
 
 import type { FounderReviewActionModel, FounderReviewModel } from "./types";
 
 type UseFounderReviewControllerInput = {
+  yurbrainClient: YurbrainClient;
   activeSurface: "feed" | "item" | "session" | "time" | "me" | "founder_review";
   onRunAction: (action: FounderReviewActionModel) => Promise<{ notice: string }>;
 };
 
 export function useFounderReviewController({
+  yurbrainClient,
   activeSurface,
   onRunAction
 }: UseFounderReviewControllerInput) {
@@ -17,14 +19,14 @@ export function useFounderReviewController({
   const [loadingAiReadout, setLoadingAiReadout] = useState(false);
   const [error, setError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<string>(() => getCurrentUserId() ?? "");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   const loadFounderReview = useCallback(async (includeAiReadout = false) => {
     setLoading(true);
     setLoadingAiReadout(includeAiReadout);
     setError("");
     try {
-      const data = await yurbrainDomainClient.getFounderReview<FounderReviewModel>({
+      const data = await yurbrainClient.getFounderReview<FounderReviewModel>({
         window: "7d",
         userId: currentUserId || undefined,
         includeAi: includeAiReadout
@@ -43,7 +45,7 @@ export function useFounderReviewController({
     let mounted = true;
     void (async () => {
       try {
-        const currentUser = await fetchCurrentUser();
+        const currentUser = await yurbrainClient.getCurrentUser<{ id: string }>();
         if (!mounted) return;
         setCurrentUserId(currentUser.id);
       } catch {
@@ -54,7 +56,7 @@ export function useFounderReviewController({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [yurbrainClient]);
 
   useEffect(() => {
     if (activeSurface !== "founder_review") return;

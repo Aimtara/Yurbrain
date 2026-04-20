@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { FinishRebalanceSheet, PlanPreviewSheet, PostponeRescheduleSheet, type TimeWindowOption } from "@yurbrain/ui";
+import { useYurbrainClient } from "@yurbrain/client";
 
 import { CapturePanel } from "../src/features/capture/CapturePanel";
 import { useCaptureController } from "../src/features/capture/useCaptureController";
@@ -40,6 +41,7 @@ import type {
 } from "../src/features/shared/types";
 
 export default function Page() {
+  const yurbrainClient = useYurbrainClient();
   const {
     hydrated,
     activeLens,
@@ -280,6 +282,7 @@ export default function Page() {
   const suggestedPromptsForDetail = useMemo(() => (selectedItem ? buildSuggestedPrompts(selectedItem, derivedItemContinuity.nextStep) : []), [derivedItemContinuity.nextStep, selectedItem]);
 
   const { handleLensChange, handleFounderModeToggle, handleRenderModeChange, handleAiSummaryModeChange, handleFeedDensityChange, handleResurfacingIntensityChange, loadUserPreferences } = usePreferenceController({
+    yurbrainClient,
     hydrated,
     setActiveLens,
     setFounderMode,
@@ -291,6 +294,7 @@ export default function Page() {
   });
 
   const { loadFeed, openItemFromModel, openTaskFromCard, dismissCard, refreshCard } = useFeedController({
+    yurbrainClient,
     feedLimit,
     activeLens,
     setFeedLoading,
@@ -323,11 +327,13 @@ export default function Page() {
     loadFounderReview,
     applyFounderReviewAction
   } = useFounderReviewController({
+    yurbrainClient,
     activeSurface,
     onRunAction: founderActionHandlers.run
   });
 
   const { loadTasks, loadSessionsForTask, loadAllSessionsForUser, runConvert, startSessionFromFeedCard, updatePlanStepMinutes, acceptPlanPreview, startPlanFirstStep, handleFinishAction, startTimeTask, startWithoutPlanning, openPostponeSheet, applyPostponeMinutes, applyCustomPostpone, breakIntoSmallerStep, startSelectedTaskSession, markTaskDone, pauseSelectedSession, finishSelectedSession } = useSessionController({
+    yurbrainClient,
     activeLens,
     selectedTaskId,
     tasks,
@@ -356,6 +362,7 @@ export default function Page() {
   });
 
   const { loadItems } = useBrainItemsController({
+    yurbrainClient,
     selectedItemId,
     setItems,
     setCaptureError,
@@ -363,6 +370,7 @@ export default function Page() {
   });
 
   const { captureItem, openCaptureSheet, handleVoiceCaptureStub } = useCaptureController({
+    yurbrainClient,
     captureDraft,
     activeLens,
     setCaptureDraft,
@@ -382,6 +390,7 @@ export default function Page() {
   });
 
   const { loadSelectedItemContext, createComment, runQuickAction, runAiQuery, handleOpenRelatedItem } = useItemDetailController({
+    yurbrainClient,
     selectedItem,
     selectedItemId,
     chatThreadId,
