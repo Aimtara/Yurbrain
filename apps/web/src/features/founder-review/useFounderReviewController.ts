@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { yurbrainDomainClient } from "@yurbrain/client";
 
-import { userId } from "../shell/constants";
 import type { FounderReviewActionModel, FounderReviewModel } from "./types";
+
+const founderReviewUserId = "11111111-1111-1111-1111-111111111111";
 
 type UseFounderReviewControllerInput = {
   activeSurface: "feed" | "item" | "session" | "time" | "me" | "founder_review";
@@ -26,7 +27,7 @@ export function useFounderReviewController({
     try {
       const data = await yurbrainDomainClient.getFounderReview<FounderReviewModel>({
         window: "7d",
-        userId,
+        userId: founderReviewUserId,
         includeAi: includeAiReadout
       });
       setReview(data);
