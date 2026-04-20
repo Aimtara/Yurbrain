@@ -225,3 +225,11 @@ test("GET /events/me returns only authenticated user's events and supports filte
   const updatedOnly = filtered.json<Array<{ eventType: string }>>();
   assert.ok(updatedOnly.every((event) => event.eventType === "brain_item_updated"));
 });
+
+test("GET /events remains blocked while raw event exposure is unsafe", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/events"
+  });
+  assert.equal(response.statusCode, 403);
+});
