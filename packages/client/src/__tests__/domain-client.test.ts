@@ -78,11 +78,11 @@ test("domain client uses GraphQL CRUD adapter when configured", async () => {
   assert.equal(calls[0]?.init?.method, "POST");
 });
 
-test("domain client founder review defaults to function endpoint without userId", async () => {
+test("domain client founder review defaults to founder review route without userId", async () => {
   const calls = installFetch(() => new Response("{}", { status: 200 }));
   const client = createYurbrainDomainClient();
 
   await client.getFounderReview({ window: "7d", includeAi: true });
 
-  assert.equal(calls[0]?.url, "/functions/founder-review?window=7d&includeAi=1");
+  assert.equal(calls[0]?.url, "/founder-review?window=7d&includeAi=1");
 });
