@@ -176,3 +176,52 @@ test("preferences routes persist personalization preferences", async () => {
   assert.equal(body.feedDensity, "compact");
   assert.equal(body.resurfacingIntensity, "active");
 });
+
+test("GET /events/me returns only authenticated user's events and supports filtering", async () => {
+  const userId = "69696969-6969-4696-8696-696969696969";
+  const otherUserId = "79797979-7979-4797-8797-797979797979";
+
+  const created = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers: { "x-yurbrain-user-id": userId },
+    payload: {
+      type: "note",
+      title: "Event scope target",
+      rawContent: "Primary user event source"
+    }
+  });
+  assert.equal(created.statusCode, 201);
+
+  const otherCreated = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers: { "x-yurbrain-user-id": otherUserId },
+    payload: {
+      type: "note",
+      title: "Other user event source",
+      rawContent: "Should not leak"
+    }
+  });
+  assert.equal(otherCreated.statusCode, 201);
+
+  const listed = await app.inject({
+    method: "GET",
+    url: "/events/me",
+    headers: { "x-yurbrain-user-id": userId }
+  });
+  assert.equal(listed.statusCode, 200);
+  const events = listed.json<Array<{ userId: string; eventType: string }>>();
+  assert.ok(events.length >= 1);
+  assert.ok(events.every((event) => event.userId === userId));
+  assert.ok(events.some((event) => event.eventType === "brain_item_created"));
+
+  const filtered = await app.inject({
+    method: "GET",
+    url: "/events/me?eventType=brain_item_updated",
+    headers: { "x-yurbrain-user-id": userId }
+  });
+  assert.equal(filtered.statusCode, 200);
+  const updatedOnly = filtered.json<Array<{ eventType: string }>>();
+  assert.ok(updatedOnly.every((event) => event.eventType === "brain_item_updated"));
+});

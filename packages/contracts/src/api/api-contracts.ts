@@ -5,6 +5,8 @@ import {
   BrainItemSchema,
   BrainItemTypeSchema,
   CaptureContentTypeSchema,
+  EventSchema,
+  EventTypeSchema,
   FeedDensitySchema,
   FeedCardSchema,
   FeedLensSchema,
@@ -297,6 +299,14 @@ export const ListSessionsQuerySchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, { message: "At least one filter must be provided" });
 export const SessionListResponseSchema = z.array(SessionSchema);
+export const ListEventsQuerySchema = z
+  .object({
+    eventType: EventTypeSchema.optional(),
+    before: z.string().datetime().optional(),
+    limit: z.number().int().min(1).max(200).optional()
+  })
+  .strict();
+export const EventListResponseSchema = z.array(EventSchema);
 export const UserPreferenceResponseSchema = UserPreferenceSchema;
 export const UserPreferenceMeResponseSchema = UserPreferenceSchema;
 export const UpdateUserPreferenceRequestSchema = z
@@ -341,8 +351,10 @@ export type TaskResponse = z.infer<typeof TaskResponseSchema>;
 export type TaskListResponse = z.infer<typeof TaskListResponseSchema>;
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 export type ListSessionsQuery = z.infer<typeof ListSessionsQuerySchema>;
+export type ListEventsQuery = z.infer<typeof ListEventsQuerySchema>;
 export type AiArtifactResponse = z.infer<typeof AiArtifactResponseSchema>;
 export type QueryItemResponse = z.infer<typeof QueryItemResponseSchema>;
+export type EventListResponse = z.infer<typeof EventListResponseSchema>;
 export type UserPreferenceResponse = z.infer<typeof UserPreferenceResponseSchema>;
 export type UpdateUserPreferenceRequest = z.infer<typeof UpdateUserPreferenceRequestSchema>;
 export type CaptureIntakeResponse = z.infer<typeof CaptureIntakeResponseSchema>;

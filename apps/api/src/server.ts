@@ -1,6 +1,6 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
-import { AuthMeResponseSchema } from "@yurbrain/contracts";
+import { AuthMeResponseSchema, EventListResponseSchema, ListEventsQuerySchema, type ListEventsQuery } from "@yurbrain/contracts";
 import { registerCurrentUserResolution, requireCurrentUser } from "./middleware/current-user";
 import { registerObservability, buildErrorEnvelope } from "./middleware/observability";
 import { registerAiRoutes } from "./routes/ai";
@@ -81,6 +81,18 @@ export function createServer(options: ServerOptions = {}) {
       id: currentUser.id,
       source: currentUser.source
     }));
+  });
+
+  app.get("/events/me", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const query = ListEventsQuerySchema.parse(request.query ?? {}) as ListEventsQuery;
+    const events = await state.repo.listEventsByUser(currentUser.id, {
+      eventType: query.eventType,
+      before: query.before,
+      limit: query.limit
+    });
+    return reply.code(200).send(EventListResponseSchema.parse(events));
   });
 
   app.get("/events", async (_request, reply) => {
