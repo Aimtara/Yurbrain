@@ -28,6 +28,14 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] `blockSession` client contract aligned to implemented behavior (`blockSession(sessionId)`).
 - [x] Runtime remains parity-preserving (REST-backed by default; no backend cutover in N2).
 
+### N3: Nhost Foundation Scaffolding
+
+- [x] Nhost runtime config resolver supports Next/Expo env keys and shared `YURBRAIN_*` keys.
+- [x] Nhost service URLs can be derived from subdomain/region when explicit URLs are absent.
+- [x] Nhost bootstrap hydrates GraphQL endpoint config for downstream Hasura client usage.
+- [x] Nhost bootstrap keeps runtime behavior parity-preserving (REST default unchanged when no Nhost config).
+- [x] Nhost foundation has targeted unit coverage for resolver + bootstrap defaults.
+
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user

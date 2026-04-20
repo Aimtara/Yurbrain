@@ -90,7 +90,20 @@ Completed in this repository state:
 
 - N1 (audit + migration tracker): complete.
 - N2 (domain client stabilization): complete.
-- N3+ phases remain open and tracked by capability status + cutover checklist.
+- N3 (Nhost foundation scaffolding): complete.
+- N4+ phases remain open and tracked by capability status + cutover checklist.
+
+## N3 progress update
+
+Completed in this repository state:
+
+1. Added a typed Nhost runtime config builder in `packages/client/src/auth/nhost.ts`.
+2. Added deterministic env-resolution hooks for testing (`setNhostEnvResolver`).
+3. Added derived Nhost URL synthesis from `subdomain + region` for auth/graphql/functions endpoints.
+4. Bootstrap now hydrates Hasura GraphQL URL from Nhost runtime config while keeping REST default behavior unchanged.
+5. Added Nhost foundation tests:
+   - `packages/client/src/__tests__/nhost-runtime-config.test.ts`
+   - updated `packages/client/src/__tests__/nhost-auth.test.ts`
 
 ## Unclassified capabilities
 
