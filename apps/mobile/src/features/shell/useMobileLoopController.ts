@@ -64,7 +64,11 @@ function deriveArtifactHistory(artifacts: ItemArtifactDto[]): { summary: string[
   return { summary, classification };
 }
 
-async function ensureThreadForItem(itemId: string, kind: "item_comment" | "item_chat"): Promise<string> {
+async function ensureThreadForItem(
+  yurbrainClient: ReturnType<typeof useYurbrainClient>,
+  itemId: string,
+  kind: "item_comment" | "item_chat"
+): Promise<string> {
   const threads = await yurbrainClient.listThreadsByTarget<Array<{ id: string; kind: "item_comment" | "item_chat" }>>(itemId);
   const existing = threads.find((thread) => thread.kind === kind);
   if (existing) return existing.id;
@@ -456,7 +460,7 @@ export function useMobileLoopController(): MobileLoopController {
       const note = `Progress: moved ${card.title.toLowerCase()} forward. ${clampText(reason, 120)}`;
       try {
         setSelectedItemId(card.itemId);
-        const threadId = commentThreadId || (await ensureThreadForItem(card.itemId, "item_comment"));
+        const threadId = commentThreadId || (await ensureThreadForItem(yurbrainClient, card.itemId, "item_comment"));
         if (!commentThreadId) setCommentThreadId(threadId);
         const created = await yurbrainClient.sendMessage<MessageDto>({ threadId, role: "user", content: note });
         setCommentMessages((current) => [...current, created]);
@@ -608,7 +612,7 @@ export function useMobileLoopController(): MobileLoopController {
       const normalized = value.trim();
       if (!normalized) return;
       try {
-        const threadId = commentThreadId || (await ensureThreadForItem(selectedItem.id, "item_comment"));
+        const threadId = commentThreadId || (await ensureThreadForItem(yurbrainClient, selectedItem.id, "item_comment"));
         if (!commentThreadId) setCommentThreadId(threadId);
         const created = await yurbrainClient.sendMessage<MessageDto>({
           threadId,
@@ -632,9 +636,9 @@ export function useMobileLoopController(): MobileLoopController {
       setAiBusy(true);
       setAiError("");
       try {
-        const activeThreadId = chatThreadId || (await ensureThreadForItem(selectedItem.id, "item_chat"));
+        const activeThreadId = chatThreadId || (await ensureThreadForItem(yurbrainClient, selectedItem.id, "item_chat"));
         if (!chatThreadId) setChatThreadId(activeThreadId);
-        const continuityThreadId = commentThreadId || (await ensureThreadForItem(selectedItem.id, "item_comment"));
+        const continuityThreadId = commentThreadId || (await ensureThreadForItem(yurbrainClient, selectedItem.id, "item_comment"));
         if (!commentThreadId) setCommentThreadId(continuityThreadId);
         const response = await yurbrainClient.queryBrainItemThread<{ userMessage: MessageDto; message: MessageDto }>({
           threadId: activeThreadId,
@@ -673,7 +677,7 @@ export function useMobileLoopController(): MobileLoopController {
         await yurbrainClient.updateTask<TaskDto>(selectedTask.id, { status: "todo" });
         if (selectedTask.sourceItemId) {
           const sourceItem = items.find((item) => item.id === selectedTask.sourceItemId) ?? null;
-          const threadId = commentThreadId || (await ensureThreadForItem(selectedTask.sourceItemId, "item_comment"));
+          const threadId = commentThreadId || (await ensureThreadForItem(yurbrainClient, selectedTask.sourceItemId, "item_comment"));
           if (!commentThreadId) setCommentThreadId(threadId);
           const blockedMessage = await yurbrainClient.sendMessage<MessageDto>({
             threadId,

@@ -1,13 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { YurbrainClientProvider as SharedYurbrainClientProvider, yurbrainClient } from "@yurbrain/client";
+import type { PropsWithChildren } from "react";
 
-type Props = {
-  children: ReactNode;
-};
-
-export function YurbrainClientProvider({ children }: Props) {
+export function YurbrainClientProvider({ children }: PropsWithChildren) {
   return (
     <SharedYurbrainClientProvider client={yurbrainClient}>
       {children}
