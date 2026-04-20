@@ -65,6 +65,57 @@ test("POST /ai/summarize-cluster and /ai/next-step produce grounded short output
   assert.ok(nextStepBody.reason.length > 0);
 });
 
+test("POST /ai/next-step gracefully falls back when provider is misconfigured", async () => {
+  const previousProvider = process.env.YURBRAIN_AI_PROVIDER;
+  const previousOpenAiKey = process.env.OPENAI_API_KEY;
+  const previousOpenAiModel = process.env.OPENAI_MODEL;
+  process.env.YURBRAIN_AI_PROVIDER = "openai";
+  delete process.env.OPENAI_API_KEY;
+  process.env.OPENAI_MODEL = "gpt-4.1-mini";
+  try {
+    const userId = "dbdbdbdb-dbdb-4dbd-8dbd-dbdbdbdbdbdb";
+    const created = await app.inject({
+      method: "POST",
+      url: "/capture/intake",
+      payload: {
+        userId,
+        type: "text",
+        content: "Investigate weekly execution drift in onboarding thread."
+      }
+    });
+    assert.equal(created.statusCode, 201);
+    const itemId = created.json<{ itemId: string }>().itemId;
+
+    const nextStep = await app.inject({
+      method: "POST",
+      url: "/ai/next-step",
+      headers: { "x-yurbrain-user-id": userId },
+      payload: { itemIds: [itemId] }
+    });
+    assert.equal(nextStep.statusCode, 201);
+    const body = nextStep.json<{ summary: string; suggestedNextAction: string; reason: string }>();
+    assert.ok(body.summary.length > 0);
+    assert.ok(body.suggestedNextAction.length > 0);
+    assert.ok(body.reason.length > 0);
+  } finally {
+    if (previousProvider === undefined) {
+      delete process.env.YURBRAIN_AI_PROVIDER;
+    } else {
+      process.env.YURBRAIN_AI_PROVIDER = previousProvider;
+    }
+    if (previousOpenAiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = previousOpenAiKey;
+    }
+    if (previousOpenAiModel === undefined) {
+      delete process.env.OPENAI_MODEL;
+    } else {
+      process.env.OPENAI_MODEL = previousOpenAiModel;
+    }
+  }
+});
+
 test("cluster synthesis uses thread/task/session signals for grounded reasons", async () => {
   const userId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   const intake = await app.inject({
