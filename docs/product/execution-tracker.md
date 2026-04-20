@@ -21,6 +21,20 @@ Build the next major Yurbrain product push while preserving the core loop:
 
 ---
 
+
+## Foundation hardening track (Auth, Events, Boundaries, LLM thin slice)
+
+Before additional feature expansion, execute the foundational hardening issue pack:
+
+- `docs/product/github-issues/foundation-hardening-issue-pack.md`
+- `docs/prompts/foundation-hardening-cursor-prompts.md`
+- `docs/product/reviews/foundation-audits-2026-04-20.md`
+- `docs/product/ai-agent-implementation-guardrails.md`
+
+This track defines guardrails for removing demo-user assumptions, formalizing event access, and enforcing monorepo package boundaries.
+
+---
+
 ## Recommended wave order
 
 ### Wave 1 — Make the current loop feel real
