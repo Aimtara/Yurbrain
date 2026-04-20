@@ -1,31 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  apiClient,
-  classifyBrainItem,
-  convertToTask,
-  createCaptureIntake,
-  createTask,
-  createThread,
-  dismissFeedCard,
-  endpoints,
-  finishSession,
-  getFeed,
-  getUserPreferenceMe,
-  listBrainItemArtifacts,
-  listRelatedBrainItems,
-  listSessions,
-  listThreadMessages,
-  listThreadsByTarget,
-  pauseSession,
-  queryBrainItemThread,
-  refreshFeedCard,
-  requestNextStep,
-  sendMessage,
-  snoozeFeedCard,
-  startTaskSession,
-  summarizeCluster,
-  updateTask
-} from "@yurbrain/client";
+import { yurbrainDomainClient } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
 import { mobileStorageKeys } from "../shared/constants";
@@ -91,10 +65,10 @@ function deriveArtifactHistory(artifacts: ItemArtifactDto[]): { summary: string[
 }
 
 async function ensureThreadForItem(itemId: string, kind: "item_comment" | "item_chat"): Promise<string> {
-  const threads = await listThreadsByTarget<Array<{ id: string; kind: "item_comment" | "item_chat" }>>(itemId);
+  const threads = await yurbrainDomainClient.listThreadsByTarget<Array<{ id: string; kind: "item_comment" | "item_chat" }>>(itemId);
   const existing = threads.find((thread) => thread.kind === kind);
   if (existing) return existing.id;
-  const created = await createThread<{ id: string }>({ targetItemId: itemId, kind });
+  const created = await yurbrainDomainClient.createThread<{ id: string }>({ targetItemId: itemId, kind });
   return created.id;
 }
 
@@ -303,7 +277,7 @@ export function useMobileLoopController(): MobileLoopController {
     async (lens: FeedCardDto["lens"]) => {
       setFeedLoading(true);
       try {
-        const cards = await getFeed<FeedCardDto[]>({ lens, limit: 10 });
+        const cards = await yurbrainDomainClient.getFeed<FeedCardDto[]>({ lens, limit: 10 });
         setFeedCards(cards);
         setFeedError("");
       } catch {
@@ -318,7 +292,7 @@ export function useMobileLoopController(): MobileLoopController {
 
   const loadItems = useCallback(async () => {
     try {
-      const result = await apiClient<BrainItemDto[]>(endpoints.brainItems);
+      const result = await yurbrainDomainClient.listBrainItems<BrainItemDto[]>();
       const ordered = sortByNewest(result);
       setItems(ordered);
       if (!selectedItemId && ordered.length > 0) {
@@ -332,7 +306,7 @@ export function useMobileLoopController(): MobileLoopController {
   const loadTasks = useCallback(async () => {
     setTaskLoading(true);
     try {
-      const result = await apiClient<TaskDto[]>(endpoints.tasks);
+      const result = await yurbrainDomainClient.listTasks<TaskDto[]>();
       const ordered = sortByNewest(result);
       setTasks(ordered);
       if (!selectedTaskId && ordered.length > 0) {
@@ -348,7 +322,7 @@ export function useMobileLoopController(): MobileLoopController {
 
   const loadSessionsForUser = useCallback(async () => {
     try {
-      const sessions = await listSessions<SessionDto[]>({});
+      const sessions = await yurbrainDomainClient.listSessions<SessionDto[]>({});
       const ordered = [...sessions].sort((left, right) => right.startedAt.localeCompare(left.startedAt));
       setSessionHistory(ordered);
       const live = ordered.find((session) => session.state !== "finished") ?? null;
@@ -365,22 +339,22 @@ export function useMobileLoopController(): MobileLoopController {
       setItemError("");
       try {
         const [threads, artifacts, related] = await Promise.all([
-          listThreadsByTarget<Array<{ id: string; kind: "item_comment" | "item_chat" }>>(itemId),
-          listBrainItemArtifacts<ItemArtifactDto[]>(itemId),
-          listRelatedBrainItems<{ itemId: string; relatedItemIds: string[] }>(itemId)
+          yurbrainDomainClient.listThreadsByTarget<Array<{ id: string; kind: "item_comment" | "item_chat" }>>(itemId),
+          yurbrainDomainClient.listBrainItemArtifacts<ItemArtifactDto[]>(itemId),
+          yurbrainDomainClient.listRelatedBrainItems<{ itemId: string; relatedItemIds: string[] }>(itemId)
         ]);
         const commentThread = threads.find((thread) => thread.kind === "item_comment");
         const chatThread = threads.find((thread) => thread.kind === "item_chat");
         setCommentThreadId(commentThread?.id ?? "");
         setChatThreadId(chatThread?.id ?? "");
         if (commentThread) {
-          const messages = await listThreadMessages<MessageDto[]>(commentThread.id);
+          const messages = await yurbrainDomainClient.listThreadMessages<MessageDto[]>(commentThread.id);
           setCommentMessages(messages);
         } else {
           setCommentMessages([]);
         }
         if (chatThread) {
-          const messages = await listThreadMessages<MessageDto[]>(chatThread.id);
+          const messages = await yurbrainDomainClient.listThreadMessages<MessageDto[]>(chatThread.id);
           setChatMessages(messages);
         } else {
           setChatMessages([]);
@@ -428,7 +402,7 @@ export function useMobileLoopController(): MobileLoopController {
           source: captureDraft.source.trim() || "mobile_capture_sheet",
           note: captureDraft.note.trim() || undefined
         };
-        const intake = await createCaptureIntake<CaptureIntakeResponse>(payload);
+        const intake = await yurbrainDomainClient.createCaptureIntake<CaptureIntakeResponse>(payload);
         const created = intake.item;
         setCaptureDraft(defaultCaptureDraft());
         setSelectedItemId(created.id);
@@ -442,7 +416,7 @@ export function useMobileLoopController(): MobileLoopController {
         });
         setCaptureSuccessNotice(intent === "save" ? "Saved." : intent === "save_and_plan" ? "Saved and planning next step." : "Saved for gentle resurfacing.");
         if (intent === "save_and_plan") {
-          await convertToTask({
+          await yurbrainDomainClient.planThis({
             sourceItemId: created.id,
             content: created.rawContent
           });
@@ -483,7 +457,7 @@ export function useMobileLoopController(): MobileLoopController {
         setSelectedItemId(card.itemId);
         const threadId = commentThreadId || (await ensureThreadForItem(card.itemId, "item_comment"));
         if (!commentThreadId) setCommentThreadId(threadId);
-        const created = await sendMessage<MessageDto>({ threadId, role: "user", content: note });
+        const created = await yurbrainDomainClient.sendMessage<MessageDto>({ threadId, role: "user", content: note });
         setCommentMessages((current) => [...current, created]);
         setSelectedContinuity({
           ...buildContinuityFromFeedCard(card),
@@ -512,13 +486,13 @@ export function useMobileLoopController(): MobileLoopController {
           return;
         }
         if (action === "keep_in_focus") {
-          await refreshFeedCard<{ ok: boolean }>(card.id);
+          await yurbrainDomainClient.refreshFeedCard<{ ok: boolean }>(card.id);
           setSurfaceNotice("Kept in focus.");
         } else if (action === "revisit_later") {
-          await snoozeFeedCard<{ ok: boolean }>(card.id, 180);
+          await yurbrainDomainClient.snoozeFeedCard<{ ok: boolean }>(card.id, 180);
           setSurfaceNotice("Scheduled to resurface later today.");
         } else {
-          await dismissFeedCard<{ ok: boolean }>(card.id);
+          await yurbrainDomainClient.dismissFeedCard<{ ok: boolean }>(card.id);
           setSurfaceNotice("Dismissed for now.");
         }
         await loadFeed(activeLens);
@@ -541,16 +515,11 @@ export function useMobileLoopController(): MobileLoopController {
     async (enabled: boolean) => {
       setFounderMode(enabled);
       try {
-        await updateUserPreference();
+        await yurbrainDomainClient.updateUserPreferenceMe<UserPreferenceDto>({
+          founderMode: enabled
+        });
       } catch {
         // Keep local mode if persistence fails.
-      }
-      async function updateUserPreference() {
-        await apiClient<UserPreferenceDto>(endpoints.preferencesMe, {
-          method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ founderMode: enabled })
-        });
       }
     },
     []
@@ -563,7 +532,7 @@ export function useMobileLoopController(): MobileLoopController {
       setAiError("");
       try {
         if (action === "convert_to_task") {
-          const converted = await convertToTask<{ outcome: "task_created"; task: TaskDto } | { outcome: "plan_suggested" } | { outcome: "not_recommended"; reason: string }>({
+          const converted = await yurbrainDomainClient.planThis<{ outcome: "task_created"; task: TaskDto } | { outcome: "plan_suggested" } | { outcome: "not_recommended"; reason: string }>({
             sourceItemId: selectedItem.id,
             content: selectedItem.rawContent
           });
@@ -573,7 +542,7 @@ export function useMobileLoopController(): MobileLoopController {
             await Promise.all([loadTasks(), loadFeed(activeLens)]);
           } else if (converted.outcome === "plan_suggested") {
             setSurfaceNotice("Plan suggested. Creating one lightweight task.");
-            const created = await createTask<TaskDto>({
+            const created = await yurbrainDomainClient.createTask<TaskDto>({
               title: `Small step: ${selectedItem.title}`.slice(0, 200),
               sourceItemId: selectedItem.id
             });
@@ -587,7 +556,7 @@ export function useMobileLoopController(): MobileLoopController {
         }
         const itemIds = Array.from(new Set([selectedItem.id, ...relatedItems.map((item) => item.id)]));
         if (action === "summarize_progress") {
-          const summary = await summarizeCluster<{ summary: string; suggestedNextAction: string }>({ itemIds });
+          const summary = await yurbrainDomainClient.summarizeCluster<{ summary: string; suggestedNextAction: string }>({ itemIds });
           const conciseSummary = conciseAiText(summary.summary, 240);
           const conciseNextAction = conciseAiText(summary.suggestedNextAction, 120);
           setArtifactHistoryByItem((current) => {
@@ -601,7 +570,7 @@ export function useMobileLoopController(): MobileLoopController {
           return;
         }
         if (action === "next_step") {
-          const next = await requestNextStep<{ suggestedNextAction: string; reason: string }>({ itemIds });
+          const next = await yurbrainDomainClient.requestNextStep<{ suggestedNextAction: string; reason: string }>({ itemIds });
           const conciseNextStep = conciseAiText(next.suggestedNextAction, 120);
           setSurfaceNotice(`Next: ${conciseNextStep}`);
           setSelectedContinuity((current) => ({
@@ -610,7 +579,7 @@ export function useMobileLoopController(): MobileLoopController {
           }));
           return;
         }
-        const classification = await classifyBrainItem<{ ai: { content: string } }>({
+        const classification = await yurbrainDomainClient.classifyBrainItem<{ ai: { content: string } }>({
           itemId: selectedItem.id,
           rawContent: selectedItem.rawContent
         });
@@ -640,7 +609,7 @@ export function useMobileLoopController(): MobileLoopController {
       try {
         const threadId = commentThreadId || (await ensureThreadForItem(selectedItem.id, "item_comment"));
         if (!commentThreadId) setCommentThreadId(threadId);
-        const created = await sendMessage<MessageDto>({
+        const created = await yurbrainDomainClient.sendMessage<MessageDto>({
           threadId,
           role: "user",
           content: normalized
@@ -666,7 +635,7 @@ export function useMobileLoopController(): MobileLoopController {
         if (!chatThreadId) setChatThreadId(activeThreadId);
         const continuityThreadId = commentThreadId || (await ensureThreadForItem(selectedItem.id, "item_comment"));
         if (!commentThreadId) setCommentThreadId(continuityThreadId);
-        const response = await queryBrainItemThread<{ userMessage: MessageDto; message: MessageDto }>({
+        const response = await yurbrainDomainClient.queryBrainItemThread<{ userMessage: MessageDto; message: MessageDto }>({
           threadId: activeThreadId,
           question: normalized
         });
@@ -677,8 +646,8 @@ export function useMobileLoopController(): MobileLoopController {
         setChatMessages((current) => [...current, response.userMessage, conciseAssistantMessage]);
         setCommentMessages((current) => [...current, response.userMessage, conciseAssistantMessage]);
         await Promise.all([
-          sendMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
-          sendMessage<MessageDto>({ threadId: continuityThreadId, role: "assistant", content: conciseAssistantMessage.content })
+          yurbrainDomainClient.sendMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
+          yurbrainDomainClient.sendMessage<MessageDto>({ threadId: continuityThreadId, role: "assistant", content: conciseAssistantMessage.content })
         ]);
         setSurfaceNotice("Yurbrain reply added to timeline.");
       } catch {
@@ -698,14 +667,14 @@ export function useMobileLoopController(): MobileLoopController {
       setTaskError("");
       try {
         if (selectedTaskSession && selectedTaskSession.state === "running") {
-          await pauseSession<SessionDto>(selectedTaskSession.id);
+          await yurbrainDomainClient.pauseSession<SessionDto>(selectedTaskSession.id);
         }
-        await updateTask<TaskDto>(selectedTask.id, { status: "todo" });
+        await yurbrainDomainClient.updateTask<TaskDto>(selectedTask.id, { status: "todo" });
         if (selectedTask.sourceItemId) {
           const sourceItem = items.find((item) => item.id === selectedTask.sourceItemId) ?? null;
           const threadId = commentThreadId || (await ensureThreadForItem(selectedTask.sourceItemId, "item_comment"));
           if (!commentThreadId) setCommentThreadId(threadId);
-          const blockedMessage = await sendMessage<MessageDto>({
+          const blockedMessage = await yurbrainDomainClient.sendMessage<MessageDto>({
             threadId,
             role: "user",
             content: `Blocked: ${clampText(normalizedReason, 240)}`
@@ -758,7 +727,7 @@ export function useMobileLoopController(): MobileLoopController {
       setSessionBusy(true);
       setTaskError("");
       try {
-        const session = await startTaskSession<SessionDto>(taskId);
+        const session = await yurbrainDomainClient.startSession<SessionDto>(taskId);
         setSelectedTaskId(taskId);
         setActiveSession(session);
         setActiveSurface("session");
@@ -780,7 +749,7 @@ export function useMobileLoopController(): MobileLoopController {
     }
     if (!selectedItem) return;
     try {
-      const created = await createTask<TaskDto>({
+      const created = await yurbrainDomainClient.createTask<TaskDto>({
         title: `Small step: ${selectedItem.title}`.slice(0, 200),
         sourceItemId: selectedItem.id
       });
@@ -795,7 +764,7 @@ export function useMobileLoopController(): MobileLoopController {
     if (!selectedTaskSession) return;
     setSessionBusy(true);
     try {
-      const paused = await pauseSession<SessionDto>(selectedTaskSession.id);
+      const paused = await yurbrainDomainClient.pauseSession<SessionDto>(selectedTaskSession.id);
       setActiveSession(paused);
       await loadSessionsForUser();
     } catch {
@@ -809,9 +778,9 @@ export function useMobileLoopController(): MobileLoopController {
     if (!selectedTaskSession || !selectedTask) return;
     setSessionBusy(true);
     try {
-      const finished = await finishSession<SessionDto>(selectedTaskSession.id);
+      const finished = await yurbrainDomainClient.finishSession<SessionDto>(selectedTaskSession.id);
       setActiveSession(finished);
-      await updateTask<TaskDto>(selectedTask.id, { status: "done" });
+      await yurbrainDomainClient.updateTask<TaskDto>(selectedTask.id, { status: "done" });
       await Promise.all([loadTasks(), loadSessionsForUser(), loadFeed(activeLens)]);
       setActiveSurface("feed");
       setSurfaceNotice("Session finished. Return to Focus Feed.");
@@ -826,7 +795,7 @@ export function useMobileLoopController(): MobileLoopController {
     if (!selectedTask) return;
     setSessionBusy(true);
     try {
-      await updateTask<TaskDto>(selectedTask.id, { status: "done" });
+      await yurbrainDomainClient.updateTask<TaskDto>(selectedTask.id, { status: "done" });
       await Promise.all([loadTasks(), loadFeed(activeLens)]);
       setSurfaceNotice("Task marked done.");
     } catch {
@@ -887,7 +856,7 @@ export function useMobileLoopController(): MobileLoopController {
   useEffect(() => {
     void (async () => {
       try {
-        const preferences = await getUserPreferenceMe<UserPreferenceDto>();
+        const preferences = await yurbrainDomainClient.getUserPreferenceMe<UserPreferenceDto>();
         setFounderMode(preferences.founderMode);
         setActiveLens(preferences.defaultLens);
       } catch {
@@ -1024,7 +993,7 @@ export function useMobileLoopController(): MobileLoopController {
     snoozeCard: async (cardId, minutes = 180) => {
       const card = feedCards.find((entry) => entry.id === cardId);
       if (!card) return;
-      await snoozeFeedCard<{ ok: boolean }>(card.id, minutes);
+      await yurbrainDomainClient.snoozeFeedCard<{ ok: boolean }>(card.id, minutes);
       await loadFeed(activeLens);
     },
     keepCardInFocus: async (cardId) => {

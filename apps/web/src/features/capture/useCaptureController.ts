@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { createCaptureIntake } from "@yurbrain/client";
+import { yurbrainDomainClient } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
 import type { BrainItemDto, CaptureDraft } from "../shared/types";
@@ -70,7 +70,7 @@ export function useCaptureController({
       setCaptureStatusNotice("");
 
       try {
-        const intake = await createCaptureIntake<CaptureIntakeResponse>({
+        const intake = await yurbrainDomainClient.createCaptureIntake<CaptureIntakeResponse>({
           type: captureDraft.type,
           content: normalized,
           source: captureDraft.source.trim() || "web_capture_sheet",

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { dismissFeedCard, getFeed, refreshFeedCard } from "@yurbrain/client";
+import { yurbrainDomainClient } from "@yurbrain/client";
 import type { FeedLens } from "@yurbrain/ui";
 
 import type { ContinuityContext, FeedCardDto, FeedCardModel } from "../shared/types";
@@ -31,7 +31,7 @@ export function useFeedController({
     async (lens: FeedLens) => {
       setFeedLoading(true);
       try {
-        const cards = await getFeed<FeedCardDto[]>({ lens, limit: feedLimit });
+        const cards = await yurbrainDomainClient.getFeed<FeedCardDto[]>({ lens, limit: feedLimit });
         setFeedCards(cards);
         setFeedError("");
       } catch {
@@ -79,7 +79,7 @@ export function useFeedController({
 
   const dismissCard = useCallback(
     async (cardId: string) => {
-      await dismissFeedCard<{ ok: boolean }>(cardId);
+      await yurbrainDomainClient.dismissFeedCard<{ ok: boolean }>(cardId);
       await loadFeed(activeLens);
     },
     [activeLens, loadFeed]
@@ -87,7 +87,7 @@ export function useFeedController({
 
   const refreshCard = useCallback(
     async (cardId: string) => {
-      await refreshFeedCard<{ ok: boolean }>(cardId);
+      await yurbrainDomainClient.refreshFeedCard<{ ok: boolean }>(cardId);
       await loadFeed(activeLens);
     },
     [activeLens, loadFeed]

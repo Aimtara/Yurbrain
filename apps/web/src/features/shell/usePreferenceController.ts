@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { getUserPreferenceMe, updateUserPreferenceMe } from "@yurbrain/client";
+import { yurbrainDomainClient } from "@yurbrain/client";
 
 import type { UserPreferenceDto } from "../shared/types";
 
@@ -31,7 +31,7 @@ export function usePreferenceController({
       >
     ) => {
       try {
-        await updateUserPreferenceMe<UserPreferenceDto>(updates);
+        await yurbrainDomainClient.updateUserPreferenceMe<UserPreferenceDto>(updates);
       } catch {
         // Preference persistence should not block core loop actions.
       }
@@ -41,7 +41,7 @@ export function usePreferenceController({
 
   const loadUserPreferences = useCallback(async () => {
     try {
-      const preferences = await getUserPreferenceMe<UserPreferenceDto>();
+      const preferences = await yurbrainDomainClient.getUserPreferenceMe<UserPreferenceDto>();
       setActiveLens(preferences.defaultLens);
       setFounderMode(preferences.founderMode);
       setRenderMode(preferences.renderMode);

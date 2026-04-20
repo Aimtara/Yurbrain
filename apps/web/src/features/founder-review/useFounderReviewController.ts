@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { apiClient, endpoints } from "@yurbrain/client";
+import { yurbrainDomainClient } from "@yurbrain/client";
 
-import { userId } from "../shell/constants";
 import type { FounderReviewActionModel, FounderReviewModel } from "./types";
+
+const founderReviewUserId = "11111111-1111-1111-1111-111111111111";
 
 type UseFounderReviewControllerInput = {
   activeSurface: "feed" | "item" | "session" | "time" | "me" | "founder_review";
@@ -24,9 +25,11 @@ export function useFounderReviewController({
     setLoadingAiReadout(includeAiReadout);
     setError("");
     try {
-      const data = await apiClient<FounderReviewModel>(
-        `${endpoints.founderReview}?window=7d&userId=${encodeURIComponent(userId)}${includeAiReadout ? "&includeAi=1" : ""}`
-      );
+      const data = await yurbrainDomainClient.getFounderReview<FounderReviewModel>({
+        window: "7d",
+        userId: founderReviewUserId,
+        includeAi: includeAiReadout
+      });
       setReview(data);
     } catch {
       setReview(null);
