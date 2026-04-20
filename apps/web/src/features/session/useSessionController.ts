@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { yurbrainDomainClient } from "@yurbrain/client";
+import type { YurbrainClient } from "@yurbrain/client";
 import type { FeedLens } from "@yurbrain/ui";
 
 import type { ContinuityContext, ConvertResponse, FeedCardDto, PlanPreviewDraft, PostponeDraft, SessionDto, TaskDto } from "../shared/types";
@@ -10,6 +10,7 @@ function normalizePlanStepMinutes(index: number): number {
 }
 
 type UseSessionControllerInput = {
+  yurbrainClient: YurbrainClient;
   activeLens: FeedLens;
   selectedTaskId: string;
   tasks: TaskDto[];
@@ -48,6 +49,7 @@ type UseSessionControllerInput = {
 };
 
 export function useSessionController({
+  yurbrainClient,
   activeLens,
   selectedTaskId,
   tasks,
@@ -77,7 +79,7 @@ export function useSessionController({
   const loadSessionsForTask = useCallback(
     async (taskId: string) => {
       try {
-        const sessions = await yurbrainDomainClient.listSessions<SessionDto[]>({ taskId });
+        const sessions = await yurbrainClient.listSessions<SessionDto[]>({ taskId });
         const live = sessions.find((session) => session.state !== "finished");
         setActiveSession(live ?? sessions[0] ?? null);
       } catch {
@@ -90,7 +92,7 @@ export function useSessionController({
 
   const loadAllSessionsForUser = useCallback(async () => {
     try {
-      const sessions = await yurbrainDomainClient.listSessions<SessionDto[]>({});
+      const sessions = await yurbrainClient.listSessions<SessionDto[]>({});
       setSessionHistory(
         [...sessions].sort((left, right) => {
           if (left.startedAt !== right.startedAt) {
@@ -108,7 +110,7 @@ export function useSessionController({
   const loadTasks = useCallback(async () => {
     setTasksLoading(true);
     try {
-      const response = await yurbrainDomainClient.listTasks<TaskDto[]>();
+      const response = await yurbrainClient.listTasks<TaskDto[]>();
       const nextTasks = [...response].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       setTasks(nextTasks);
       setTaskError("");
@@ -123,7 +125,7 @@ export function useSessionController({
       if (!activeSession || !nextTasks.some((task) => task.id === activeSession.taskId)) {
         const inProgressTask = nextTasks.find((task) => task.status === "in_progress");
         if (inProgressTask) {
-          const sessions = await yurbrainDomainClient.listSessions<SessionDto[]>({ taskId: inProgressTask.id });
+          const sessions = await yurbrainClient.listSessions<SessionDto[]>({ taskId: inProgressTask.id });
           const session = sessions.find((candidate) => candidate.state === "running" || candidate.state === "paused") ?? null;
           setActiveSession(session);
         } else {
@@ -171,7 +173,7 @@ export function useSessionController({
       setConversionNotice("");
       setTaskError("");
       try {
-        const result = await yurbrainDomainClient.planThis<ConvertResponse>({
+        const result = await yurbrainClient.planThis<ConvertResponse>({
           sourceItemId: input.itemId,
           sourceMessageId: input.sourceMessageId ?? null,
           content: input.content
@@ -207,7 +209,7 @@ export function useSessionController({
   const createManualTaskFromFeedCard = useCallback(
     async (card: FeedCardDto): Promise<TaskDto> => {
       const fallbackTitle = card.title.trim().slice(0, 200) || "Follow up on resurfaced memory";
-      const created = await yurbrainDomainClient.createTask<TaskDto>({
+      const created = await yurbrainClient.createTask<TaskDto>({
         title: fallbackTitle,
         sourceItemId: card.itemId
       });
@@ -246,7 +248,7 @@ export function useSessionController({
       }
 
       try {
-        const session = await yurbrainDomainClient.startSession<SessionDto>(taskToStart.id);
+        const session = await yurbrainClient.startSession<SessionDto>(taskToStart.id);
         setActiveSession(session);
         setSelectedTaskId(taskToStart.id);
         setConversionNotice(`Session started: ${taskToStart.title}`);
@@ -294,7 +296,7 @@ export function useSessionController({
       try {
         const createdTasks: TaskDto[] = [];
         for (const step of pendingPlanPreview.steps) {
-          const created = await yurbrainDomainClient.createTask<TaskDto>({
+          const created = await yurbrainClient.createTask<TaskDto>({
             title: step.title,
             sourceItemId: pendingPlanPreview.sourceItemId
           });
@@ -312,7 +314,7 @@ export function useSessionController({
         }
 
         if (startFirstStep && createdTasks.length > 0) {
-          const session = await yurbrainDomainClient.startSession<SessionDto>(createdTasks[0].id);
+          const session = await yurbrainClient.startSession<SessionDto>(createdTasks[0].id);
           setActiveSession(session);
           setActiveSurface("session");
           setConversionNotice(`Plan accepted (${createdTasks.length} tasks). Started first step.`);
@@ -380,7 +382,7 @@ export function useSessionController({
     async (taskId: string) => {
       try {
         setTaskError("");
-        const session = await yurbrainDomainClient.startSession<SessionDto>(taskId);
+        const session = await yurbrainClient.startSession<SessionDto>(taskId);
         setActiveSession(session);
         setSelectedTaskId(taskId);
         setTimeActionNotice("Session started from time window.");
@@ -418,7 +420,7 @@ export function useSessionController({
     async (minutes: number, notice: string) => {
       if (!pendingPostponeSheet) return;
       try {
-        await yurbrainDomainClient.snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, minutes);
+        await yurbrainClient.snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, minutes);
         await loadFeed(activeLens);
         setPendingPostponeSheet(null);
         setConversionNotice(notice);
@@ -451,8 +453,8 @@ export function useSessionController({
       const sourceItemId = pendingPostponeSheet.itemId;
       const baseTitle = pendingPostponeSheet.title.trim() || "resurfaced idea";
       const title = `Small step: ${baseTitle}`.slice(0, 200);
-      const created = await yurbrainDomainClient.createTask<TaskDto>({ title, sourceItemId });
-      await yurbrainDomainClient.snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, 240);
+      const created = await yurbrainClient.createTask<TaskDto>({ title, sourceItemId });
+      await yurbrainClient.snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, 240);
       setTasks((current) => [created, ...current.filter((task) => task.id !== created.id)]);
       setSelectedTaskId(created.id);
       setPendingPostponeSheet(null);
@@ -482,7 +484,7 @@ export function useSessionController({
   const startSelectedTaskSession = useCallback(
     async (task: TaskDto | null) => {
       if (!task) return;
-      const session = await yurbrainDomainClient.startSession<SessionDto>(task.id);
+      const session = await yurbrainClient.startSession<SessionDto>(task.id);
       setActiveSession(session);
       await Promise.all([loadTasks(), loadSessionsForTask(task.id), loadAllSessionsForUser()]);
     },
@@ -492,7 +494,7 @@ export function useSessionController({
   const markTaskDone = useCallback(
     async (task: TaskDto | null) => {
       if (!task) return;
-      await yurbrainDomainClient.updateTask<TaskDto>(task.id, { status: "done" });
+      await yurbrainClient.updateTask<TaskDto>(task.id, { status: "done" });
       await Promise.all([loadTasks(), loadSessionsForTask(task.id), loadAllSessionsForUser()]);
       setLastAction("Marked task done.");
     },
@@ -502,7 +504,7 @@ export function useSessionController({
   const pauseSelectedSession = useCallback(
     async (task: TaskDto | null, session: SessionDto | null) => {
       if (!task || !session) return;
-      const updated = await yurbrainDomainClient.pauseSession<SessionDto>(session.id);
+      const updated = await yurbrainClient.pauseSession<SessionDto>(session.id);
       setActiveSession(updated);
       await Promise.all([loadTasks(), loadSessionsForTask(task.id), loadAllSessionsForUser()]);
     },
@@ -513,7 +515,7 @@ export function useSessionController({
     async (task: TaskDto | null, session: SessionDto | null, sourceItem: { id: string; updatedAt?: string } | null) => {
       if (!task || !session) return;
       const plannedMinutes = calculatePlannedMinutesForSession(task);
-      const updated = await yurbrainDomainClient.finishSession<SessionDto>(session.id);
+      const updated = await yurbrainClient.finishSession<SessionDto>(session.id);
       const actualMinutesValue = Math.max(1, Math.floor(deriveSessionElapsedSeconds(updated) / 60));
       const deltaMinutes = actualMinutesValue - plannedMinutes;
       setActiveSession(updated);

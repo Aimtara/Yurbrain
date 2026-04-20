@@ -1,5 +1,5 @@
 import { SafeAreaView, StatusBar, View } from "react-native";
-import { configureApiBaseUrl } from "@yurbrain/client";
+import { configureApiBaseUrl, YurbrainClientProvider } from "@yurbrain/client";
 
 import { AppCaptureSheet } from "./features/capture/AppCaptureSheet";
 import { FocusFeedSurface } from "./features/feed/FocusFeedSurface";
@@ -18,27 +18,29 @@ export default function App() {
   const controller = useMobileLoopController();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f6f7fb" }}>
-      <StatusBar barStyle="dark-content" />
-      <View style={{ flex: 1 }}>
-        {controller.activeSurface === "feed" ? <FocusFeedSurface controller={controller} /> : null}
-        {controller.activeSurface === "item" ? <ItemDetailSurface controller={controller} /> : null}
-        {controller.activeSurface === "session" ? <SessionSurface controller={controller} /> : null}
-        {controller.activeSurface === "time" ? <TimeSurface controller={controller} /> : null}
-        {controller.activeSurface === "me" ? <MeSurface controller={controller} /> : null}
-      </View>
-      <MobileTabBar activeSurface={controller.activeSurface} onNavigate={controller.navigateToPrimarySurface} sessionTabEnabled={controller.sessionTabVisible} />
-      <AppCaptureSheet
-        open={controller.captureSheetOpen}
-        draft={controller.captureDraft}
-        loading={controller.captureLoading}
-        errorMessage={controller.captureError}
-        statusMessage={controller.captureStatusNotice}
-        successMessage={controller.captureSuccessNotice}
-        onClose={controller.closeCaptureSheet}
-        onChangeDraft={controller.setCaptureDraft}
-        onSubmit={controller.captureItem}
-      />
-    </SafeAreaView>
+    <YurbrainClientProvider>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#f6f7fb" }}>
+        <StatusBar barStyle="dark-content" />
+        <View style={{ flex: 1 }}>
+          {controller.activeSurface === "feed" ? <FocusFeedSurface controller={controller} /> : null}
+          {controller.activeSurface === "item" ? <ItemDetailSurface controller={controller} /> : null}
+          {controller.activeSurface === "session" ? <SessionSurface controller={controller} /> : null}
+          {controller.activeSurface === "time" ? <TimeSurface controller={controller} /> : null}
+          {controller.activeSurface === "me" ? <MeSurface controller={controller} /> : null}
+        </View>
+        <MobileTabBar activeSurface={controller.activeSurface} onNavigate={controller.navigateToPrimarySurface} sessionTabEnabled={controller.sessionTabVisible} />
+        <AppCaptureSheet
+          open={controller.captureSheetOpen}
+          draft={controller.captureDraft}
+          loading={controller.captureLoading}
+          errorMessage={controller.captureError}
+          statusMessage={controller.captureStatusNotice}
+          successMessage={controller.captureSuccessNotice}
+          onClose={controller.closeCaptureSheet}
+          onChangeDraft={controller.setCaptureDraft}
+          onSubmit={controller.captureItem}
+        />
+      </SafeAreaView>
+    </YurbrainClientProvider>
   );
 }

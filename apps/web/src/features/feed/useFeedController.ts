@@ -1,10 +1,11 @@
 import { useCallback } from "react";
-import { yurbrainDomainClient } from "@yurbrain/client";
+import type { YurbrainClient } from "@yurbrain/client";
 import type { FeedLens } from "@yurbrain/ui";
 
 import type { ContinuityContext, FeedCardDto, FeedCardModel } from "../shared/types";
 
 type UseFeedControllerInput = {
+  yurbrainClient: YurbrainClient;
   feedLimit: number;
   activeLens: FeedLens;
   setFeedLoading: (loading: boolean) => void;
@@ -17,6 +18,7 @@ type UseFeedControllerInput = {
 };
 
 export function useFeedController({
+  yurbrainClient,
   feedLimit,
   activeLens,
   setFeedLoading,
@@ -31,7 +33,7 @@ export function useFeedController({
     async (lens: FeedLens) => {
       setFeedLoading(true);
       try {
-        const cards = await yurbrainDomainClient.getFeed<FeedCardDto[]>({ lens, limit: feedLimit });
+        const cards = await yurbrainClient.getFeed<FeedCardDto[]>({ lens, limit: feedLimit });
         setFeedCards(cards);
         setFeedError("");
       } catch {
@@ -41,7 +43,7 @@ export function useFeedController({
         setFeedLoading(false);
       }
     },
-    [feedLimit, setFeedCards, setFeedError, setFeedLoading]
+    [feedLimit, setFeedCards, setFeedError, setFeedLoading, yurbrainClient]
   );
 
   const openItemFromModel = useCallback(
@@ -79,18 +81,18 @@ export function useFeedController({
 
   const dismissCard = useCallback(
     async (cardId: string) => {
-      await yurbrainDomainClient.dismissFeedCard<{ ok: boolean }>(cardId);
+      await yurbrainClient.dismissFeedCard<{ ok: boolean }>(cardId);
       await loadFeed(activeLens);
     },
-    [activeLens, loadFeed]
+    [activeLens, loadFeed, yurbrainClient]
   );
 
   const refreshCard = useCallback(
     async (cardId: string) => {
-      await yurbrainDomainClient.refreshFeedCard<{ ok: boolean }>(cardId);
+      await yurbrainClient.refreshFeedCard<{ ok: boolean }>(cardId);
       await loadFeed(activeLens);
     },
-    [activeLens, loadFeed]
+    [activeLens, loadFeed, yurbrainClient]
   );
 
   return {

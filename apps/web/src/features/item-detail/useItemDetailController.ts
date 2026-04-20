@@ -1,10 +1,11 @@
 import { useCallback } from "react";
-import { yurbrainDomainClient } from "@yurbrain/client";
+import type { YurbrainClient } from "@yurbrain/client";
 
 import type { BrainItemDto, ContinuityContext, ItemArtifactDto, MessageDto, ThreadDto } from "../shared/types";
 import { deriveArtifactHistory } from "./item-detail-model";
 
 type UseItemDetailControllerInput = {
+  yurbrainClient: YurbrainClient;
   selectedItem: BrainItemDto | null;
   selectedItemId: string;
   chatThreadId: string;
@@ -31,6 +32,7 @@ type UseItemDetailControllerInput = {
 };
 
 export function useItemDetailController({
+  yurbrainClient,
   selectedItem,
   selectedItemId,
   chatThreadId,
@@ -68,8 +70,8 @@ export function useItemDetailController({
       setItemActionNotice("");
       try {
         const [threads, artifacts] = await Promise.all([
-          yurbrainDomainClient.listThreadsByTarget<ThreadDto[]>(itemId),
-          yurbrainDomainClient.listBrainItemArtifacts<ItemArtifactDto[]>(itemId)
+          yurbrainClient.listThreadsByTarget<ThreadDto[]>(itemId),
+          yurbrainClient.listBrainItemArtifacts<ItemArtifactDto[]>(itemId)
         ]);
         const commentThread = threads.find((thread) => thread.kind === "item_comment") ?? null;
         const chatThread = threads.find((thread) => thread.kind === "item_chat") ?? null;
@@ -77,14 +79,14 @@ export function useItemDetailController({
         setChatThreadId(chatThread?.id ?? "");
 
         if (commentThread) {
-          const comments = await yurbrainDomainClient.listThreadMessages<MessageDto[]>(commentThread.id);
+          const comments = await yurbrainClient.listThreadMessages<MessageDto[]>(commentThread.id);
           setCommentMessages(comments.filter((message) => message.role === "user"));
         } else {
           setCommentMessages([]);
         }
 
         if (chatThread) {
-          const messages = await yurbrainDomainClient.listThreadMessages<MessageDto[]>(chatThread.id);
+          const messages = await yurbrainClient.listThreadMessages<MessageDto[]>(chatThread.id);
           setChatMessages(messages);
         } else {
           setChatMessages([]);
@@ -105,7 +107,7 @@ export function useItemDetailController({
 
   const ensureThreadForItem = useCallback(
     async (itemId: string, kind: "item_comment" | "item_chat") => {
-      const threads = await yurbrainDomainClient.listThreadsByTarget<ThreadDto[]>(itemId);
+      const threads = await yurbrainClient.listThreadsByTarget<ThreadDto[]>(itemId);
       const existing = threads.find((thread) => thread.kind === kind);
       if (existing) {
         if (itemId === selectedItemId) {
@@ -115,7 +117,7 @@ export function useItemDetailController({
         return existing.id;
       }
 
-      const created = await yurbrainDomainClient.createThread<{ id: string }>({ targetItemId: itemId, kind });
+      const created = await yurbrainClient.createThread<{ id: string }>({ targetItemId: itemId, kind });
       if (itemId === selectedItemId) {
         if (kind === "item_comment") setCommentThreadId(created.id);
         if (kind === "item_chat") setChatThreadId(created.id);
@@ -130,7 +132,7 @@ export function useItemDetailController({
       const normalized = content.trim();
       if (!normalized) return null;
       const threadId = await ensureThreadForItem(itemId, "item_comment");
-      const created = await yurbrainDomainClient.sendMessage<MessageDto>({ threadId, role: "user", content: normalized });
+      const created = await yurbrainClient.sendMessage<MessageDto>({ threadId, role: "user", content: normalized });
       if (itemId === selectedItemId) {
         setCommentMessages((current) => [...current, created]);
         setItemActionNotice("Comment added to continuity timeline.");
@@ -152,7 +154,7 @@ export function useItemDetailController({
       const synthesisItemIds = Array.from(new Set([selectedItem.id, ...relatedItemIds]));
       try {
         if (action === "summarize_progress") {
-          const response = await yurbrainDomainClient.summarizeCluster<{
+          const response = await yurbrainClient.summarizeCluster<{
             summary: string;
             repeatedIdeas?: string[];
             suggestedNextAction: string;
@@ -172,7 +174,7 @@ export function useItemDetailController({
               : `Progress summary ready. Next: ${response.suggestedNextAction}`
           );
         } else if (action === "next_step") {
-          const response = await yurbrainDomainClient.requestNextStep<{
+          const response = await yurbrainClient.requestNextStep<{
             summary: string;
             repeatedIdeas?: string[];
             suggestedNextAction: string;
@@ -180,7 +182,7 @@ export function useItemDetailController({
           }>({ itemIds: synthesisItemIds });
           setItemActionNotice(`Next step: ${response.suggestedNextAction} Reason: ${response.reason}`);
         } else {
-          const response = await yurbrainDomainClient.classifyBrainItem<{ ai: { content: string } }>({
+          const response = await yurbrainClient.classifyBrainItem<{ ai: { content: string } }>({
             itemId: selectedItem.id,
             rawContent: selectedItem.rawContent
           });
@@ -207,14 +209,14 @@ export function useItemDetailController({
       setChatError("");
       try {
         const activeThreadId = await ensureThreadForItem(selectedItem.id, "item_chat");
-        const response = await yurbrainDomainClient.queryBrainItemThread<{ userMessage: MessageDto; message: MessageDto; fallbackUsed: boolean }>({
+        const response = await yurbrainClient.queryBrainItemThread<{ userMessage: MessageDto; message: MessageDto; fallbackUsed: boolean }>({
           threadId: activeThreadId,
           question
         });
         const continuityThreadId = await ensureThreadForItem(selectedItem.id, "item_comment");
         await Promise.all([
-          yurbrainDomainClient.sendMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
-          yurbrainDomainClient.sendMessage<MessageDto>({
+          yurbrainClient.sendMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
+          yurbrainClient.sendMessage<MessageDto>({
             threadId: continuityThreadId,
             role: "assistant",
             content: response.message.content

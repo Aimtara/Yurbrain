@@ -32,6 +32,19 @@ No phase can be marked complete if any loop step degrades materially.
 12. N12: mobile cutover.
 13. N13: legacy REST strangler cleanup.
 
+## N2 implementation baseline (now in repo)
+
+N2 is considered established when these are true:
+
+1. `packages/client/src/createYurbrainClient.ts` exists and exposes a stable `YurbrainClient` interface.
+2. `packages/client/src/yurbrainClient.ts` exports the singleton frontend-facing client.
+3. Client supports REST-backed behavior and Nhost-backed bootstrap scaffold behind one interface.
+4. Provider/hook scaffolding exists for UI usage:
+   - `packages/client/src/provider.tsx`
+   - web/mobile provider integration stubs.
+
+N2 does not change backend behavior; it stabilizes the client boundary for later cutovers.
+
 ## Cutover rules
 
 - No big-bang rewrite.

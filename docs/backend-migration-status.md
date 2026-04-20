@@ -23,7 +23,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Current user identity | `GET /auth/me` | `apps/api/src/server.ts` | Nhost Auth session + GraphQL profile read | `getCurrentUser` | Yes | not started | Remove demo identity assumptions and header fallback reliance from user paths. |
 | Capture intake pipeline | `POST /capture/intake` | `apps/api/src/routes/capture.ts` | Nhost Function | `createBrainItem` (capture mode) | Yes | not started | Includes enrichment, related detection, feed card side effects, and event append. |
-| Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | GraphQL adapter exists in `packages/client` but not yet authoritative cutover path. |
+| Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | N2 stable client surface now includes these methods; runtime behavior remains parity-preserving. |
 | Brain item artifacts read | `GET /brain-items/:id/artifacts` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL read | `getBrainItem` (artifact expansion) | Yes | in progress | Keep writes server-side where feasible. |
 | Related item discovery | `GET /brain-items/:id/related` | `apps/api/src/routes/brain-items.ts` | Nhost Function | `getBrainItem` (related context fetch) | Yes | not started | Computed logic, not pure CRUD. |
 | Thread create/read | `POST /threads`, `GET /threads/:id`, `GET /threads/by-target` | `apps/api/src/routes/threads.ts` | Hasura GraphQL CRUD/read | `addComment` (thread resolution path) | Yes | in progress | Owner-scoped access required. |
@@ -31,7 +31,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Task create/list/detail/update | `POST /tasks`, `GET /tasks`, `GET /tasks/:id`, `PATCH /tasks/:id` | `apps/api/src/routes/tasks.ts` | Hasura GraphQL CRUD/read | `planThis`, `blockSession` | Yes | in progress | Core for plan/session loop continuity. |
 | Manual task convert | `POST /tasks/manual-convert` | `apps/api/src/routes/tasks.ts` | Nhost Function | `planThis` | Yes | not started | Deterministic conversion logic belongs in functions. |
 | Session list/detail state | `GET /sessions`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish` | `apps/api/src/routes/sessions.ts` | Hasura GraphQL CRUD + function helper where needed | `startSession`, `finishSession`, `blockSession` | Yes | in progress | Start/pause/finish may remain function-backed if orchestration grows. |
-| User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | in progress | Use owner-scoped rows only. |
+| User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | in progress | N2 introduces explicit domain methods for these preference updates. |
 | User preferences (by userId) | `GET /preferences/:userId`, `PUT /preferences/:userId` | `apps/api/src/routes/preferences.ts` | temporary legacy compatibility | `setFounderMode`, `setDefaultFeedLens` | Yes | legacy retained | Keep until all callers use current-user path. |
 | Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | not started | Deterministic ranking + whyShown must preserve product feel. |
 | Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | not started | Keep behavior parity with current loop re-entry ergonomics. |
@@ -72,6 +72,19 @@ The following capabilities are migration-critical and must never regress:
 4. Cut over feed/function logic only after web CRUD parity is proven.
 
 This slice reduces risk because it changes architecture boundaries before changing product behavior.
+
+## N2 progress update
+
+Completed in this repository state:
+
+1. Added stable client interface/factory files:
+   - `packages/client/src/createYurbrainClient.ts`
+   - `packages/client/src/yurbrainClient.ts`
+2. Added provider/hook scaffolding:
+   - `packages/client/src/provider.tsx`
+   - web/mobile provider wrappers and integration points.
+3. Refactored web and mobile controllers to consume injected `YurbrainClient` instance.
+4. Kept backend behavior unchanged (REST-backed by default) while adding Nhost transport scaffold.
 
 ## Unclassified capabilities
 

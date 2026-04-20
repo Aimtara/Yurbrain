@@ -1,11 +1,12 @@
 import { useCallback } from "react";
-import { yurbrainDomainClient } from "@yurbrain/client";
+import type { YurbrainClient } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
 import type { BrainItemDto, CaptureDraft } from "../shared/types";
 import { captureSuccessMessages } from "../shell/constants";
 
 type UseCaptureControllerInput = {
+  yurbrainClient: YurbrainClient;
   captureDraft: CaptureDraft;
   activeLens: import("@yurbrain/ui").FeedLens;
   setCaptureDraft: (draft: CaptureDraft) => void;
@@ -35,6 +36,7 @@ type CaptureIntakeResponse = {
 };
 
 export function useCaptureController({
+  yurbrainClient,
   captureDraft,
   activeLens,
   setCaptureDraft,
@@ -70,7 +72,7 @@ export function useCaptureController({
       setCaptureStatusNotice("");
 
       try {
-        const intake = await yurbrainDomainClient.createCaptureIntake<CaptureIntakeResponse>({
+        const intake = await yurbrainClient.createCaptureIntake<CaptureIntakeResponse>({
           type: captureDraft.type,
           content: normalized,
           source: captureDraft.source.trim() || "web_capture_sheet",

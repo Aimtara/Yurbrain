@@ -8,6 +8,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [ ] No direct Nhost function calls in React screens.
 - [ ] UI uses `packages/client` only.
 - [ ] Product loop still works: capture, feed, item detail, comments, plan, session, founder review.
+- [x] N2 domain client/provider scaffolding added (`createYurbrainClient`, `yurbrainClient`, provider hooks) with no behavior cutover yet.
 
 ## Web cutover checklist (must complete before mobile cutover)
 

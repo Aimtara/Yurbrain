@@ -1,10 +1,11 @@
 import { useCallback } from "react";
-import { yurbrainDomainClient } from "@yurbrain/client";
+import type { YurbrainClient } from "@yurbrain/client";
 
 import type { UserPreferenceDto } from "../shared/types";
 
 type UsePreferenceControllerInput = {
   hydrated: boolean;
+  yurbrainClient: YurbrainClient;
   setActiveLens: (lens: UserPreferenceDto["defaultLens"]) => void;
   setFounderMode: (enabled: boolean) => void;
   setRenderMode: (mode: UserPreferenceDto["renderMode"]) => void;
@@ -16,6 +17,7 @@ type UsePreferenceControllerInput = {
 
 export function usePreferenceController({
   hydrated,
+  yurbrainClient,
   setActiveLens,
   setFounderMode,
   setRenderMode,
@@ -31,17 +33,32 @@ export function usePreferenceController({
       >
     ) => {
       try {
-        await yurbrainDomainClient.updateUserPreferenceMe<UserPreferenceDto>(updates);
+        if (updates.founderMode !== undefined) {
+          await yurbrainClient.setFounderMode<UserPreferenceDto>(updates.founderMode);
+        }
+        if (updates.defaultLens !== undefined) {
+          await yurbrainClient.setDefaultFeedLens<UserPreferenceDto>(updates.defaultLens);
+        }
+        const remainingUpdates: Partial<
+          Pick<UserPreferenceDto, "renderMode" | "aiSummaryMode" | "feedDensity" | "resurfacingIntensity">
+        > = {};
+        if (updates.renderMode !== undefined) remainingUpdates.renderMode = updates.renderMode;
+        if (updates.aiSummaryMode !== undefined) remainingUpdates.aiSummaryMode = updates.aiSummaryMode;
+        if (updates.feedDensity !== undefined) remainingUpdates.feedDensity = updates.feedDensity;
+        if (updates.resurfacingIntensity !== undefined) remainingUpdates.resurfacingIntensity = updates.resurfacingIntensity;
+        if (Object.keys(remainingUpdates).length > 0) {
+          await yurbrainClient.updateUserPreferenceMe<UserPreferenceDto>(remainingUpdates);
+        }
       } catch {
         // Preference persistence should not block core loop actions.
       }
     },
-    []
+    [yurbrainClient]
   );
 
   const loadUserPreferences = useCallback(async () => {
     try {
-      const preferences = await yurbrainDomainClient.getUserPreferenceMe<UserPreferenceDto>();
+      const preferences = await yurbrainClient.getUserPreferenceMe<UserPreferenceDto>();
       setActiveLens(preferences.defaultLens);
       setFounderMode(preferences.founderMode);
       setRenderMode(preferences.renderMode);
@@ -52,7 +69,7 @@ export function usePreferenceController({
     } catch {
       return null;
     }
-  }, [setActiveLens, setAiSummaryMode, setFeedDensity, setFounderMode, setRenderMode, setResurfacingIntensity]);
+  }, [setActiveLens, setAiSummaryMode, setFeedDensity, setFounderMode, setRenderMode, setResurfacingIntensity, yurbrainClient]);
 
   const handleLensChange = useCallback(
     (nextLens: UserPreferenceDto["defaultLens"]) => {
