@@ -3,15 +3,20 @@ import {
   FounderReviewQuerySchema,
   FounderReviewResponseSchema
 } from "../../../../packages/contracts/src";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { buildFounderReview } from "../services/founder-review/service";
 import type { AppState } from "../state";
 
-const defaultUserId = "11111111-1111-1111-1111-111111111111";
-
 export async function registerFounderReviewRoutes(app: FastifyInstance, state: AppState) {
   app.get("/founder-review", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+
     const { window, userId, includeAi } = FounderReviewQuerySchema.parse(request.query ?? {});
-    const resolvedUserId = userId ?? defaultUserId;
+    const resolvedUserId = userId ?? currentUser.id;
+    if (!canAccessUser(currentUser, resolvedUserId)) {
+      return reply.code(404).send({ message: "Founder review not found" });
+    }
     const review = await buildFounderReview({
       repo: state.repo,
       userId: resolvedUserId,

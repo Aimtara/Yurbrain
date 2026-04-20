@@ -109,6 +109,10 @@ importers:
         version: 4.21.0
 
   packages/client:
+    dependencies:
+      '@nhost/nhost-js':
+        specifier: ^4.7.0
+        version: 4.7.0
     devDependencies:
       tsx:
         specifier: ^4.19.2
@@ -1511,6 +1515,10 @@ packages:
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
+
+  '@nhost/nhost-js@4.7.0':
+    resolution: {integrity: sha512-/2fh55J0UH4L5YUZ8RQ1yQjjukG/c5dUbzUmA6WeGUAbYt4li1cbJYg8hZFOiyg+F9Pza+aqToX866EYAu9BPA==}
+    engines: {node: '>=22'}
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
@@ -5374,6 +5382,10 @@ snapshots:
 
   '@next/swc-win32-x64-msvc@15.3.0':
     optional: true
+
+  '@nhost/nhost-js@4.7.0':
+    dependencies:
+      tslib: 2.8.1
 
   '@pinojs/redact@0.4.0': {}
 

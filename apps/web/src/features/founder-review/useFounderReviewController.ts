@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { yurbrainDomainClient } from "@yurbrain/client";
+import { fetchCurrentUser, getCurrentUserId, yurbrainDomainClient } from "@yurbrain/client";
 
 import type { FounderReviewActionModel, FounderReviewModel } from "./types";
-
-const founderReviewUserId = "11111111-1111-1111-1111-111111111111";
 
 type UseFounderReviewControllerInput = {
   activeSurface: "feed" | "item" | "session" | "time" | "me" | "founder_review";
@@ -19,6 +17,7 @@ export function useFounderReviewController({
   const [loadingAiReadout, setLoadingAiReadout] = useState(false);
   const [error, setError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string>(() => getCurrentUserId() ?? "");
 
   const loadFounderReview = useCallback(async (includeAiReadout = false) => {
     setLoading(true);
@@ -27,7 +26,7 @@ export function useFounderReviewController({
     try {
       const data = await yurbrainDomainClient.getFounderReview<FounderReviewModel>({
         window: "7d",
-        userId: founderReviewUserId,
+        userId: currentUserId || undefined,
         includeAi: includeAiReadout
       });
       setReview(data);
@@ -38,12 +37,29 @@ export function useFounderReviewController({
       setLoading(false);
       setLoadingAiReadout(false);
     }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    let mounted = true;
+    void (async () => {
+      try {
+        const currentUser = await fetchCurrentUser();
+        if (!mounted) return;
+        setCurrentUserId(currentUser.id);
+      } catch {
+        if (!mounted) return;
+        setCurrentUserId("");
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
     if (activeSurface !== "founder_review") return;
     void loadFounderReview();
-  }, [activeSurface, loadFounderReview]);
+  }, [activeSurface, currentUserId, loadFounderReview]);
 
   const applyAction = useCallback(
     async (action: FounderReviewActionModel) => {

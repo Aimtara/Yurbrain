@@ -24,12 +24,38 @@ function parseUuid(raw: unknown): string | null {
   return parsed.success ? parsed.data : null;
 }
 
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const segments = token.split(".");
+  if (segments.length < 2) return null;
+  const payloadSegment = segments[1];
+  if (!payloadSegment) return null;
+  try {
+    const base64 = payloadSegment.replace(/-/g, "+").replace(/_/g, "/");
+    const padding = base64.length % 4;
+    const normalized = padding === 0 ? base64 : `${base64}${"=".repeat(4 - padding)}`;
+    const payload = Buffer.from(normalized, "base64").toString("utf8");
+    const parsed = JSON.parse(payload);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function resolveBearerTokenUserId(token: string): string | null {
+  const directUuid = parseUuid(token);
+  if (directUuid) return directUuid;
+  const payload = decodeJwtPayload(token);
+  if (!payload) return null;
+  return parseUuid(payload.sub);
+}
+
 function resolveFromAuthorizationHeader(authorizationHeader: unknown): string | null {
   if (typeof authorizationHeader !== "string") return null;
   const normalized = authorizationHeader.trim();
   if (!normalized || normalized.length <= BEARER_PREFIX.length) return null;
   if (normalized.slice(0, BEARER_PREFIX.length).toLowerCase() !== BEARER_PREFIX) return null;
-  return parseUuid(normalized.slice(BEARER_PREFIX.length));
+  return resolveBearerTokenUserId(normalized.slice(BEARER_PREFIX.length));
 }
 
 function readUserIdKey(input: unknown): string | null {
