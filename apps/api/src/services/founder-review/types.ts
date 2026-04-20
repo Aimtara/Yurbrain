@@ -72,5 +72,3 @@ export type FounderReviewSignals = {
   artifacts: FounderSignalArtifact[];
   founderModeEnabled: boolean;
 };
-
-export const founderReviewDefaultUserId = "11111111-1111-1111-1111-111111111111";

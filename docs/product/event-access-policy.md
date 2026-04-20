@@ -108,13 +108,13 @@ Required behavior:
 - [x] Unsafe global event route is blocked (`/events` returns `403`).
 - [x] Event writes in core loop carry user ownership.
 - [x] Founder-facing insight surfaces can be implemented from derived summaries instead of raw streams.
-- [ ] Authenticated event filtering route(s) implemented (E2).
-- [ ] Event access tests and docs expanded with concrete route-level assertions (E4).
+- [x] Authenticated event filtering route(s) implemented (E2): `GET /events/me` is current-user-scoped and supports typed `eventType` / `before` / `limit` filters.
+- [x] Event access tests and docs expanded with concrete route-level assertions (E4): API tests verify `/events/me` user isolation and filter behavior, and Founder Review now uses authenticated current-user context.
 
 ---
 
 ## Next implementation steps
 
-1. Implement E2: authenticated event filtering for any new event-read routes.
-2. Add explicit tests for event scoping and forbidden cross-user access.
-3. Keep `/events` blocked until E2-compliant replacement surface is live.
+1. Keep `/events` blocked until there is a narrowly justified and scoped replacement surface.
+2. Continue expanding route-level scoping tests whenever new event-adjacent routes are added.
+3. Remove legacy identity fallback sources before open alpha so event scoping depends only on authenticated principal.

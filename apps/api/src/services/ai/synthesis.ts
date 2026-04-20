@@ -1,4 +1,5 @@
 import type { BrainItemRecord } from "../../state";
+import { encodeGroundedAiContext, runAiTask, validateAiEnvelope } from "@yurbrain/ai";
 
 type RepoLike = {
   getBrainItemById: (id: string) => Promise<BrainItemRecord | null>;
@@ -146,6 +147,97 @@ async function buildItemEvidence(repo: RepoLike, item: BrainItemRecord): Promise
   return evidence;
 }
 
+type LlmSynthesisResult = {
+  summary: string;
+  suggestedNextAction: string;
+  reason: string;
+};
+
+function normalizeLine(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) return null;
+  return compact(normalized, max);
+}
+
+function parseLlmSynthesisContent(content: string): LlmSynthesisResult | null {
+  const sections = content
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.replace(/^-+\s*/, ""));
+  const summaryLine = sections.find((line) => /^summary:/i.test(line));
+  const actionLine = sections.find((line) => /^action:/i.test(line));
+  const reasonLine = sections.find((line) => /^reason:/i.test(line));
+  if (!summaryLine || !actionLine || !reasonLine) return null;
+  const summary = normalizeLine(summaryLine.replace(/^summary:\s*/i, ""), 480);
+  const suggestedNextAction = normalizeLine(actionLine.replace(/^action:\s*/i, ""), 240);
+  const reason = normalizeLine(reasonLine.replace(/^reason:\s*/i, ""), 220);
+  if (!summary || !suggestedNextAction || !reason) return null;
+  return { summary, suggestedNextAction, reason };
+}
+
+function buildSynthesisAiInput(input: {
+  mode: SynthesisMode;
+  theme: string;
+  itemCount: number;
+  repeatedIdeas: string[];
+  blockerHint: string | null;
+  nextAction: { suggestedNextAction: string; reason: string };
+  evidenceByItem: Map<string, string[]>;
+  items: BrainItemRecord[];
+}): string {
+  const evidenceLines = input.items
+    .slice(0, 4)
+    .map((item) => {
+      const evidence = input.evidenceByItem.get(item.id) ?? [];
+      const first = evidence[0] ?? sentenceFromContent(item.rawContent, 140);
+      return `${compact(item.title, 80)} => ${compact(first, 140)}`;
+    });
+
+  const primaryText =
+    input.mode === "next_step"
+      ? "Generate concise actionable next-step guidance."
+      : "Generate concise synthesis summary for grouped captures.";
+
+  return encodeGroundedAiContext({
+    primaryText,
+    context: {
+      synthesisMode: input.mode,
+      theme: input.theme,
+      itemCount: input.itemCount,
+      repeatedIdeas: input.repeatedIdeas,
+      blockerHint: input.blockerHint ?? "none",
+      recommendation: input.nextAction.suggestedNextAction,
+      reason: input.nextAction.reason,
+      evidence: evidenceLines.join(" | "),
+      formatInstruction:
+        "Return exactly three lines: Summary: <text>. Action: <text>. Reason: <text>. Keep each line concise and grounded."
+    }
+  });
+}
+
+async function runLlmSynthesis(input: {
+  mode: SynthesisMode;
+  theme: string;
+  itemCount: number;
+  repeatedIdeas: string[];
+  blockerHint: string | null;
+  nextAction: { suggestedNextAction: string; reason: string };
+  evidenceByItem: Map<string, string[]>;
+  items: BrainItemRecord[];
+}): Promise<LlmSynthesisResult | null> {
+  try {
+    const task = input.mode === "next_step" ? "query" : "summarize";
+    const aiInput = buildSynthesisAiInput(input);
+    const raw = await runAiTask({ task, content: aiInput, timeoutMs: 1_400 });
+    const envelope = validateAiEnvelope(raw);
+    return parseLlmSynthesisContent(envelope.content);
+  } catch {
+    return null;
+  }
+}
+
 function inferNextAction(
   items: BrainItemRecord[],
   theme: string,
@@ -238,10 +330,20 @@ export async function synthesizeFromItems(
     evidenceByItem.set(item.id, await buildItemEvidence(repo, item));
   }
   const nextAction = inferNextAction(items, theme, blockerHint);
+  const llmResult = await runLlmSynthesis({
+    mode,
+    theme,
+    itemCount: items.length,
+    repeatedIdeas,
+    blockerHint,
+    nextAction,
+    evidenceByItem,
+    items
+  });
   return {
-    summary: buildSummary(items, repeatedIdeas, theme, mode, evidenceByItem, blockerHint),
+    summary: llmResult?.summary ?? buildSummary(items, repeatedIdeas, theme, mode, evidenceByItem, blockerHint),
     repeatedIdeas: repeatedIdeas.length > 0 ? repeatedIdeas : undefined,
-    suggestedNextAction: nextAction.suggestedNextAction,
-    reason: nextAction.reason
+    suggestedNextAction: llmResult?.suggestedNextAction ?? nextAction.suggestedNextAction,
+    reason: llmResult?.reason ?? nextAction.reason
   };
 }

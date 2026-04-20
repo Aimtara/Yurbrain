@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "./schema";
 import { getDefaultDatabasePath, getDefaultMigrationsPath } from "./paths";
@@ -157,6 +157,10 @@ export type DbRepository = {
     >
   ) => Promise<BrainItemRecord | null>;
   appendEvent: (event: EventRecord) => Promise<EventRecord>;
+  listEventsByUser: (
+    userId: string,
+    query?: { eventType?: EventRecord["eventType"]; before?: string; limit?: number }
+  ) => Promise<EventRecord[]>;
   createThread: (thread: ThreadRecord) => Promise<ThreadRecord>;
   getThreadById: (id: string) => Promise<ThreadRecord | null>;
   listThreads: (targetItemId?: string) => Promise<ThreadRecord[]>;
@@ -342,6 +346,16 @@ function toUserPreferenceRecord(row: typeof schema.userPreferences.$inferSelect)
   };
 }
 
+function toEventRecord(row: typeof schema.events.$inferSelect): EventRecord {
+  return {
+    id: row.id,
+    userId: row.userId,
+    eventType: row.eventType,
+    payload: row.payload as Record<string, unknown>,
+    occurredAt: toIso(row.occurredAt) ?? new Date(0).toISOString()
+  };
+}
+
 async function applyMigrations(client: PGlite, migrationsPath: string) {
   await client.exec(
     `CREATE TABLE IF NOT EXISTS yurbrain_schema_migrations (
@@ -491,6 +505,24 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           occurredAt: toDate(event.occurredAt) ?? undefined
         });
         return event;
+      }),
+    listEventsByUser: (userId, query) =>
+      withDb(async ({ db }) => {
+        const clauses = [eq(schema.events.userId, userId)];
+        if (query?.eventType) {
+          clauses.push(eq(schema.events.eventType, query.eventType));
+        }
+        if (query?.before) {
+          clauses.push(lt(schema.events.occurredAt, toDate(query.before) ?? new Date(query.before)));
+        }
+        const limit = Math.max(1, Math.min(query?.limit ?? 100, 200));
+        const rows = await db
+          .select()
+          .from(schema.events)
+          .where(and(...clauses))
+          .orderBy(desc(schema.events.occurredAt), desc(schema.events.id))
+          .limit(limit);
+        return rows.map(toEventRecord);
       }),
     createThread: (thread) =>
       withDb(async ({ db }) => {

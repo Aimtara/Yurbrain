@@ -1,6 +1,6 @@
-import type { FounderReviewQuery, FounderReviewResponse } from "../../../../../packages/contracts/src";
-import type { DbRepository } from "../../../../../packages/db/src";
-import { FounderReviewResponseSchema } from "../../../../../packages/contracts/src";
+import type { FounderReviewQuery, FounderReviewResponse } from "@yurbrain/contracts";
+import type { DbRepository } from "@yurbrain/db";
+import { FounderReviewResponseSchema } from "@yurbrain/contracts";
 import { buildFounderReviewFromSignals } from "./scoring";
 import { createMockFounderReviewSignals } from "./mock-signals";
 import type { FounderPlatform, FounderReviewSignals } from "./types";

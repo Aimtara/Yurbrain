@@ -93,3 +93,4 @@ test("POST /ai/next-step returns one grounded action", async () => {
   assert.ok(body.reason.length > 0);
   assert.ok(/blocker|clear/i.test(`${body.suggestedNextAction} ${body.reason}`));
 });
+

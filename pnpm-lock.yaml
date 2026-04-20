@@ -72,6 +72,9 @@ importers:
       '@yurbrain/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@yurbrain/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@yurbrain/ui':
         specifier: workspace:*
         version: link:../../packages/ui

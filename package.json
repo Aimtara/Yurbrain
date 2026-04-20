@@ -16,9 +16,11 @@
     "seed": "node tooling/scripts/seed-dev-db.mjs",
     "reseed": "pnpm reset && pnpm seed",
     "test:e2e": "NODE_ENV=test pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts",
-    "lint": "turbo lint",
+    "boundary:check": "node scripts/check-boundary-imports.mjs",
+    "lint": "turbo lint && pnpm check:boundaries",
     "test": "turbo test",
-    "build": "turbo build"
+    "build": "turbo build",
+    "check:boundaries": "node scripts/check-boundary-imports.mjs"
   },
   "devDependencies": {
     "turbo": "^2.9.6"

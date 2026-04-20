@@ -128,7 +128,6 @@ export const FounderReviewResponseSchema = z
 export const FounderReviewQuerySchema = z
   .object({
     window: FounderReviewWindowSchema.optional().default("7d"),
-    userId: z.string().uuid().optional(),
     includeAi: FounderReviewIncludeAiInputSchema.optional().default(false)
   })
   .strict();
