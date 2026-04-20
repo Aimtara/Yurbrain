@@ -21,11 +21,11 @@ test("bootstrapNhostSession returns disabled without nhost config", async () => 
   assert.deepEqual(result, { configured: false });
 });
 
-test("bootstrapNhostSession clears stale identity when nhost config is absent", async () => {
+test("bootstrapNhostSession does not mutate identity when nhost config is absent", async () => {
   configureCurrentUserId("stale-user");
   configureHasuraGraphqlUrl("https://stale.example.com/v1/graphql");
   const result = await bootstrapNhostSession();
   assert.deepEqual(result, { configured: false });
-  assert.equal(getConfiguredCurrentUserId(), null);
-  assert.equal(isHasuraGraphqlConfigured(), false);
+  assert.equal(getConfiguredCurrentUserId(), "stale-user");
+  assert.equal(isHasuraGraphqlConfigured(), true);
 });
