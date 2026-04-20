@@ -1,6 +1,7 @@
 export * from "./api/client";
 export * from "./api/endpoints";
 export * from "./auth/current-user";
+export * from "./auth/nhost";
 export * from "./domain";
 export * from "./graphql";
 export * from "./hooks/useYurbrainApi";

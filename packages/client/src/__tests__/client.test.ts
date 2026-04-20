@@ -3,7 +3,9 @@ import test, { afterEach, beforeEach } from "node:test";
 import {
   apiClient,
   configureApiBaseUrl,
+  configureAccessToken,
   configureCurrentUserId,
+  getConfiguredAccessToken,
   getConfiguredCurrentUserId
 } from "../api/client";
 
@@ -22,12 +24,14 @@ function installFetch(handler: (call: FetchCall) => Response | Promise<Response>
 beforeEach(() => {
   configureApiBaseUrl(null);
   configureCurrentUserId(null);
+  configureAccessToken(null);
   delete (globalThis as { __YURBRAIN_API_BASE_URL?: unknown }).__YURBRAIN_API_BASE_URL;
 });
 
 afterEach(() => {
   configureApiBaseUrl(null);
   configureCurrentUserId(null);
+  configureAccessToken(null);
   delete (globalThis as { fetch?: unknown }).fetch;
   delete (globalThis as { __YURBRAIN_API_BASE_URL?: unknown }).__YURBRAIN_API_BASE_URL;
 });
@@ -85,4 +89,30 @@ test("apiClient throws informative error on non-OK responses", async () => {
 test("configureCurrentUserId exposes current user for adapters", () => {
   configureCurrentUserId("33333333-3333-4333-8333-333333333333");
   assert.equal(getConfiguredCurrentUserId(), "33333333-3333-4333-8333-333333333333");
+});
+
+test("apiClient attaches current user and bearer token headers", async () => {
+  configureCurrentUserId("44444444-4444-4444-8444-444444444444");
+  configureAccessToken("jwt-token-value");
+  const calls = installFetch(() => new Response("{}", { status: 200 }));
+
+  await apiClient<unknown>("/feed");
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("x-yurbrain-user-id"), "44444444-4444-4444-8444-444444444444");
+  assert.equal(headers.get("authorization"), "Bearer jwt-token-value");
+});
+
+test("configureAccessToken exposes access token for adapters", () => {
+  configureAccessToken("jwt-token-value");
+  assert.equal(getConfiguredAccessToken(), "jwt-token-value");
+});
+
+test("configureAccessToken(null) clears authorization header state", async () => {
+  configureAccessToken("jwt-token-value");
+  configureAccessToken(null);
+  const calls = installFetch(() => new Response("{}", { status: 200 }));
+
+  await apiClient<unknown>("/feed");
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("authorization"), null);
 });

@@ -169,7 +169,7 @@ export const AiConvertRequestSchema = z
 export const AuthMeResponseSchema = z
   .object({
     id: z.string().uuid(),
-    source: z.enum(["header", "authorization", "legacy_query", "legacy_params", "legacy_body"])
+    source: z.enum(["header", "authorization", "legacy_query", "legacy_params", "legacy_body", "test_fallback"])
   })
   .strict();
 

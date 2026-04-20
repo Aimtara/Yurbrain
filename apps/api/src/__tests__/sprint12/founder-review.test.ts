@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { app } from "../../server";
 
+const founderReviewUserId = "11111111-1111-1111-1111-111111111111";
+
 test.after(async () => {
   await app.close();
 });
@@ -10,7 +12,8 @@ test.after(async () => {
 test("GET /founder-review returns a UI-ready deterministic model", async () => {
   const response = await app.inject({
     method: "GET",
-    url: "/founder-review?window=7d"
+    url: "/founder-review?window=7d",
+    headers: { "x-yurbrain-user-id": founderReviewUserId }
   });
 
   assert.equal(response.statusCode, 200);
@@ -40,7 +43,8 @@ test("GET /founder-review returns a UI-ready deterministic model", async () => {
 test("GET /founder-review with ai wording adds concise explanatory copy", async () => {
   const response = await app.inject({
     method: "GET",
-    url: "/founder-review?window=7d&includeAi=1"
+    url: "/founder-review?window=7d&includeAi=1",
+    headers: { "x-yurbrain-user-id": founderReviewUserId }
   });
 
   assert.equal(response.statusCode, 200);
@@ -56,4 +60,22 @@ test("GET /founder-review with ai wording adds concise explanatory copy", async 
   assert.ok((body.aiReadout?.summary.length ?? 0) > 0);
   assert.ok((body.aiReadout?.recommendedNextMoveWording.length ?? 0) > 0);
   assert.ok((body.aiReadout?.groundingNote.length ?? 0) > 0);
+});
+
+test("GET /founder-review accepts bearer JWT subject for identity", async () => {
+  const jwtPayload = Buffer.from(
+    JSON.stringify({ sub: founderReviewUserId }),
+    "utf8"
+  ).toString("base64url");
+  const bearerToken = `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.${jwtPayload}.sig`;
+
+  const response = await app.inject({
+    method: "GET",
+    url: "/founder-review?window=7d",
+    headers: { authorization: `Bearer ${bearerToken}` }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json<{ window: string }>();
+  assert.equal(body.window, "7d");
 });

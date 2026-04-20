@@ -1,4 +1,7 @@
-import { apiClient } from "../api/client";
+import {
+  apiClient,
+  configureCurrentUserId
+} from "../api/client";
 import { endpoints } from "../api/endpoints";
 
 const CURRENT_USER_HEADER = "x-yurbrain-user-id";
@@ -25,7 +28,7 @@ type GlobalWithCurrentUser = typeof globalThis & {
 
 export type CurrentUserResponse = {
   id: string;
-  source: "header" | "authorization" | "legacy_query" | "legacy_params" | "legacy_body";
+  source: "header" | "authorization" | "legacy_query" | "legacy_params" | "legacy_body" | "test_fallback";
 };
 
 function resolveStorage(): StorageLike | null {
@@ -82,6 +85,7 @@ export function setCurrentUserId(userId: string) {
     (globalThis as GlobalWithCurrentUser)[GLOBAL_USER_ID_KEY] = userId;
   }
   persistCurrentUserId(userId);
+  configureCurrentUserId(userId);
 }
 
 export function buildCurrentUserHeaders(existing: HeadersInit | undefined): Headers {

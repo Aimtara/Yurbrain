@@ -23,8 +23,6 @@ import {
 } from "../services/functions/session-helper-logic";
 import type { AppState } from "../state";
 
-const founderReviewDefaultUserId = "11111111-1111-1111-1111-111111111111";
-
 function parseQueryBoolean(value: unknown): boolean | undefined {
   if (value === undefined || value === null || value === "") return undefined;
   if (typeof value === "boolean") return value;
@@ -139,7 +137,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!currentUser) return;
 
     const parsedQuery = parseFounderReviewQuery((request.query ?? {}) as Record<string, unknown>);
-    const requestedUserId = parsedQuery.userId ?? founderReviewDefaultUserId;
+    const requestedUserId = parsedQuery.userId ?? currentUser.id;
     if (!canAccessUser(currentUser, requestedUserId)) {
       return reply.code(404).send({ message: "Founder review not found" });
     }
@@ -158,7 +156,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!currentUser) return;
 
     const parsedQuery = parseFounderReviewQuery((request.query ?? {}) as Record<string, unknown>);
-    const requestedUserId = parsedQuery.userId ?? founderReviewDefaultUserId;
+    const requestedUserId = parsedQuery.userId ?? currentUser.id;
     if (!canAccessUser(currentUser, requestedUserId)) {
       return reply.code(404).send({ message: "Founder review not found" });
     }
