@@ -108,7 +108,7 @@ function createDomainBackedClient(domainClient: YurbrainDomainClient): YurbrainC
         status: existing.status
       });
     },
-    getItemContext: async (itemId) => {
+    getItemContext: async <T>(itemId: string) => {
       const [threads, artifacts, relatedItems] = await Promise.all([
         domainClient.listThreadsByTarget<Array<{ id: string; kind: ItemThreadKind }>>(itemId),
         domainClient.listBrainItemArtifacts(itemId),
@@ -126,7 +126,7 @@ function createDomainBackedClient(domainClient: YurbrainDomainClient): YurbrainC
         relatedItemIds: relatedItems.relatedItemIds ?? [],
         commentMessages,
         chatMessages
-      };
+      } as T;
     },
     ensureItemThread: async (itemId, kind) => {
       const threads = await domainClient.listThreadsByTarget<Array<{ id: string; kind: ItemThreadKind }>>(itemId);
