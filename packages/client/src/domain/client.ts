@@ -40,6 +40,25 @@ import {
   updateUserPreference,
   updateUserPreferenceMe
 } from "../hooks/useMutations";
+import {
+  createTaskGraphql,
+  createThreadGraphql,
+  getBrainItemGraphql,
+  getUserPreferenceGraphql,
+  getUserPreferenceMeGraphql,
+  listBrainItemArtifactsGraphql,
+  listBrainItemsGraphql,
+  listSessionsGraphql,
+  listTasksGraphql,
+  listThreadMessagesGraphql,
+  listThreadsByTargetGraphql,
+  sendMessageGraphql,
+  updateBrainItemGraphql,
+  updateTaskGraphql,
+  updateUserPreferenceGraphql,
+  updateUserPreferenceMeGraphql
+} from "../graphql/crud-adapter";
+import { isHasuraGraphqlConfigured } from "../graphql/hasura-client";
 
 type FeedQuery = {
   lens?: string;
@@ -195,12 +214,47 @@ function createRestDomainClient(): YurbrainDomainClient {
 
 const restDomainClient = createRestDomainClient();
 
+function createGraphqlCrudOverrides(restClient: YurbrainDomainClient): Partial<YurbrainDomainClient> {
+  const useGraphql = () => isHasuraGraphqlConfigured();
+
+  return {
+    listBrainItems: () => (useGraphql() ? listBrainItemsGraphql() : restClient.listBrainItems()),
+    getBrainItem: (itemId) => (useGraphql() ? getBrainItemGraphql(itemId) : restClient.getBrainItem(itemId)),
+    updateBrainItem: (itemId, payload) =>
+      useGraphql() ? updateBrainItemGraphql(itemId, payload) : restClient.updateBrainItem(itemId, payload),
+    listBrainItemArtifacts: (itemId, type) =>
+      useGraphql() ? listBrainItemArtifactsGraphql(itemId, type) : restClient.listBrainItemArtifacts(itemId, type),
+    listThreadsByTarget: (itemId) => (useGraphql() ? listThreadsByTargetGraphql(itemId) : restClient.listThreadsByTarget(itemId)),
+    createThread: (payload) => (useGraphql() ? createThreadGraphql(payload) : restClient.createThread(payload)),
+    listThreadMessages: (threadId) => (useGraphql() ? listThreadMessagesGraphql(threadId) : restClient.listThreadMessages(threadId)),
+    sendMessage: (payload) => (useGraphql() ? sendMessageGraphql(payload) : restClient.sendMessage(payload)),
+    addMessage: (payload) => (useGraphql() ? sendMessageGraphql(payload) : restClient.addMessage(payload)),
+    addComment: (threadId, content) =>
+      useGraphql()
+        ? sendMessageGraphql({ threadId, role: "user", content })
+        : restClient.addComment(threadId, content),
+    listTasks: (query = {}) => (useGraphql() ? listTasksGraphql(query) : restClient.listTasks(query)),
+    createTask: (payload) => (useGraphql() ? createTaskGraphql(payload) : restClient.createTask(payload)),
+    updateTask: (taskId, payload) => (useGraphql() ? updateTaskGraphql(taskId, payload) : restClient.updateTask(taskId, payload)),
+    listSessions: (query) => (useGraphql() ? listSessionsGraphql(query) : restClient.listSessions(query)),
+    getUserPreference: (userId) => (useGraphql() ? getUserPreferenceGraphql(userId) : restClient.getUserPreference(userId)),
+    getUserPreferenceMe: () => (useGraphql() ? getUserPreferenceMeGraphql() : restClient.getUserPreferenceMe()),
+    updateUserPreference: (userId, payload) =>
+      useGraphql() ? updateUserPreferenceGraphql(userId, payload) : restClient.updateUserPreference(userId, payload),
+    updateUserPreferenceMe: (payload) =>
+      useGraphql() ? updateUserPreferenceMeGraphql(payload) : restClient.updateUserPreferenceMe(payload)
+  };
+}
+
+const graphqlCrudOverrides = createGraphqlCrudOverrides(restDomainClient);
+
 export function createYurbrainDomainClient(
   overrides: Partial<YurbrainDomainClient> = {}
 ): YurbrainDomainClient {
   // Method-level overrides make incremental GraphQL/Function cutovers simple.
   return {
     ...restDomainClient,
+    ...graphqlCrudOverrides,
     ...overrides
   };
 }

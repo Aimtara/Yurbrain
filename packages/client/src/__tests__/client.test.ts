@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test, { afterEach, beforeEach } from "node:test";
-import { apiClient, configureApiBaseUrl } from "../api/client";
+import {
+  apiClient,
+  configureApiBaseUrl,
+  configureCurrentUserId,
+  getConfiguredCurrentUserId
+} from "../api/client";
 
 type FetchCall = { url: string; init?: RequestInit };
 
@@ -16,11 +21,13 @@ function installFetch(handler: (call: FetchCall) => Response | Promise<Response>
 
 beforeEach(() => {
   configureApiBaseUrl(null);
+  configureCurrentUserId(null);
   delete (globalThis as { __YURBRAIN_API_BASE_URL?: unknown }).__YURBRAIN_API_BASE_URL;
 });
 
 afterEach(() => {
   configureApiBaseUrl(null);
+  configureCurrentUserId(null);
   delete (globalThis as { fetch?: unknown }).fetch;
   delete (globalThis as { __YURBRAIN_API_BASE_URL?: unknown }).__YURBRAIN_API_BASE_URL;
 });
@@ -73,4 +80,9 @@ test("apiClient throws informative error on non-OK responses", async () => {
   installFetch(() => new Response("boom", { status: 500 }));
 
   await assert.rejects(() => apiClient<unknown>("/feed"), /Request failed: 500/);
+});
+
+test("configureCurrentUserId exposes current user for adapters", () => {
+  configureCurrentUserId("33333333-3333-4333-8333-333333333333");
+  assert.equal(getConfiguredCurrentUserId(), "33333333-3333-4333-8333-333333333333");
 });
