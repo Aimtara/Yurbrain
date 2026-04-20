@@ -16,5 +16,10 @@ export const endpoints = {
   aiClassify: "/ai/classify",
   aiQuery: "/ai/query",
   aiNextStep: "/ai/next-step",
-  aiConvert: "/ai/convert"
+  aiConvert: "/ai/convert",
+  functionFeedRank: "/functions/feed/rank",
+  functionFounderReview: "/functions/founder-review",
+  functionSummarizeProgress: "/functions/summarize-progress",
+  functionNextStep: "/functions/next-step",
+  functionSessionHelper: "/functions/session-helper"
 } as const;

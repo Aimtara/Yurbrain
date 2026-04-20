@@ -77,6 +77,14 @@ type FounderReviewQuery = {
   includeAi?: boolean;
 };
 
+type FunctionFeedQuery = FeedQuery;
+
+type FunctionSessionHelperPayload = {
+  action: "start" | "pause" | "finish";
+  taskId?: string;
+  sessionId?: string;
+};
+
 function renderQuery(
   query: Record<string, string | number | boolean | null | undefined>
 ): string {
@@ -150,6 +158,11 @@ export type YurbrainDomainClient = {
   updateUserPreference: <T>(userId: string, payload: unknown) => Promise<T>;
   updateUserPreferenceMe: <T>(payload: unknown) => Promise<T>;
   getFounderReview: <T>(query?: FounderReviewQuery) => Promise<T>;
+  getFeedRanked: <T>(query?: FunctionFeedQuery) => Promise<T>;
+  summarizeProgress: <T>(payload: { itemIds: string[] }) => Promise<T>;
+  getWhatShouldIDoNext: <T>(payload: { itemIds: string[] }) => Promise<T>;
+  getFounderReviewScored: <T>(query?: FounderReviewQuery) => Promise<T>;
+  runSessionHelper: <T>(payload: FunctionSessionHelperPayload) => Promise<T>;
 };
 
 function createRestDomainClient(): YurbrainDomainClient {
@@ -208,7 +221,70 @@ function createRestDomainClient(): YurbrainDomainClient {
           userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
         })}`
-      )
+      ),
+    getFeedRanked: (query = {}) => getFeed(query),
+    summarizeProgress: (payload) => summarizeCluster(payload),
+    getWhatShouldIDoNext: (payload) => requestNextStep(payload),
+    getFounderReviewScored: (query = {}) =>
+      apiClient(
+        `${endpoints.founderReview}${renderQuery({
+          window: query.window ?? "7d",
+          userId: query.userId,
+          includeAi: query.includeAi ? "1" : undefined
+        })}`
+      ),
+    runSessionHelper: async (payload) => {
+      if (payload.action === "start") {
+        if (!payload.taskId) throw new Error("taskId is required for start");
+        return startTaskSession(payload.taskId);
+      }
+      if (!payload.sessionId) throw new Error("sessionId is required for pause/finish");
+      if (payload.action === "pause") {
+        return pauseSession(payload.sessionId);
+      }
+      return finishSession(payload.sessionId);
+    }
+  };
+}
+
+function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial<YurbrainDomainClient> {
+  return {
+    getFeedRanked: (query = {}) =>
+      apiClient(`${endpoints.functionFeedRank}${renderQuery(query)}`),
+    summarizeProgress: (payload) =>
+      apiClient(endpoints.functionSummarizeProgress, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    getWhatShouldIDoNext: (payload) =>
+      apiClient(endpoints.functionNextStep, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    getFounderReviewScored: (query = {}) =>
+      apiClient(
+        `${endpoints.functionFounderReview}${renderQuery({
+          window: query.window ?? "7d",
+          userId: query.userId,
+          includeAi: query.includeAi ? "1" : undefined
+        })}`
+      ),
+    runSessionHelper: (payload) =>
+      apiClient(endpoints.functionSessionHelper, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    getFeed: (query = {}) => restClient.getFeedRanked(query),
+    summarizeCluster: (payload) => restClient.summarizeProgress(payload),
+    requestNextStep: (payload) =>
+      restClient.getWhatShouldIDoNext(payload as { itemIds: string[] }),
+    getFounderReview: (query = {}) => restClient.getFounderReviewScored(query),
+    startSession: (taskId) => restClient.runSessionHelper({ action: "start", taskId }),
+    pauseSession: (sessionId) => restClient.runSessionHelper({ action: "pause", sessionId }),
+    finishSession: (sessionId) => restClient.runSessionHelper({ action: "finish", sessionId })
   };
 }
 
@@ -247,6 +323,7 @@ function createGraphqlCrudOverrides(restClient: YurbrainDomainClient): Partial<Y
 }
 
 const graphqlCrudOverrides = createGraphqlCrudOverrides(restDomainClient);
+const functionLogicOverrides = createFunctionLogicOverrides(restDomainClient);
 
 export function createYurbrainDomainClient(
   overrides: Partial<YurbrainDomainClient> = {}
@@ -255,6 +332,7 @@ export function createYurbrainDomainClient(
   return {
     ...restDomainClient,
     ...graphqlCrudOverrides,
+    ...functionLogicOverrides,
     ...overrides
   };
 }
