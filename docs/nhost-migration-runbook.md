@@ -45,6 +45,12 @@ N2 is considered established when these are true:
 
 N2 does not change backend behavior; it stabilizes the client boundary for later cutovers.
 
+## Phase completion status
+
+- N1 (audit and migration tracking): complete.
+- N2 (domain client stabilization): complete.
+- N3+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
+
 ## Cutover rules
 
 - No big-bang rewrite.

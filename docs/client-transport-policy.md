@@ -45,4 +45,4 @@ UI surfaces (`apps/web`, `apps/mobile`) must access data through `packages/clien
 
 ## Migration note
 
-Current repository state still exports low-level client modules. This policy is authoritative and N2 work will tighten exports to make violations harder.
+`@yurbrain/client` root exports are now restricted to the stable surface (`createYurbrainClient`, `yurbrainClient`, provider/hook APIs, and base URL config). Low-level transport modules remain internal and must not be imported by UI surfaces.

@@ -50,7 +50,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | --- | --- | --- | --- |
 | `apps/web` feature controllers | Uses `yurbrainDomainClient` from `@yurbrain/client` for feed/capture/item/session/founder flows | Low runtime coupling, but package exports still allow accidental transport bypass | Migrate imports to explicit stable client entrypoint and tighten exports |
 | `apps/mobile` loop controller | Uses `yurbrainDomainClient` from `@yurbrain/client` | Low runtime coupling, same export leakage risk | Keep shared domain methods, avoid mobile-specific transport fork |
-| `packages/client` root exports | Exposes `api/*`, `hooks/*`, and `graphql/*` in addition to domain | Medium architectural coupling risk over time | Restrict public exports to domain interface and factory methods in N2 |
+| `packages/client` root exports | Exposes stable client interface, provider, singleton, and `configureApiBaseUrl` only | Reduced risk with explicit boundary | N2 boundary restriction completed |
 
 ## Product-critical path protection
 
@@ -82,9 +82,15 @@ Completed in this repository state:
    - `packages/client/src/yurbrainClient.ts`
 2. Added provider/hook scaffolding:
    - `packages/client/src/provider.tsx`
-   - web/mobile provider wrappers and integration points.
+   - web/mobile integration points now use the shared package provider/context.
 3. Refactored web and mobile controllers to consume injected `YurbrainClient` instance.
 4. Kept backend behavior unchanged (REST-backed by default) while adding Nhost transport scaffold.
+
+## Phase closure summary
+
+- N1 (audit + migration tracker): complete.
+- N2 (domain client stabilization): complete.
+- N3+ phases remain open and tracked by capability status + cutover checklist.
 
 ## Unclassified capabilities
 

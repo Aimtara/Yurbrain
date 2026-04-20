@@ -4,11 +4,29 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ## Global no-regression gate
 
-- [ ] No direct GraphQL calls in React screens.
-- [ ] No direct Nhost function calls in React screens.
-- [ ] UI uses `packages/client` only.
+- [x] No direct GraphQL calls in React screens.
+- [x] No direct Nhost function calls in React screens.
+- [x] UI uses `packages/client` only.
 - [ ] Product loop still works: capture, feed, item detail, comments, plan, session, founder review.
 - [x] N2 domain client/provider scaffolding added (`createYurbrainClient`, `yurbrainClient`, provider hooks) with no behavior cutover yet.
+
+## Phase completion checkpoints
+
+### N1: Audit + Migration Tracker
+
+- [x] Capability inventory completed and classified.
+- [x] Product-critical loop guardrails documented.
+- [x] Route replacement map documented (GraphQL/Function/legacy/delete).
+- [x] Migration control documents created (`backend-migration-status`, `client-transport-policy`, `nhost-migration-runbook`, `nhost-cutover-checklist`).
+
+### N2: Domain Client Stabilization
+
+- [x] Stable `YurbrainClient` interface and factory are established in `packages/client`.
+- [x] Shared provider/hook is established in `packages/client` and consumed by web/mobile surfaces.
+- [x] Package root exports are restricted to stable client entrypoints (no low-level transport re-exports).
+- [x] Web/mobile controllers access backend through the shared client boundary.
+- [x] `blockSession` client contract aligned to implemented behavior (`blockSession(sessionId)`).
+- [x] Runtime remains parity-preserving (REST-backed by default; no backend cutover in N2).
 
 ## Web cutover checklist (must complete before mobile cutover)
 
