@@ -6,6 +6,7 @@ import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerCaptureRoutes } from "./routes/capture";
 import { registerConvertRoutes } from "./routes/convert";
 import { registerFeedRoutes } from "./routes/feed";
+import { registerFounderReviewRoutes } from "./routes/founder-review";
 import { registerMessageRoutes } from "./routes/messages";
 import { registerPreferenceRoutes } from "./routes/preferences";
 import { registerSessionRoutes } from "./routes/sessions";
@@ -64,6 +65,7 @@ export function createServer(options: ServerOptions = {}) {
   registerMessageRoutes(app, state);
   registerPreferenceRoutes(app, state);
   registerFeedRoutes(app, state);
+  registerFounderReviewRoutes(app, state);
   registerTaskRoutes(app, state);
   registerSessionRoutes(app, state);
   registerAiRoutes(app, state);
