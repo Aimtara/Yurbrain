@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { FeedCardSchema, GenerateFeedCardRequestSchema } from "../../../../packages/contracts/src";
+import { requireCurrentUser } from "../middleware/current-user";
 import { gatherFeedCandidates } from "../services/feed/candidates";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import { rankFeedCards } from "../services/feed/rank";
@@ -173,13 +174,15 @@ function buildFeedMeta(
 }
 
 export async function registerFeedRoutes(app: FastifyInstance, state: AppState) {
-  app.get("/feed", async (request) => {
-    const { userId, lens, includeSnoozed, limit } = request.query as {
-      userId?: string;
+  app.get("/feed", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { lens, includeSnoozed, limit } = request.query as {
       lens?: StoredFeedCard["lens"];
       includeSnoozed?: string;
       limit?: string;
     };
+    const userId = currentUser.id;
 
     request.log.info({ event: "feed_request_started", userId, lens, includeSnoozed, limit }, "feed request started");
 
@@ -187,23 +190,21 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
     let clusterByTitle = new Map<string, ClusterSnapshot>();
     let itemById = new Map<string, BrainItemRecord>();
 
-    if (userId) {
-      const userItems = await state.repo.listBrainItemsByUser(userId);
-      itemById = new Map(userItems.map((item) => [item.id, item]));
-      const existingCards = await state.repo.listFeedCardsByUser(userId);
-      if (existingCards.length === 0) {
-        const generated = userItems.map((item) => generateCardFromItem(item));
-        for (const card of generated) {
-          await state.repo.createFeedCard(card);
-        }
+    const userItems = await state.repo.listBrainItemsByUser(userId);
+    itemById = new Map(userItems.map((item) => [item.id, item]));
+    const existingCards = await state.repo.listFeedCardsByUser(userId);
+    if (existingCards.length === 0) {
+      const generated = userItems.map((item) => generateCardFromItem(item));
+      for (const card of generated) {
+        await state.repo.createFeedCard(card);
       }
-      const clusters = buildClusterSnapshots(userItems, new Date());
-      clusterByTopic = new Map(clusters.map((cluster) => [cluster.topic, cluster]));
-      clusterByTitle = new Map(clusters.map((cluster) => [cluster.title, cluster]));
-      await ensureClusterCards(state, userId, existingCards, clusters, new Date().toISOString());
     }
+    const clusters = buildClusterSnapshots(userItems, new Date());
+    clusterByTopic = new Map(clusters.map((cluster) => [cluster.topic, cluster]));
+    clusterByTitle = new Map(clusters.map((cluster) => [cluster.title, cluster]));
+    await ensureClusterCards(state, userId, existingCards, clusters, new Date().toISOString());
 
-    const cards = userId ? await state.repo.listFeedCardsByUser(userId) : [];
+    const cards = await state.repo.listFeedCardsByUser(userId);
     const promotedTopics = new Set(clusterByTopic.keys());
     const cardsWithClusterSuppression = cards.filter((card) => {
       if (card.cardType !== "item") return true;
@@ -235,11 +236,13 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
   });
 
   app.post("/ai/feed/generate-card", async (request, reply) => {
-    const { userId, title, body } = GenerateFeedCardRequestSchema.parse(request.body);
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { title, body } = GenerateFeedCardRequestSchema.parse(request.body);
 
     const card: StoredFeedCard = {
       id: randomUUID(),
-      userId,
+      userId: currentUser.id,
       cardType: "item",
       lens: "all",
       itemId: null,
@@ -260,10 +263,15 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
   });
 
   app.post("/feed/:id/dismiss", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const card = await state.repo.getFeedCardById(id);
     if (!card) {
       request.log.warn({ event: "feed_card_missing", action: "dismiss", cardId: id }, "feed dismiss missing card");
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    if (card.userId !== currentUser.id) {
       return reply.code(404).send({ message: "Feed card not found" });
     }
     await state.repo.updateFeedCard(id, { dismissed: true, snoozedUntil: null });
@@ -271,11 +279,16 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
   });
 
   app.post("/feed/:id/snooze", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const { minutes } = (request.body as { minutes?: unknown }) ?? {};
     const card = await state.repo.getFeedCardById(id);
     if (!card) {
       request.log.warn({ event: "feed_card_missing", action: "snooze", cardId: id }, "feed snooze missing card");
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    if (card.userId !== currentUser.id) {
       return reply.code(404).send({ message: "Feed card not found" });
     }
 
@@ -292,10 +305,15 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
   });
 
   app.post("/feed/:id/refresh", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const card = await state.repo.getFeedCardById(id);
     if (!card) {
       request.log.warn({ event: "feed_card_missing", action: "refresh", cardId: id }, "feed refresh missing card");
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    if (card.userId !== currentUser.id) {
       return reply.code(404).send({ message: "Feed card not found" });
     }
 

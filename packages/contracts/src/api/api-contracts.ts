@@ -22,7 +22,7 @@ import {
 
 export const CreateBrainItemRequestSchema = z
   .object({
-    userId: z.string().uuid(),
+    userId: z.string().uuid().optional(),
     type: BrainItemTypeSchema,
     title: z.string().min(1).max(200),
     rawContent: z.string().min(1)
@@ -40,7 +40,7 @@ const CaptureSourceSchema = z.union([z.string().min(1).max(500), CaptureSourceOb
 
 export const CaptureIntakeRequestSchema = z
   .object({
-    userId: z.string().uuid(),
+    userId: z.string().uuid().optional(),
     type: CaptureContentTypeSchema.optional(),
     content: z.string().min(1).max(10_000).optional(),
     text: z.string().min(1).max(10_000).optional(),
@@ -121,7 +121,7 @@ export const CreateMessageRequestSchema = ThreadMessageSchema.pick({ threadId: t
 export const GenerateFeedCardRequestSchema = FeedCardSchema.pick({ userId: true, title: true, body: true }).partial({ title: true, body: true });
 export const ManualConvertTaskRequestSchema = z
   .object({
-    userId: z.string().uuid(),
+    userId: z.string().uuid().optional(),
     sourceItemId: z.string().uuid(),
     content: z.string().min(1)
   })
@@ -129,7 +129,7 @@ export const ManualConvertTaskRequestSchema = z
 
 export const CreateTaskRequestSchema = z
   .object({
-    userId: z.string().uuid(),
+    userId: z.string().uuid().optional(),
     title: z.string().min(1).max(200),
     sourceItemId: z.string().uuid().nullable().optional(),
     sourceMessageId: z.string().uuid().nullable().optional()
@@ -159,10 +159,17 @@ export const TaskListResponseSchema = z.array(TaskResponseSchema);
 
 export const AiConvertRequestSchema = z
   .object({
-    userId: z.string().uuid(),
+    userId: z.string().uuid().optional(),
     sourceItemId: z.string().uuid().nullable().optional(),
     sourceMessageId: z.string().uuid().nullable().optional(),
     content: z.string().min(1)
+  })
+  .strict();
+
+export const AuthMeResponseSchema = z
+  .object({
+    id: z.string().uuid(),
+    source: z.enum(["header", "authorization", "legacy_query", "legacy_params", "legacy_body"])
   })
   .strict();
 
@@ -291,6 +298,7 @@ export const ListSessionsQuerySchema = z
   .refine((value) => Object.keys(value).length > 0, { message: "At least one filter must be provided" });
 export const SessionListResponseSchema = z.array(SessionSchema);
 export const UserPreferenceResponseSchema = UserPreferenceSchema;
+export const UserPreferenceMeResponseSchema = UserPreferenceSchema;
 export const UpdateUserPreferenceRequestSchema = z
   .object({
     defaultLens: FeedLensSchema.optional(),
@@ -338,3 +346,4 @@ export type QueryItemResponse = z.infer<typeof QueryItemResponseSchema>;
 export type UserPreferenceResponse = z.infer<typeof UserPreferenceResponseSchema>;
 export type UpdateUserPreferenceRequest = z.infer<typeof UpdateUserPreferenceRequestSchema>;
 export type CaptureIntakeResponse = z.infer<typeof CaptureIntakeResponseSchema>;
+export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;

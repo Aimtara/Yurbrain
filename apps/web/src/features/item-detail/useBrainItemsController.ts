@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { apiClient, endpoints } from "@yurbrain/client";
 
-import { userId } from "../shell/constants";
 import type { BrainItemDto } from "../shared/types";
 
 type UseBrainItemsControllerInput = {
@@ -14,7 +13,7 @@ type UseBrainItemsControllerInput = {
 export function useBrainItemsController({ selectedItemId, setItems, setCaptureError, setSelectedItemId }: UseBrainItemsControllerInput) {
   const loadItems = useCallback(async () => {
     try {
-      const response = await apiClient<BrainItemDto[]>(`${endpoints.brainItems}?userId=${encodeURIComponent(userId)}`);
+      const response = await apiClient<BrainItemDto[]>(endpoints.brainItems);
       const nextItems = [...response].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       setItems(nextItems);
       setCaptureError("");

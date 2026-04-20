@@ -1,9 +1,15 @@
 let configuredApiBaseUrl: string | null = null;
+let configuredCurrentUserId: string | null = null;
+const CURRENT_USER_HEADER = "x-yurbrain-user-id";
+const CURRENT_USER_STORAGE_KEY = "yurbrain.currentUserId";
+const GLOBAL_CURRENT_USER_KEY = "__YURBRAIN_CURRENT_USER_ID";
 
 declare const process: {
   env?: {
     EXPO_PUBLIC_YURBRAIN_API_URL?: string;
     NEXT_PUBLIC_YURBRAIN_API_URL?: string;
+    EXPO_PUBLIC_YURBRAIN_USER_ID?: string;
+    NEXT_PUBLIC_YURBRAIN_USER_ID?: string;
   };
 } | undefined;
 
@@ -42,8 +48,86 @@ export function configureApiBaseUrl(baseUrl: string | null | undefined) {
   configuredApiBaseUrl = trimBaseUrl(baseUrl);
 }
 
+function trimUserId(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function configureCurrentUserId(userId: string | null | undefined) {
+  configuredCurrentUserId = trimUserId(userId);
+}
+
+export function getConfiguredCurrentUserId(): string | null {
+  return ensureCurrentUserId();
+}
+
+function readStoredCurrentUserId(): string | null {
+  if (typeof globalThis === "undefined") return null;
+  const storage = (globalThis as { localStorage?: { getItem: (key: string) => string | null } }).localStorage;
+  if (!storage || typeof storage.getItem !== "function") return null;
+  try {
+    return trimUserId(storage.getItem(CURRENT_USER_STORAGE_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredCurrentUserId(userId: string): void {
+  if (typeof globalThis === "undefined") return;
+  const storage = (globalThis as { localStorage?: { setItem: (key: string, value: string) => void } }).localStorage;
+  if (!storage || typeof storage.setItem !== "function") return;
+  try {
+    storage.setItem(CURRENT_USER_STORAGE_KEY, userId);
+  } catch {
+    // Best-effort only.
+  }
+}
+
+function readGlobalCurrentUserId(): string | null {
+  if (typeof globalThis === "undefined") return null;
+  return trimUserId((globalThis as Record<string, unknown>)[GLOBAL_CURRENT_USER_KEY] as string | undefined);
+}
+
+function writeGlobalCurrentUserId(userId: string): void {
+  if (typeof globalThis === "undefined") return;
+  (globalThis as Record<string, unknown>)[GLOBAL_CURRENT_USER_KEY] = userId;
+}
+
+function readEnvCurrentUserId(): string | null {
+  if (typeof process === "undefined" || !process.env) return null;
+  return trimUserId(process.env.NEXT_PUBLIC_YURBRAIN_USER_ID ?? process.env.EXPO_PUBLIC_YURBRAIN_USER_ID ?? null);
+}
+
+function generateRuntimeCurrentUserId(): string | null {
+  if (typeof globalThis === "undefined") return null;
+  const randomUUID = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID;
+  if (typeof randomUUID !== "function") return null;
+  return trimUserId(randomUUID());
+}
+
+function ensureCurrentUserId(): string | null {
+  if (configuredCurrentUserId) return configuredCurrentUserId;
+  const resolved = readGlobalCurrentUserId() ?? readStoredCurrentUserId() ?? readEnvCurrentUserId() ?? generateRuntimeCurrentUserId();
+  configuredCurrentUserId = trimUserId(resolved);
+  if (configuredCurrentUserId) {
+    writeGlobalCurrentUserId(configuredCurrentUserId);
+    writeStoredCurrentUserId(configuredCurrentUserId);
+  }
+  return configuredCurrentUserId;
+}
+
 export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(resolveRequestPath(path), init);
+  const headers = new Headers(init?.headers);
+  const currentUserId = ensureCurrentUserId();
+  if (currentUserId && !headers.has(CURRENT_USER_HEADER)) {
+    headers.set(CURRENT_USER_HEADER, currentUserId);
+  }
+
+  const response = await fetch(resolveRequestPath(path), {
+    ...init,
+    headers
+  });
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
   }

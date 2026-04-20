@@ -9,6 +9,10 @@ export async function listThreadsByTarget<T>(targetItemId: string) {
   return apiClient<T>(`${endpoints.threads}/by-target?targetItemId=${encodeURIComponent(targetItemId)}`);
 }
 
+export async function getAuthMe<T>() {
+  return apiClient<T>(endpoints.authMe);
+}
+
 export async function listThreadMessages<T>(threadId: string) {
   return apiClient<T>(`${endpoints.threads}/${threadId}/messages`);
 }

@@ -1,8 +1,18 @@
 import { useCallback } from "react";
-import { apiClient, convertToTask, createTask, endpoints, finishSession, listSessions, pauseSession, snoozeFeedCard, startTaskSession, updateTask } from "@yurbrain/client";
+import {
+  apiClient,
+  convertToTask,
+  createTask,
+  endpoints,
+  finishSession,
+  listSessions,
+  pauseSession,
+  snoozeFeedCard,
+  startTaskSession,
+  updateTask
+} from "@yurbrain/client";
 import type { FeedLens } from "@yurbrain/ui";
 
-import { userId } from "../shell/constants";
 import type { ContinuityContext, ConvertResponse, FeedCardDto, PlanPreviewDraft, PostponeDraft, SessionDto, TaskDto } from "../shared/types";
 import { deriveSessionElapsedSeconds } from "./session-model";
 
@@ -91,7 +101,7 @@ export function useSessionController({
 
   const loadAllSessionsForUser = useCallback(async () => {
     try {
-      const sessions = await listSessions<SessionDto[]>({ userId });
+      const sessions = await listSessions<SessionDto[]>({});
       setSessionHistory(
         [...sessions].sort((left, right) => {
           if (left.startedAt !== right.startedAt) {
@@ -109,7 +119,7 @@ export function useSessionController({
   const loadTasks = useCallback(async () => {
     setTasksLoading(true);
     try {
-      const response = await apiClient<TaskDto[]>(`${endpoints.tasks}?userId=${encodeURIComponent(userId)}`);
+      const response = await apiClient<TaskDto[]>(endpoints.tasks);
       const nextTasks = [...response].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       setTasks(nextTasks);
       setTaskError("");
@@ -173,7 +183,6 @@ export function useSessionController({
       setTaskError("");
       try {
         const result = await convertToTask<ConvertResponse>({
-          userId,
           sourceItemId: input.itemId,
           sourceMessageId: input.sourceMessageId ?? null,
           content: input.content
@@ -210,7 +219,6 @@ export function useSessionController({
     async (card: FeedCardDto): Promise<TaskDto> => {
       const fallbackTitle = card.title.trim().slice(0, 200) || "Follow up on resurfaced memory";
       const created = await createTask<TaskDto>({
-        userId,
         title: fallbackTitle,
         sourceItemId: card.itemId
       });
@@ -298,7 +306,6 @@ export function useSessionController({
         const createdTasks: TaskDto[] = [];
         for (const step of pendingPlanPreview.steps) {
           const created = await createTask<TaskDto>({
-            userId,
             title: step.title,
             sourceItemId: pendingPlanPreview.sourceItemId
           });
@@ -455,7 +462,7 @@ export function useSessionController({
       const sourceItemId = pendingPostponeSheet.itemId;
       const baseTitle = pendingPostponeSheet.title.trim() || "resurfaced idea";
       const title = `Small step: ${baseTitle}`.slice(0, 200);
-      const created = await createTask<TaskDto>({ userId, title, sourceItemId });
+      const created = await createTask<TaskDto>({ title, sourceItemId });
       await snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, 240);
       setTasks((current) => [created, ...current.filter((task) => task.id !== created.id)]);
       setSelectedTaskId(created.id);

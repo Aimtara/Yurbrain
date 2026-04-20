@@ -8,6 +8,7 @@ import {
   QueryItemResponseSchema,
   SummarizeItemRequestSchema
 } from "../../../../packages/contracts/src";
+import { requireCurrentUser } from "../middleware/current-user";
 import { classifyItem } from "../services/ai/classify";
 import { queryItemAssistant } from "../services/ai/item-query";
 import { summarizeItem } from "../services/ai/summarize";
@@ -16,7 +17,13 @@ import type { AppState } from "../state";
 
 export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
   app.post("/ai/summarize", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = SummarizeItemRequestSchema.parse(request.body);
+    const item = await state.repo.getBrainItemById(payload.itemId);
+    if (!item || item.userId !== currentUser.id) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
     const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     request.log.info(
       { requestId: request.id, task: "summarize", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
@@ -27,7 +34,13 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
   });
 
   app.post("/ai/classify", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = ClassifyItemRequestSchema.parse(request.body);
+    const item = await state.repo.getBrainItemById(payload.itemId);
+    if (!item || item.userId !== currentUser.id) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
     const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     request.log.info(
       { requestId: request.id, task: "classify", itemId: payload.itemId, fallbackUsed: result.fallbackUsed, fallbackReason: result.fallbackReason },
@@ -38,7 +51,17 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
   });
 
   app.post("/ai/query", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = QueryItemRequestSchema.parse(request.body);
+    const thread = await state.repo.getThreadById(payload.threadId);
+    if (!thread) {
+      return reply.code(404).send({ message: "Thread not found" });
+    }
+    const item = await state.repo.getBrainItemById(thread.targetItemId);
+    if (!item || item.userId !== currentUser.id) {
+      return reply.code(404).send({ message: "Thread not found" });
+    }
     const result = await queryItemAssistant(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     if (!result) {
       return reply.code(404).send({ message: "Thread not found" });
@@ -52,20 +75,40 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
   });
 
   app.post("/ai/summarize-cluster", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = AiSynthesisRequestSchema.parse(request.body);
-    const result = await synthesizeFromItems(state.repo, payload.itemIds, "cluster_summary");
+    const scopedItemIds: string[] = [];
+    for (const itemId of payload.itemIds) {
+      const item = await state.repo.getBrainItemById(itemId);
+      if (!item || item.userId !== currentUser.id) {
+        return reply.code(404).send({ message: "Brain item not found" });
+      }
+      scopedItemIds.push(itemId);
+    }
+    const result = await synthesizeFromItems(state.repo, scopedItemIds, "cluster_summary");
     request.log.info(
-      { requestId: request.id, task: "summarize_cluster", itemCount: payload.itemIds.length },
+      { requestId: request.id, task: "summarize_cluster", itemCount: scopedItemIds.length },
       "ai_synthesis_completed"
     );
     return reply.code(201).send(AiSynthesisResponseSchema.parse(result));
   });
 
   app.post("/ai/next-step", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = AiSynthesisRequestSchema.parse(request.body);
-    const result = await synthesizeFromItems(state.repo, payload.itemIds, "next_step");
+    const scopedItemIds: string[] = [];
+    for (const itemId of payload.itemIds) {
+      const item = await state.repo.getBrainItemById(itemId);
+      if (!item || item.userId !== currentUser.id) {
+        return reply.code(404).send({ message: "Brain item not found" });
+      }
+      scopedItemIds.push(itemId);
+    }
+    const result = await synthesizeFromItems(state.repo, scopedItemIds, "next_step");
     request.log.info(
-      { requestId: request.id, task: "next_step", itemCount: payload.itemIds.length },
+      { requestId: request.id, task: "next_step", itemCount: scopedItemIds.length },
       "ai_synthesis_completed"
     );
     return reply.code(201).send(AiSynthesisResponseSchema.parse(result));

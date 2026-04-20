@@ -1,10 +1,12 @@
 export const endpoints = {
+  authMe: "/auth/me",
   captureIntake: "/capture/intake",
   brainItems: "/brain-items",
   feed: "/feed",
   threads: "/threads",
   messages: "/messages",
   preferences: "/preferences",
+  preferencesMe: "/preferences/me",
   tasks: "/tasks",
   sessions: "/sessions",
   manualConvertTask: "/tasks/manual-convert",

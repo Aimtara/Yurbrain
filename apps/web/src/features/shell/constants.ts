@@ -1,7 +1,5 @@
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
-export const userId = "11111111-1111-1111-1111-111111111111";
-
 export const storageKeys = {
   activeLens: "yurbrain.activeLens",
   selectedItemId: "yurbrain.selectedItemId",

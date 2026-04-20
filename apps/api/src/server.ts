@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
+import { registerCurrentUserResolution, requireCurrentUser } from "./middleware/current-user";
 import { registerObservability, buildErrorEnvelope } from "./middleware/observability";
 import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
@@ -23,6 +24,7 @@ export function createServer(options: ServerOptions = {}) {
   const state = createState(options);
   const app = Fastify({ logger: !isTestEnvironment });
   registerObservability(app);
+  registerCurrentUserResolution(app);
 
   app.addHook("onRequest", async (request, reply) => {
     const requestOrigin = typeof request.headers.origin === "string" ? request.headers.origin : "";
@@ -30,7 +32,7 @@ export function createServer(options: ServerOptions = {}) {
 
     reply.header("Access-Control-Allow-Origin", allowOrigin);
     reply.header("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
-    reply.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id");
+    reply.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id, X-Yurbrain-User-Id");
     reply.header("Access-Control-Allow-Credentials", "true");
 
     if (request.method === "OPTIONS") {
@@ -68,6 +70,15 @@ export function createServer(options: ServerOptions = {}) {
   registerSessionRoutes(app, state);
   registerAiRoutes(app, state);
   registerConvertRoutes(app, state);
+
+  app.get("/auth/me", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    return reply.code(200).send(AuthMeResponseSchema.parse({
+      id: currentUser.id,
+      source: currentUser.source
+    }));
+  });
 
   app.get("/events", async (_request, reply) => {
     return reply.code(403).send({
