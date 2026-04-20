@@ -1,6 +1,6 @@
-import type { FounderReviewResponse } from "../../../../../packages/contracts/src";
+import type { FounderReviewResponse } from "@yurbrain/contracts";
 import { synthesizeFromItems } from "../ai/synthesis";
-import type { DbRepository } from "../../../../../packages/db/src";
+import type { DbRepository } from "@yurbrain/db";
 
 type BuildFounderReviewAiWordingOptions = {
   repo: DbRepository;

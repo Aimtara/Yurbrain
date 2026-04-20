@@ -3,7 +3,7 @@ import type {
   FounderReviewResponse,
   FounderReviewRiskFlag,
   FounderReviewScore
-} from "../../../../../packages/contracts/src";
+} from "@yurbrain/contracts";
 import type { FounderReviewSignals } from "./types";
 
 type ScoreStatus = FounderReviewScore["status"];

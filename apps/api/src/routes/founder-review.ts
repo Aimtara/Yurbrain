@@ -2,19 +2,19 @@ import type { FastifyInstance } from "fastify";
 import {
   FounderReviewQuerySchema,
   FounderReviewResponseSchema
-} from "../../../../packages/contracts/src";
+} from "@yurbrain/contracts";
+import { requireCurrentUser } from "../middleware/current-user";
 import { buildFounderReview } from "../services/founder-review/service";
 import type { AppState } from "../state";
 
-const defaultUserId = "11111111-1111-1111-1111-111111111111";
-
 export async function registerFounderReviewRoutes(app: FastifyInstance, state: AppState) {
   app.get("/founder-review", async (request, reply) => {
-    const { window, userId, includeAi } = FounderReviewQuerySchema.parse(request.query ?? {});
-    const resolvedUserId = userId ?? defaultUserId;
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { window, includeAi } = FounderReviewQuerySchema.parse(request.query ?? {});
     const review = await buildFounderReview({
       repo: state.repo,
-      userId: resolvedUserId,
+      userId: currentUser.id,
       window,
       now: new Date(),
       includeAi

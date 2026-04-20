@@ -8,9 +8,11 @@ test.after(async () => {
 });
 
 test("GET /founder-review returns a UI-ready deterministic model", async () => {
+  const userId = "8a8a8a8a-8a8a-4a8a-8a8a-8a8a8a8a8a8a";
   const response = await app.inject({
     method: "GET",
-    url: "/founder-review?window=7d"
+    url: "/founder-review?window=7d",
+    headers: { "x-yurbrain-user-id": userId }
   });
 
   assert.equal(response.statusCode, 200);
@@ -38,9 +40,11 @@ test("GET /founder-review returns a UI-ready deterministic model", async () => {
 });
 
 test("GET /founder-review with ai wording adds concise explanatory copy", async () => {
+  const userId = "8b8b8b8b-8b8b-4b8b-8b8b-8b8b8b8b8b8b";
   const response = await app.inject({
     method: "GET",
-    url: "/founder-review?window=7d&includeAi=1"
+    url: "/founder-review?window=7d&includeAi=1",
+    headers: { "x-yurbrain-user-id": userId }
   });
 
   assert.equal(response.statusCode, 200);
@@ -56,4 +60,22 @@ test("GET /founder-review with ai wording adds concise explanatory copy", async 
   assert.ok((body.aiReadout?.summary.length ?? 0) > 0);
   assert.ok((body.aiReadout?.recommendedNextMoveWording.length ?? 0) > 0);
   assert.ok((body.aiReadout?.groundingNote.length ?? 0) > 0);
+});
+
+test("GET /founder-review rejects unauthenticated requests outside test fallback mode", async () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalTestMode = process.env.YURBRAIN_TEST_MODE;
+  process.env.NODE_ENV = "development";
+  delete process.env.YURBRAIN_TEST_MODE;
+  const response = await app.inject({
+    method: "GET",
+    url: "/founder-review?window=7d"
+  });
+  process.env.NODE_ENV = originalNodeEnv;
+  if (originalTestMode === undefined) {
+    delete process.env.YURBRAIN_TEST_MODE;
+  } else {
+    process.env.YURBRAIN_TEST_MODE = originalTestMode;
+  }
+  assert.equal(response.statusCode, 401);
 });
