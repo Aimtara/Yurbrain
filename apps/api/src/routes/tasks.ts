@@ -9,25 +9,40 @@ import {
   TaskResponseSchema,
   UpdateTaskRequestSchema
 } from "../../../../packages/contracts/src";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { createTaskFromManualContent } from "../services/tasks/manual-convert";
 import type { AppState } from "../state";
 
 export async function registerTaskRoutes(app: FastifyInstance, state: AppState) {
   app.post("/tasks/manual-convert", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = ManualConvertTaskRequestSchema.parse(request.body);
-    const task = createTaskFromManualContent(payload);
+    const sourceItem = await state.repo.getBrainItemById(payload.sourceItemId);
+    if (!sourceItem || !canAccessUser(currentUser, sourceItem.userId)) {
+      return reply.code(404).send({ message: "Source item not found" });
+    }
+    const task = createTaskFromManualContent({ ...payload, userId: currentUser.id });
 
     await state.repo.createTask(task);
     return reply.code(201).send(TaskResponseSchema.parse(task));
   });
 
   app.post("/tasks", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = CreateTaskRequestSchema.parse(request.body);
+    if (payload.sourceItemId) {
+      const sourceItem = await state.repo.getBrainItemById(payload.sourceItemId);
+      if (!sourceItem || !canAccessUser(currentUser, sourceItem.userId)) {
+        return reply.code(404).send({ message: "Source item not found" });
+      }
+    }
     const now = new Date().toISOString();
 
     const task = {
       id: randomUUID(),
-      userId: payload.userId,
+      userId: currentUser.id,
       sourceItemId: payload.sourceItemId ?? null,
       sourceMessageId: payload.sourceMessageId ?? null,
       title: payload.title.trim(),
@@ -41,9 +56,11 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
   });
 
   app.get("/tasks/:id", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const task = await state.repo.getTaskById(id);
-    if (!task) {
+    if (!task || !canAccessUser(currentUser, task.userId)) {
       return reply.code(404).send({ message: "Task not found" });
     }
 
@@ -51,9 +68,11 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
   });
 
   app.patch("/tasks/:id", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const existing = await state.repo.getTaskById(id);
-    if (!existing) {
+    if (!existing || !canAccessUser(currentUser, existing.userId)) {
       return reply.code(404).send({ message: "Task not found" });
     }
 
@@ -75,8 +94,10 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
   });
 
   app.get("/tasks", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const query = ListTasksQuerySchema.parse(request.query ?? {});
-    const filtered = await state.repo.listTasks(query);
+    const filtered = await state.repo.listTasks({ ...query, userId: currentUser.id });
 
     return reply.code(200).send(TaskListResponseSchema.parse(filtered));
   });

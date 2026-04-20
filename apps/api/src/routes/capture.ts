@@ -14,6 +14,7 @@ import { getRelatedItems } from "../services/capture/related-items";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import type { FeedCardMeta, FeedWhyShown, StoredFeedCard } from "../services/feed/static-feed";
 import { toFeedCardResponse } from "../services/feed/static-feed";
+import { requireCurrentUser } from "../middleware/current-user";
 import type { AppState } from "../state";
 
 const clusterThreshold = 3;
@@ -77,15 +78,17 @@ function buildExecutionMetadata(
 
 export async function registerCaptureRoutes(app: FastifyInstance, state: AppState) {
   app.post("/capture/intake", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = CaptureIntakeRequestSchema.parse(request.body);
     const now = new Date().toISOString();
     const enriched = enrichCapture(payload);
-    const preference = payload.founderMode === undefined ? await state.repo.getUserPreference(payload.userId) : null;
+    const preference = payload.founderMode === undefined ? await state.repo.getUserPreference(currentUser.id) : null;
     const founderModeAtCapture = payload.founderMode ?? preference?.founderMode ?? false;
 
     const item = BrainItemResponseSchema.parse({
       id: randomUUID(),
-      userId: payload.userId,
+      userId: currentUser.id,
       type: mapContentTypeToBrainItemType(enriched.contentType),
       contentType: enriched.contentType,
       title: enriched.title,

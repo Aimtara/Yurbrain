@@ -3,7 +3,7 @@ import { createCaptureIntake } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
 import type { BrainItemDto, CaptureDraft } from "../shared/types";
-import { captureSuccessMessages, userId } from "../shell/constants";
+import { captureSuccessMessages } from "../shell/constants";
 
 type UseCaptureControllerInput = {
   captureDraft: CaptureDraft;
@@ -71,7 +71,6 @@ export function useCaptureController({
 
       try {
         const intake = await createCaptureIntake<CaptureIntakeResponse>({
-          userId,
           type: captureDraft.type,
           content: normalized,
           source: captureDraft.source.trim() || "web_capture_sheet",

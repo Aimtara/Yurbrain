@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { dismissFeedCard, getFeed, refreshFeedCard } from "@yurbrain/client";
 import type { FeedLens } from "@yurbrain/ui";
 
-import { userId } from "../shell/constants";
 import type { ContinuityContext, FeedCardDto, FeedCardModel } from "../shared/types";
 
 type UseFeedControllerInput = {
@@ -32,7 +31,7 @@ export function useFeedController({
     async (lens: FeedLens) => {
       setFeedLoading(true);
       try {
-        const cards = await getFeed<FeedCardDto[]>({ userId, lens, limit: feedLimit });
+        const cards = await getFeed<FeedCardDto[]>({ lens, limit: feedLimit });
         setFeedCards(cards);
         setFeedError("");
       } catch {

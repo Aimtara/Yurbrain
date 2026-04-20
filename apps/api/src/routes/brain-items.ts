@@ -12,18 +12,21 @@ import {
   RelatedItemsResponseSchema,
   UpdateBrainItemRequestSchema
 } from "../../../../packages/contracts/src";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { detectRelatedItems } from "../services/capture/related-items";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import type { AppState } from "../state";
 
 export async function registerBrainItemRoutes(app: FastifyInstance, state: AppState) {
   app.post("/brain-items", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const payload = CreateBrainItemRequestSchema.parse(request.body);
     const now = new Date().toISOString();
 
     const item = BrainItemResponseSchema.parse({
       id: randomUUID(),
-      userId: payload.userId,
+      userId: currentUser.id,
       type: BrainItemTypeSchema.parse(payload.type),
       title: payload.title,
       rawContent: payload.rawContent,
@@ -58,9 +61,14 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
   });
 
   app.get("/brain-items/:id", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const item = await state.repo.getBrainItemById(id);
     if (!item) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    if (!canAccessUser(currentUser, item.userId)) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
 
@@ -68,19 +76,20 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
   });
 
   app.get("/brain-items", async (request, reply) => {
-    const { userId } = request.query as { userId?: string };
-
-    if (!userId) {
-      return reply.code(400).send({ message: "userId query parameter is required" });
-    }
-
-    return state.repo.listBrainItemsByUser(userId);
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    return state.repo.listBrainItemsByUser(currentUser.id);
   });
 
   app.get("/brain-items/:id/artifacts", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const item = await state.repo.getBrainItemById(id);
     if (!item) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    if (!canAccessUser(currentUser, item.userId)) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
     const query = ListItemArtifactsQuerySchema.parse(request.query ?? {});
@@ -89,9 +98,14 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
   });
 
   app.get("/brain-items/:id/related", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const item = await state.repo.getBrainItemById(id);
     if (!item) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    if (!canAccessUser(currentUser, item.userId)) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
     const relatedItemIds = detectRelatedItems(item, await state.repo.listBrainItemsByUser(item.userId), { limit: 8 }).map(
@@ -106,10 +120,15 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
   });
 
   app.patch("/brain-items/:id", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
     const existing = await state.repo.getBrainItemById(id);
 
     if (!existing) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    if (!canAccessUser(currentUser, existing.userId)) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
 

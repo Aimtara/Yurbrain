@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiClient,
   classifyBrainItem,
-  configureApiBaseUrl,
   convertToTask,
   createCaptureIntake,
   createTask,
@@ -11,7 +10,7 @@ import {
   endpoints,
   finishSession,
   getFeed,
-  getUserPreference,
+  getUserPreferenceMe,
   listBrainItemArtifacts,
   listRelatedBrainItems,
   listSessions,
@@ -29,19 +28,13 @@ import {
 } from "@yurbrain/client";
 import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
-import { demoUserId, mobileStorageKeys } from "../shared/constants";
+import { mobileStorageKeys } from "../shared/constants";
 import { getStoredState, setStoredState } from "../shared/storage";
 import { buildFounderSummary } from "../shared/founder";
 import { buildFeedCardModel } from "../shared/continuity";
 import { formatIsoRelative, formatSessionDuration } from "../shared/time";
 import type { BrainItemDto, CaptureDraft, ContinuityContext, FeedCardDto, FeedLens, ItemArtifactDto, MessageDto, MobileSurface, SessionDto, TaskDto, UserPreferenceDto } from "../shared/types";
 import type { MobileLoopController } from "./types";
-
-declare const process:
-  | {
-      env?: Record<string, string | undefined>;
-    }
-  | undefined;
 
 type CaptureIntakeResponse = {
   item: BrainItemDto;
@@ -310,7 +303,7 @@ export function useMobileLoopController(): MobileLoopController {
     async (lens: FeedCardDto["lens"]) => {
       setFeedLoading(true);
       try {
-        const cards = await getFeed<FeedCardDto[]>({ userId: demoUserId, lens, limit: 10 });
+        const cards = await getFeed<FeedCardDto[]>({ lens, limit: 10 });
         setFeedCards(cards);
         setFeedError("");
       } catch {
@@ -325,7 +318,7 @@ export function useMobileLoopController(): MobileLoopController {
 
   const loadItems = useCallback(async () => {
     try {
-      const result = await apiClient<BrainItemDto[]>(`${endpoints.brainItems}?userId=${encodeURIComponent(demoUserId)}`);
+      const result = await apiClient<BrainItemDto[]>(endpoints.brainItems);
       const ordered = sortByNewest(result);
       setItems(ordered);
       if (!selectedItemId && ordered.length > 0) {
@@ -339,7 +332,7 @@ export function useMobileLoopController(): MobileLoopController {
   const loadTasks = useCallback(async () => {
     setTaskLoading(true);
     try {
-      const result = await apiClient<TaskDto[]>(`${endpoints.tasks}?userId=${encodeURIComponent(demoUserId)}`);
+      const result = await apiClient<TaskDto[]>(endpoints.tasks);
       const ordered = sortByNewest(result);
       setTasks(ordered);
       if (!selectedTaskId && ordered.length > 0) {
@@ -355,7 +348,7 @@ export function useMobileLoopController(): MobileLoopController {
 
   const loadSessionsForUser = useCallback(async () => {
     try {
-      const sessions = await listSessions<SessionDto[]>({ userId: demoUserId });
+      const sessions = await listSessions<SessionDto[]>({});
       const ordered = [...sessions].sort((left, right) => right.startedAt.localeCompare(left.startedAt));
       setSessionHistory(ordered);
       const live = ordered.find((session) => session.state !== "finished") ?? null;
@@ -430,7 +423,6 @@ export function useMobileLoopController(): MobileLoopController {
       setCaptureSuccessNotice("");
       try {
         const payload = {
-          userId: demoUserId,
           type: captureDraft.type,
           content: normalized,
           source: captureDraft.source.trim() || "mobile_capture_sheet",
@@ -451,7 +443,6 @@ export function useMobileLoopController(): MobileLoopController {
         setCaptureSuccessNotice(intent === "save" ? "Saved." : intent === "save_and_plan" ? "Saved and planning next step." : "Saved for gentle resurfacing.");
         if (intent === "save_and_plan") {
           await convertToTask({
-            userId: demoUserId,
             sourceItemId: created.id,
             content: created.rawContent
           });
@@ -555,7 +546,7 @@ export function useMobileLoopController(): MobileLoopController {
         // Keep local mode if persistence fails.
       }
       async function updateUserPreference() {
-        await apiClient<UserPreferenceDto>(`${endpoints.preferences}/${encodeURIComponent(demoUserId)}`, {
+        await apiClient<UserPreferenceDto>(endpoints.preferencesMe, {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ founderMode: enabled })
@@ -573,7 +564,6 @@ export function useMobileLoopController(): MobileLoopController {
       try {
         if (action === "convert_to_task") {
           const converted = await convertToTask<{ outcome: "task_created"; task: TaskDto } | { outcome: "plan_suggested" } | { outcome: "not_recommended"; reason: string }>({
-            userId: demoUserId,
             sourceItemId: selectedItem.id,
             content: selectedItem.rawContent
           });
@@ -584,7 +574,6 @@ export function useMobileLoopController(): MobileLoopController {
           } else if (converted.outcome === "plan_suggested") {
             setSurfaceNotice("Plan suggested. Creating one lightweight task.");
             const created = await createTask<TaskDto>({
-              userId: demoUserId,
               title: `Small step: ${selectedItem.title}`.slice(0, 200),
               sourceItemId: selectedItem.id
             });
@@ -792,7 +781,6 @@ export function useMobileLoopController(): MobileLoopController {
     if (!selectedItem) return;
     try {
       const created = await createTask<TaskDto>({
-        userId: demoUserId,
         title: `Small step: ${selectedItem.title}`.slice(0, 200),
         sourceItemId: selectedItem.id
       });
@@ -899,7 +887,7 @@ export function useMobileLoopController(): MobileLoopController {
   useEffect(() => {
     void (async () => {
       try {
-        const preferences = await getUserPreference<UserPreferenceDto>(demoUserId);
+        const preferences = await getUserPreferenceMe<UserPreferenceDto>();
         setFounderMode(preferences.founderMode);
         setActiveLens(preferences.defaultLens);
       } catch {

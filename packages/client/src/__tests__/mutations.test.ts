@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { afterEach, beforeEach } from "node:test";
-import { configureApiBaseUrl } from "../api/client";
+import { configureApiBaseUrl, configureCurrentUserId } from "../api/client";
 import {
   createTask,
   finishSession,
@@ -23,10 +23,12 @@ function installFetch(handler: (call: FetchCall) => Response | Promise<Response>
 
 beforeEach(() => {
   configureApiBaseUrl(null);
+  configureCurrentUserId("11111111-1111-4111-8111-111111111111");
 });
 
 afterEach(() => {
   configureApiBaseUrl(null);
+  configureCurrentUserId(null);
   delete (globalThis as { fetch?: unknown }).fetch;
 });
 
@@ -65,10 +67,10 @@ test("mutation errors without status code fall back to NETWORK", async () => {
 test("listSessions builds query string from filter fields", async () => {
   const calls = installFetch(() => new Response("[]", { status: 200 }));
 
-  await listSessions({ userId: "u-1", state: "running" });
+  await listSessions({ userId: "22222222-2222-4222-8222-222222222222", state: "running" });
   await listSessions({});
 
-  assert.equal(calls[0]?.url, "/sessions?userId=u-1&state=running");
+  assert.equal(calls[0]?.url, "/sessions?userId=22222222-2222-4222-8222-222222222222&state=running");
   assert.equal(calls[1]?.url, "/sessions");
 });
 

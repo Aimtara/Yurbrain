@@ -2,7 +2,6 @@ import { endpoints } from "../api/endpoints";
 import { apiClient } from "../api/client";
 
 type FeedQuery = {
-  userId?: string;
   lens?: string;
   limit?: number;
   includeSnoozed?: boolean;
@@ -10,7 +9,6 @@ type FeedQuery = {
 
 function buildFeedQuery(query: FeedQuery = {}) {
   const params = new URLSearchParams();
-  if (query.userId) params.set("userId", query.userId);
   if (query.lens) params.set("lens", query.lens);
   if (typeof query.limit === "number") params.set("limit", String(query.limit));
   if (typeof query.includeSnoozed === "boolean") params.set("includeSnoozed", String(query.includeSnoozed));
@@ -124,12 +122,13 @@ export function useYurbrainApi() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
-    getUserPreference: <T>(userId: string) => apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`),
-    updateUserPreference: <T>(userId: string, payload: unknown) =>
-      apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`, {
+    getUserPreference: <T>(userId?: string) =>
+      userId ? apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`) : apiClient<T>(endpoints.preferencesMe),
+    updateUserPreference: <T>(first: string | unknown, second?: unknown) =>
+      apiClient<T>(typeof first === "string" ? `${endpoints.preferences}/${encodeURIComponent(first)}` : endpoints.preferencesMe, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(typeof first === "string" ? second : first)
       }),
     listBrainItemArtifacts: <T>(itemId: string, type?: "summary" | "classification" | "relation" | "feed_card") =>
       apiClient<T>(`${endpoints.brainItems}/${itemId}/artifacts${type ? `?type=${encodeURIComponent(type)}` : ""}`)

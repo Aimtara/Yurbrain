@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { afterEach, beforeEach } from "node:test";
-import { configureApiBaseUrl } from "../api/client";
+import { configureApiBaseUrl, configureCurrentUserId } from "../api/client";
 import { getFeed } from "../hooks/useFeed";
 import { useYurbrainApi } from "../hooks/useYurbrainApi";
 import { listBrainItemArtifacts } from "../hooks/useBrainItem";
@@ -18,20 +18,21 @@ function installFetch() {
 
 beforeEach(() => {
   configureApiBaseUrl(null);
+  configureCurrentUserId(null);
 });
 
 afterEach(() => {
   configureApiBaseUrl(null);
+  configureCurrentUserId(null);
   delete (globalThis as { fetch?: unknown }).fetch;
 });
 
 test("getFeed builds query string from provided options", async () => {
   const calls = installFetch();
-  await getFeed({ userId: "u-1", lens: "focus", limit: 10, includeSnoozed: true });
+  await getFeed({ lens: "focus", limit: 10, includeSnoozed: true });
   const url = calls[0]!.url;
   assert.ok(url.startsWith("/feed?"), `unexpected url ${url}`);
   const params = new URLSearchParams(url.slice(url.indexOf("?") + 1));
-  assert.equal(params.get("userId"), "u-1");
   assert.equal(params.get("lens"), "focus");
   assert.equal(params.get("limit"), "10");
   assert.equal(params.get("includeSnoozed"), "true");
@@ -54,7 +55,7 @@ test("useYurbrainApi helpers compose expected paths and bodies", async () => {
   await api.pauseSession("sess-8");
   await api.finishSession("sess-9");
   await api.updateTask("task-10", { status: "in_progress" });
-  await api.getUserPreference("user with space");
+  await api.getUserPreference();
 
   assert.equal(calls[0]?.url, "/feed/card-1/dismiss");
   assert.equal(calls[0]?.init?.method, "POST");
@@ -66,7 +67,7 @@ test("useYurbrainApi helpers compose expected paths and bodies", async () => {
   assert.equal(calls[5]?.url, "/sessions/sess-9/finish");
   assert.equal(calls[6]?.url, "/tasks/task-10");
   assert.equal(calls[6]?.init?.method, "PATCH");
-  assert.equal(calls[7]?.url, `/preferences/${encodeURIComponent("user with space")}`);
+  assert.equal(calls[7]?.url, "/preferences/me");
 });
 
 test("listBrainItemArtifacts encodes optional type filter", async () => {

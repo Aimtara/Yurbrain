@@ -2,7 +2,6 @@ import { endpoints } from "../api/endpoints";
 import { apiClient } from "../api/client";
 
 type FeedQuery = {
-  userId?: string;
   lens?: string;
   limit?: number;
   includeSnoozed?: boolean;
@@ -10,7 +9,6 @@ type FeedQuery = {
 
 function toQueryString(query: FeedQuery): string {
   const params = new URLSearchParams();
-  if (query.userId) params.set("userId", query.userId);
   if (query.lens) params.set("lens", query.lens);
   if (typeof query.limit === "number") params.set("limit", String(query.limit));
   if (typeof query.includeSnoozed === "boolean") params.set("includeSnoozed", String(query.includeSnoozed));

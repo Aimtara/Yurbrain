@@ -1,17 +1,26 @@
 import type { FastifyInstance } from "fastify";
 import { ListSessionsQuerySchema, SessionListResponseSchema, SessionResponseSchema } from "../../../../packages/contracts/src";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { finishSession, pauseSession, startTaskSession } from "../services/sessions/lifecycle";
 import type { AppState } from "../state";
 
 export async function registerSessionRoutes(app: FastifyInstance, state: AppState) {
   app.get("/sessions", async (request, reply) => {
-    const query = ListSessionsQuerySchema.parse(request.query ?? {});
-    const sessions = await state.repo.listSessions(query);
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const query = ListSessionsQuerySchema.parse({ ...(request.query as Record<string, unknown> | undefined), userId: currentUser.id });
+    const sessions = await state.repo.listSessions({ ...query, userId: currentUser.id });
     return reply.code(200).send(SessionListResponseSchema.parse(sessions));
   });
 
   app.post("/tasks/:id/start", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
+    const task = await state.repo.getTaskById(id);
+    if (!task || !canAccessUser(currentUser, task.userId)) {
+      return reply.code(404).send({ message: "Task not found" });
+    }
     const session = await startTaskSession(state, id);
 
     if (!session) {
@@ -22,7 +31,17 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
   });
 
   app.post("/sessions/:id/pause", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
+    const existingSession = await state.repo.getSessionById(id);
+    if (!existingSession) {
+      return reply.code(404).send({ message: "Session not found or already finished" });
+    }
+    const task = await state.repo.getTaskById(existingSession.taskId);
+    if (!task || !canAccessUser(currentUser, task.userId)) {
+      return reply.code(404).send({ message: "Session not found or already finished" });
+    }
     const session = await pauseSession(state, id);
 
     if (!session) {
@@ -33,7 +52,17 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
   });
 
   app.post("/sessions/:id/finish", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
     const { id } = request.params as { id: string };
+    const existingSession = await state.repo.getSessionById(id);
+    if (!existingSession) {
+      return reply.code(404).send({ message: "Session not found or already finished" });
+    }
+    const task = await state.repo.getTaskById(existingSession.taskId);
+    if (!task || !canAccessUser(currentUser, task.userId)) {
+      return reply.code(404).send({ message: "Session not found or already finished" });
+    }
     const session = await finishSession(state, id);
 
     if (!session) {

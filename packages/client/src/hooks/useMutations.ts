@@ -1,5 +1,6 @@
 import { endpoints } from "../api/endpoints";
 import { apiClient } from "../api/client";
+import { getCurrentUserId } from "../auth/current-user";
 
 export type NormalizedMutationError = {
   code: "NETWORK" | "VALIDATION" | "NOT_FOUND" | "SERVER" | "UNKNOWN";
@@ -96,7 +97,7 @@ export async function finishSession<T>(sessionId: string) {
 export async function listSessions<T>(query: { taskId?: string; userId?: string; state?: "running" | "paused" | "finished" }) {
   const params = new URLSearchParams();
   if (query.taskId) params.set("taskId", query.taskId);
-  if (query.userId) params.set("userId", query.userId);
+  if (query.userId && query.userId !== getCurrentUserId()) params.set("userId", query.userId);
   if (query.state) params.set("state", query.state);
   const rendered = params.toString();
   return withNormalizedErrors(() => apiClient<T>(`${endpoints.sessions}${rendered ? `?${rendered}` : ""}`));
@@ -126,9 +127,23 @@ export async function getUserPreference<T>(userId: string) {
   return withNormalizedErrors(() => apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`));
 }
 
+export async function getUserPreferenceMe<T>() {
+  return withNormalizedErrors(() => apiClient<T>(endpoints.preferencesMe));
+}
+
 export async function updateUserPreference<T>(userId: string, payload: unknown) {
   return withNormalizedErrors(() =>
     apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function updateUserPreferenceMe<T>(payload: unknown) {
+  return withNormalizedErrors(() =>
+    apiClient<T>(endpoints.preferencesMe, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload)
