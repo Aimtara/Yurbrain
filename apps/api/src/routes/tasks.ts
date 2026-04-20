@@ -8,7 +8,7 @@ import {
   TaskListResponseSchema,
   TaskResponseSchema,
   UpdateTaskRequestSchema
-} from "../../../../packages/contracts/src";
+} from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { createTaskFromManualContent } from "../services/tasks/manual-convert";
 import type { AppState } from "../state";

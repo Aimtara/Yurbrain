@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { CreateThreadRequestSchema } from "../../../../packages/contracts/src";
+import { CreateThreadRequestSchema } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import type { AppState } from "../state";
 

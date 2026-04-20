@@ -7,7 +7,7 @@ import {
   QueryItemRequestSchema,
   QueryItemResponseSchema,
   SummarizeItemRequestSchema
-} from "../../../../packages/contracts/src";
+} from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { classifyItem } from "../services/ai/classify";
 import { queryItemAssistant } from "../services/ai/item-query";

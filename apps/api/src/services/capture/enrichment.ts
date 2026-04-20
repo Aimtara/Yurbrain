@@ -1,4 +1,4 @@
-import type { CaptureIntakeRequest } from "../../../../../packages/contracts/src";
+import type { CaptureIntakeRequest } from "@yurbrain/contracts";
 
 type EnrichmentResult = {
   contentType: "text" | "link" | "image";

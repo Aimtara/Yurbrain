@@ -11,7 +11,7 @@ import {
   ListItemArtifactsQuerySchema,
   RelatedItemsResponseSchema,
   UpdateBrainItemRequestSchema
-} from "../../../../packages/contracts/src";
+} from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { detectRelatedItems } from "../services/capture/related-items";
 import { generateCardFromItem } from "../services/feed/generate-card";

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { AiConvertRequestSchema, AiConvertResponseSchema } from "../../../../packages/contracts/src";
+import { AiConvertRequestSchema, AiConvertResponseSchema } from "@yurbrain/contracts";
 import { requireCurrentUser } from "../middleware/current-user";
 import { convertToTaskDecision } from "../services/tasks/convert";
 import type { AppState } from "../state";

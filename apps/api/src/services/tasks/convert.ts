@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { AiConvertRequest } from "../../../../../packages/contracts/src";
+import type { AiConvertRequest } from "@yurbrain/contracts";
 import type { TaskRecord } from "../../state";
 
 export type ConvertDecision =
