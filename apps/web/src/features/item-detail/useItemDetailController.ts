@@ -69,28 +69,21 @@ export function useItemDetailController({
       setItemContextLoading(true);
       setItemActionNotice("");
       try {
-        const [threads, artifacts] = await Promise.all([
-          yurbrainClient.listThreadsByTarget<ThreadDto[]>(itemId),
-          yurbrainClient.listBrainItemArtifacts<ItemArtifactDto[]>(itemId)
-        ]);
+        const context = await yurbrainClient.getItemContext<{
+          threads: ThreadDto[];
+          artifacts: ItemArtifactDto[];
+          commentMessages: MessageDto[];
+          chatMessages: MessageDto[];
+          relatedItemIds: string[];
+        }>(itemId);
+        const { threads, artifacts, commentMessages, chatMessages } = context;
         const commentThread = threads.find((thread) => thread.kind === "item_comment") ?? null;
         const chatThread = threads.find((thread) => thread.kind === "item_chat") ?? null;
         setCommentThreadId(commentThread?.id ?? "");
         setChatThreadId(chatThread?.id ?? "");
 
-        if (commentThread) {
-          const comments = await yurbrainClient.listThreadMessages<MessageDto[]>(commentThread.id);
-          setCommentMessages(comments.filter((message) => message.role === "user"));
-        } else {
-          setCommentMessages([]);
-        }
-
-        if (chatThread) {
-          const messages = await yurbrainClient.listThreadMessages<MessageDto[]>(chatThread.id);
-          setChatMessages(messages);
-        } else {
-          setChatMessages([]);
-        }
+        setCommentMessages(commentMessages.filter((message) => message.role === "user"));
+        setChatMessages(chatMessages);
 
         syncItemArtifacts(itemId, artifacts);
         setChatError("");
@@ -107,17 +100,7 @@ export function useItemDetailController({
 
   const ensureThreadForItem = useCallback(
     async (itemId: string, kind: "item_comment" | "item_chat") => {
-      const threads = await yurbrainClient.listThreadsByTarget<ThreadDto[]>(itemId);
-      const existing = threads.find((thread) => thread.kind === kind);
-      if (existing) {
-        if (itemId === selectedItemId) {
-          if (kind === "item_comment") setCommentThreadId(existing.id);
-          if (kind === "item_chat") setChatThreadId(existing.id);
-        }
-        return existing.id;
-      }
-
-      const created = await yurbrainClient.createThread<{ id: string }>({ targetItemId: itemId, kind });
+      const created = await yurbrainClient.ensureItemThread(itemId, kind);
       if (itemId === selectedItemId) {
         if (kind === "item_comment") setCommentThreadId(created.id);
         if (kind === "item_chat") setChatThreadId(created.id);
@@ -132,7 +115,7 @@ export function useItemDetailController({
       const normalized = content.trim();
       if (!normalized) return null;
       const threadId = await ensureThreadForItem(itemId, "item_comment");
-      const created = await yurbrainClient.sendMessage<MessageDto>({ threadId, role: "user", content: normalized });
+      const created = await yurbrainClient.addThreadMessage<MessageDto>({ threadId, role: "user", content: normalized });
       if (itemId === selectedItemId) {
         setCommentMessages((current) => [...current, created]);
         setItemActionNotice("Comment added to continuity timeline.");
@@ -154,7 +137,7 @@ export function useItemDetailController({
       const synthesisItemIds = Array.from(new Set([selectedItem.id, ...relatedItemIds]));
       try {
         if (action === "summarize_progress") {
-          const response = await yurbrainClient.summarizeCluster<{
+          const response = await yurbrainClient.summarizeProgress<{
             summary: string;
             repeatedIdeas?: string[];
             suggestedNextAction: string;
@@ -174,7 +157,7 @@ export function useItemDetailController({
               : `Progress summary ready. Next: ${response.suggestedNextAction}`
           );
         } else if (action === "next_step") {
-          const response = await yurbrainClient.requestNextStep<{
+          const response = await yurbrainClient.getNextStep<{
             summary: string;
             repeatedIdeas?: string[];
             suggestedNextAction: string;
@@ -215,8 +198,8 @@ export function useItemDetailController({
         });
         const continuityThreadId = await ensureThreadForItem(selectedItem.id, "item_comment");
         await Promise.all([
-          yurbrainClient.sendMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
-          yurbrainClient.sendMessage<MessageDto>({
+          yurbrainClient.addThreadMessage<MessageDto>({ threadId: continuityThreadId, role: "user", content: response.userMessage.content }),
+          yurbrainClient.addThreadMessage<MessageDto>({
             threadId: continuityThreadId,
             role: "assistant",
             content: response.message.content

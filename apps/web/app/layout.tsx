@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { YurbrainClientProvider } from "../src/providers/YurbrainClientProvider";
+import { YurbrainClientProvider } from "@yurbrain/client";
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (

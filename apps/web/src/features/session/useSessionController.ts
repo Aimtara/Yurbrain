@@ -79,7 +79,7 @@ export function useSessionController({
   const loadSessionsForTask = useCallback(
     async (taskId: string) => {
       try {
-        const sessions = await yurbrainClient.listSessions<SessionDto[]>({ taskId });
+        const sessions = await yurbrainClient.getSessions<SessionDto[]>({ taskId });
         const live = sessions.find((session) => session.state !== "finished");
         setActiveSession(live ?? sessions[0] ?? null);
       } catch {
@@ -92,7 +92,7 @@ export function useSessionController({
 
   const loadAllSessionsForUser = useCallback(async () => {
     try {
-      const sessions = await yurbrainClient.listSessions<SessionDto[]>({});
+      const sessions = await yurbrainClient.getSessions<SessionDto[]>({});
       setSessionHistory(
         [...sessions].sort((left, right) => {
           if (left.startedAt !== right.startedAt) {
@@ -110,7 +110,7 @@ export function useSessionController({
   const loadTasks = useCallback(async () => {
     setTasksLoading(true);
     try {
-      const response = await yurbrainClient.listTasks<TaskDto[]>();
+      const response = await yurbrainClient.getTasks<TaskDto[]>();
       const nextTasks = [...response].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
       setTasks(nextTasks);
       setTaskError("");
@@ -125,7 +125,7 @@ export function useSessionController({
       if (!activeSession || !nextTasks.some((task) => task.id === activeSession.taskId)) {
         const inProgressTask = nextTasks.find((task) => task.status === "in_progress");
         if (inProgressTask) {
-          const sessions = await yurbrainClient.listSessions<SessionDto[]>({ taskId: inProgressTask.id });
+          const sessions = await yurbrainClient.getSessions<SessionDto[]>({ taskId: inProgressTask.id });
           const session = sessions.find((candidate) => candidate.state === "running" || candidate.state === "paused") ?? null;
           setActiveSession(session);
         } else {
@@ -209,7 +209,7 @@ export function useSessionController({
   const createManualTaskFromFeedCard = useCallback(
     async (card: FeedCardDto): Promise<TaskDto> => {
       const fallbackTitle = card.title.trim().slice(0, 200) || "Follow up on resurfaced memory";
-      const created = await yurbrainClient.createTask<TaskDto>({
+      const created = await yurbrainClient.planTask<TaskDto>({
         title: fallbackTitle,
         sourceItemId: card.itemId
       });
@@ -296,7 +296,7 @@ export function useSessionController({
       try {
         const createdTasks: TaskDto[] = [];
         for (const step of pendingPlanPreview.steps) {
-          const created = await yurbrainClient.createTask<TaskDto>({
+          const created = await yurbrainClient.planTask<TaskDto>({
             title: step.title,
             sourceItemId: pendingPlanPreview.sourceItemId
           });
@@ -453,7 +453,7 @@ export function useSessionController({
       const sourceItemId = pendingPostponeSheet.itemId;
       const baseTitle = pendingPostponeSheet.title.trim() || "resurfaced idea";
       const title = `Small step: ${baseTitle}`.slice(0, 200);
-      const created = await yurbrainClient.createTask<TaskDto>({ title, sourceItemId });
+      const created = await yurbrainClient.planTask<TaskDto>({ title, sourceItemId });
       await yurbrainClient.snoozeFeedCard<{ ok: boolean }>(pendingPostponeSheet.cardId, 240);
       setTasks((current) => [created, ...current.filter((task) => task.id !== created.id)]);
       setSelectedTaskId(created.id);
@@ -494,7 +494,7 @@ export function useSessionController({
   const markTaskDone = useCallback(
     async (task: TaskDto | null) => {
       if (!task) return;
-      await yurbrainClient.updateTask<TaskDto>(task.id, { status: "done" });
+      await yurbrainClient.updatePlannedTask<TaskDto>(task.id, { status: "done" });
       await Promise.all([loadTasks(), loadSessionsForTask(task.id), loadAllSessionsForUser()]);
       setLastAction("Marked task done.");
     },
@@ -504,7 +504,7 @@ export function useSessionController({
   const pauseSelectedSession = useCallback(
     async (task: TaskDto | null, session: SessionDto | null) => {
       if (!task || !session) return;
-      const updated = await yurbrainClient.pauseSession<SessionDto>(session.id);
+      const updated = await yurbrainClient.blockSession<SessionDto>(session.id);
       setActiveSession(updated);
       await Promise.all([loadTasks(), loadSessionsForTask(task.id), loadAllSessionsForUser()]);
     },

@@ -26,6 +26,10 @@ export function usePreferenceController({
   setResurfacingIntensity,
   setPersonalizationNotice
 }: UsePreferenceControllerInput) {
+  type PreferencePatch = Partial<
+    Pick<UserPreferenceDto, "renderMode" | "aiSummaryMode" | "feedDensity" | "resurfacingIntensity">
+  >;
+
   const persistUserPreferences = useCallback(
     async (
       updates: Partial<
@@ -39,15 +43,17 @@ export function usePreferenceController({
         if (updates.defaultLens !== undefined) {
           await yurbrainClient.setDefaultFeedLens<UserPreferenceDto>(updates.defaultLens);
         }
-        const remainingUpdates: Partial<
-          Pick<UserPreferenceDto, "renderMode" | "aiSummaryMode" | "feedDensity" | "resurfacingIntensity">
-        > = {};
+        const remainingUpdates: PreferencePatch = {};
         if (updates.renderMode !== undefined) remainingUpdates.renderMode = updates.renderMode;
         if (updates.aiSummaryMode !== undefined) remainingUpdates.aiSummaryMode = updates.aiSummaryMode;
         if (updates.feedDensity !== undefined) remainingUpdates.feedDensity = updates.feedDensity;
         if (updates.resurfacingIntensity !== undefined) remainingUpdates.resurfacingIntensity = updates.resurfacingIntensity;
         if (Object.keys(remainingUpdates).length > 0) {
-          await yurbrainClient.updateUserPreferenceMe<UserPreferenceDto>(remainingUpdates);
+          const existing = await yurbrainClient.getCurrentUserPreference<UserPreferenceDto>();
+          await yurbrainClient.setPreferencePatch<UserPreferenceDto>({
+            ...existing,
+            ...remainingUpdates
+          });
         }
       } catch {
         // Preference persistence should not block core loop actions.
@@ -58,7 +64,7 @@ export function usePreferenceController({
 
   const loadUserPreferences = useCallback(async () => {
     try {
-      const preferences = await yurbrainClient.getUserPreferenceMe<UserPreferenceDto>();
+      const preferences = await yurbrainClient.getCurrentUserPreference<UserPreferenceDto>();
       setActiveLens(preferences.defaultLens);
       setFounderMode(preferences.founderMode);
       setRenderMode(preferences.renderMode);
