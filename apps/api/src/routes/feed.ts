@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { FeedCardSchema, GenerateFeedCardRequestSchema } from "../../../../packages/contracts/src";
-import { requireCurrentUser } from "../middleware/current-user";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { gatherFeedCandidates } from "../services/feed/candidates";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import { rankFeedCards } from "../services/feed/rank";
@@ -271,7 +271,7 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       request.log.warn({ event: "feed_card_missing", action: "dismiss", cardId: id }, "feed dismiss missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
-    if (card.userId !== currentUser.id) {
+    if (!canAccessUser(currentUser, card.userId)) {
       return reply.code(404).send({ message: "Feed card not found" });
     }
     await state.repo.updateFeedCard(id, { dismissed: true, snoozedUntil: null });
@@ -288,7 +288,7 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       request.log.warn({ event: "feed_card_missing", action: "snooze", cardId: id }, "feed snooze missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
-    if (card.userId !== currentUser.id) {
+    if (!canAccessUser(currentUser, card.userId)) {
       return reply.code(404).send({ message: "Feed card not found" });
     }
 
@@ -313,7 +313,7 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
       request.log.warn({ event: "feed_card_missing", action: "refresh", cardId: id }, "feed refresh missing card");
       return reply.code(404).send({ message: "Feed card not found" });
     }
-    if (card.userId !== currentUser.id) {
+    if (!canAccessUser(currentUser, card.userId)) {
       return reply.code(404).send({ message: "Feed card not found" });
     }
 

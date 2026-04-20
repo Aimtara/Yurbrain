@@ -8,7 +8,7 @@ import {
   QueryItemResponseSchema,
   SummarizeItemRequestSchema
 } from "../../../../packages/contracts/src";
-import { requireCurrentUser } from "../middleware/current-user";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { classifyItem } from "../services/ai/classify";
 import { queryItemAssistant } from "../services/ai/item-query";
 import { summarizeItem } from "../services/ai/summarize";
@@ -21,7 +21,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
     if (!currentUser) return;
     const payload = SummarizeItemRequestSchema.parse(request.body);
     const item = await state.repo.getBrainItemById(payload.itemId);
-    if (!item || item.userId !== currentUser.id) {
+    if (!item || !canAccessUser(currentUser, item.userId)) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
     const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
@@ -38,7 +38,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
     if (!currentUser) return;
     const payload = ClassifyItemRequestSchema.parse(request.body);
     const item = await state.repo.getBrainItemById(payload.itemId);
-    if (!item || item.userId !== currentUser.id) {
+    if (!item || !canAccessUser(currentUser, item.userId)) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
     const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
@@ -59,7 +59,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
       return reply.code(404).send({ message: "Thread not found" });
     }
     const item = await state.repo.getBrainItemById(thread.targetItemId);
-    if (!item || item.userId !== currentUser.id) {
+    if (!item || !canAccessUser(currentUser, item.userId)) {
       return reply.code(404).send({ message: "Thread not found" });
     }
     const result = await queryItemAssistant(state, payload, request.log, (request as { correlationId?: string }).correlationId);
@@ -81,7 +81,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
     const scopedItemIds: string[] = [];
     for (const itemId of payload.itemIds) {
       const item = await state.repo.getBrainItemById(itemId);
-      if (!item || item.userId !== currentUser.id) {
+      if (!item || !canAccessUser(currentUser, item.userId)) {
         return reply.code(404).send({ message: "Brain item not found" });
       }
       scopedItemIds.push(itemId);
@@ -101,7 +101,7 @@ export async function registerAiRoutes(app: FastifyInstance, state: AppState) {
     const scopedItemIds: string[] = [];
     for (const itemId of payload.itemIds) {
       const item = await state.repo.getBrainItemById(itemId);
-      if (!item || item.userId !== currentUser.id) {
+      if (!item || !canAccessUser(currentUser, item.userId)) {
         return reply.code(404).send({ message: "Brain item not found" });
       }
       scopedItemIds.push(itemId);

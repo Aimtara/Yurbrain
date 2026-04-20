@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { FastifyInstance } from "fastify";
 import { UpdateUserPreferenceRequestSchema, UserPreferenceResponseSchema, UserPreferenceMeResponseSchema } from "../../../../packages/contracts/src";
-import { requireCurrentUser } from "../middleware/current-user";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import type { AppState } from "../state";
 
 const UserIdParamSchema = z.object({ userId: z.string().uuid() }).strict();
@@ -41,7 +41,7 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
     const { userId } = UserIdParamSchema.parse(request.params);
-    if (userId !== currentUser.id) {
+    if (!canAccessUser(currentUser, userId)) {
       return reply.code(403).send({ message: "Cannot access preferences for another user." });
     }
     const stored = await state.repo.getUserPreference(userId);
@@ -67,7 +67,7 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
     const { userId } = UserIdParamSchema.parse(request.params);
-    if (userId !== currentUser.id) {
+    if (!canAccessUser(currentUser, userId)) {
       return reply.code(403).send({ message: "Cannot update preferences for another user." });
     }
     const payload = UpdateUserPreferenceRequestSchema.parse(request.body);

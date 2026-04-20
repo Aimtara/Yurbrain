@@ -8,11 +8,26 @@ test.after(async () => {
 });
 
 test("/ai/summarize returns validated output", async () => {
+  const userId = "22222222-2222-4222-8222-222222222222";
+  const itemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers: { "x-yurbrain-user-id": userId },
+    payload: {
+      type: "note",
+      title: "AI summarize target",
+      rawContent: "Summarize this content"
+    }
+  });
+  assert.equal(itemResp.statusCode, 201);
+  const item = itemResp.json<{ id: string }>();
+
   const resp = await app.inject({
     method: "POST",
     url: "/ai/summarize",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      itemId: "22222222-2222-2222-2222-222222222222",
+      itemId: item.id,
       rawContent: "Summarize this content"
     }
   });
@@ -25,11 +40,26 @@ test("/ai/summarize returns validated output", async () => {
 });
 
 test("/ai/summarize uses fallback on invalid output", async () => {
+  const userId = "22222222-2222-4222-8222-222222222223";
+  const itemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers: { "x-yurbrain-user-id": userId },
+    payload: {
+      type: "note",
+      title: "AI fallback summarize target",
+      rawContent: "[force-invalid]"
+    }
+  });
+  assert.equal(itemResp.statusCode, 201);
+  const item = itemResp.json<{ id: string }>();
+
   const resp = await app.inject({
     method: "POST",
     url: "/ai/summarize",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      itemId: "22222222-2222-2222-2222-222222222222",
+      itemId: item.id,
       rawContent: "[force-invalid]"
     }
   });
@@ -43,11 +73,26 @@ test("/ai/summarize uses fallback on invalid output", async () => {
 });
 
 test("/ai/classify returns classification artifact", async () => {
+  const userId = "22222222-2222-4222-8222-222222222224";
+  const itemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers: { "x-yurbrain-user-id": userId },
+    payload: {
+      type: "note",
+      title: "AI classify target",
+      rawContent: "Can this be done today?"
+    }
+  });
+  assert.equal(itemResp.statusCode, 201);
+  const item = itemResp.json<{ id: string }>();
+
   const resp = await app.inject({
     method: "POST",
     url: "/ai/classify",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      itemId: "22222222-2222-2222-2222-222222222222",
+      itemId: item.id,
       rawContent: "Can this be done today?"
     }
   });
@@ -59,19 +104,36 @@ test("/ai/classify returns classification artifact", async () => {
 });
 
 test("/ai/query uses fallback on timeout", async () => {
+  const userId = "22222222-2222-4222-8222-222222222225";
+  const itemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers: { "x-yurbrain-user-id": userId },
+    payload: {
+      type: "note",
+      title: "AI query target",
+      rawContent: "Question context"
+    }
+  });
+  assert.equal(itemResp.statusCode, 201);
+  const item = itemResp.json<{ id: string }>();
+
   const threadResp = await app.inject({
     method: "POST",
     url: "/threads",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      targetItemId: "22222222-2222-2222-2222-222222222222",
+      targetItemId: item.id,
       kind: "item_chat"
     }
   });
 
+  assert.equal(threadResp.statusCode, 201);
   const thread = threadResp.json<{ id: string }>();
   const resp = await app.inject({
     method: "POST",
     url: "/ai/query",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
       threadId: thread.id,
       question: "[force-timeout] what did I ask?",
@@ -94,8 +156,8 @@ test("/ai/query next-step response reflects linked todo task", async () => {
   const itemResponse = await app.inject({
     method: "POST",
     url: "/brain-items",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      userId,
       type: "note",
       title: "Prepare launch notes",
       rawContent: "Need a concise launch summary and owner check."
@@ -108,8 +170,8 @@ test("/ai/query next-step response reflects linked todo task", async () => {
   const taskResponse = await app.inject({
     method: "POST",
     url: "/tasks",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      userId,
       title: "Draft launch summary",
       sourceItemId: item.id
     }
@@ -119,6 +181,7 @@ test("/ai/query next-step response reflects linked todo task", async () => {
   const threadResp = await app.inject({
     method: "POST",
     url: "/threads",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
       targetItemId: item.id,
       kind: "item_chat"
@@ -129,6 +192,7 @@ test("/ai/query next-step response reflects linked todo task", async () => {
   const resp = await app.inject({
     method: "POST",
     url: "/ai/query",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
       threadId: thread.id,
       question: "What should I do next on this?"

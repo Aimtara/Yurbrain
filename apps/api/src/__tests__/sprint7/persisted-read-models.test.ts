@@ -25,6 +25,7 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
   const summarize = await app.inject({
     method: "POST",
     url: "/ai/summarize",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
       itemId: item.id,
       rawContent: item.rawContent
@@ -35,6 +36,7 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
   const classify = await app.inject({
     method: "POST",
     url: "/ai/classify",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
       itemId: item.id,
       rawContent: item.rawContent
@@ -44,7 +46,8 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
 
   const allArtifacts = await app.inject({
     method: "GET",
-    url: `/brain-items/${item.id}/artifacts`
+    url: `/brain-items/${item.id}/artifacts`,
+    headers: { "x-yurbrain-user-id": userId }
   });
   assert.equal(allArtifacts.statusCode, 200);
   const all = allArtifacts.json<Array<{ id: string; type: string }>>();
@@ -54,7 +57,8 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
 
   const summaryOnly = await app.inject({
     method: "GET",
-    url: `/brain-items/${item.id}/artifacts?type=summary`
+    url: `/brain-items/${item.id}/artifacts?type=summary`,
+    headers: { "x-yurbrain-user-id": userId }
   });
   assert.equal(summaryOnly.statusCode, 200);
   const summaries = summaryOnly.json<Array<{ type: string }>>();
@@ -67,8 +71,8 @@ test("GET /sessions supports task and user filters", async () => {
   const createTask = await app.inject({
     method: "POST",
     url: "/tasks",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      userId,
       title: "Session retrieval check"
     }
   });
@@ -78,6 +82,7 @@ test("GET /sessions supports task and user filters", async () => {
   const start = await app.inject({
     method: "POST",
     url: `/tasks/${task.id}/start`,
+    headers: { "x-yurbrain-user-id": userId },
     payload: {}
   });
   assert.equal(start.statusCode, 201);
@@ -85,7 +90,8 @@ test("GET /sessions supports task and user filters", async () => {
 
   const byTask = await app.inject({
     method: "GET",
-    url: `/sessions?taskId=${task.id}`
+    url: `/sessions?taskId=${task.id}`,
+    headers: { "x-yurbrain-user-id": userId }
   });
   assert.equal(byTask.statusCode, 200);
   const taskSessions = byTask.json<Array<{ id: string; taskId: string }>>();
@@ -93,7 +99,8 @@ test("GET /sessions supports task and user filters", async () => {
 
   const byUser = await app.inject({
     method: "GET",
-    url: `/sessions?userId=${userId}`
+    url: `/sessions?userId=${userId}`,
+    headers: { "x-yurbrain-user-id": userId }
   });
   assert.equal(byUser.statusCode, 200);
   const userSessions = byUser.json<Array<{ id: string }>>();

@@ -9,7 +9,7 @@ import {
   TaskResponseSchema,
   UpdateTaskRequestSchema
 } from "../../../../packages/contracts/src";
-import { requireCurrentUser } from "../middleware/current-user";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { createTaskFromManualContent } from "../services/tasks/manual-convert";
 import type { AppState } from "../state";
 
@@ -19,7 +19,7 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
     if (!currentUser) return;
     const payload = ManualConvertTaskRequestSchema.parse(request.body);
     const sourceItem = await state.repo.getBrainItemById(payload.sourceItemId);
-    if (!sourceItem || sourceItem.userId !== currentUser.id) {
+    if (!sourceItem || !canAccessUser(currentUser, sourceItem.userId)) {
       return reply.code(404).send({ message: "Source item not found" });
     }
     const task = createTaskFromManualContent({ ...payload, userId: currentUser.id });
@@ -34,7 +34,7 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
     const payload = CreateTaskRequestSchema.parse(request.body);
     if (payload.sourceItemId) {
       const sourceItem = await state.repo.getBrainItemById(payload.sourceItemId);
-      if (!sourceItem || sourceItem.userId !== currentUser.id) {
+      if (!sourceItem || !canAccessUser(currentUser, sourceItem.userId)) {
         return reply.code(404).send({ message: "Source item not found" });
       }
     }
@@ -60,7 +60,7 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
     if (!currentUser) return;
     const { id } = request.params as { id: string };
     const task = await state.repo.getTaskById(id);
-    if (!task || task.userId !== currentUser.id) {
+    if (!task || !canAccessUser(currentUser, task.userId)) {
       return reply.code(404).send({ message: "Task not found" });
     }
 
@@ -72,7 +72,7 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
     if (!currentUser) return;
     const { id } = request.params as { id: string };
     const existing = await state.repo.getTaskById(id);
-    if (!existing || existing.userId !== currentUser.id) {
+    if (!existing || !canAccessUser(currentUser, existing.userId)) {
       return reply.code(404).send({ message: "Task not found" });
     }
 

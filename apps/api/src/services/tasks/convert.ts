@@ -33,7 +33,7 @@ function toTitle(content: string): string {
   return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
 }
 
-export function convertToTaskDecision(input: AiConvertRequest): ConvertDecision {
+export function convertToTaskDecision(input: AiConvertRequest & { userId: string }): ConvertDecision {
   const normalized = input.content.trim();
   const sourceItemId = input.sourceItemId ?? null;
   const sourceMessageId = input.sourceMessageId ?? null;

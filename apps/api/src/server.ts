@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { ZodError } from "zod";
+import { AuthMeResponseSchema } from "@yurbrain/contracts";
 import { registerCurrentUserResolution, requireCurrentUser } from "./middleware/current-user";
 import { registerObservability, buildErrorEnvelope } from "./middleware/observability";
 import { registerAiRoutes } from "./routes/ai";

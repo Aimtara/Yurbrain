@@ -8,11 +8,27 @@ test.after(async () => {
 });
 
 test("thread -> message -> list and manual convert flow", async () => {
+  const userId = "11111111-1111-4111-8111-111111111111";
+  const itemResp = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers: { "x-yurbrain-user-id": userId },
+    payload: {
+      type: "note",
+      title: "Thread target",
+      rawContent: "Thread + message + convert integration target"
+    }
+  });
+
+  assert.equal(itemResp.statusCode, 201);
+  const item = itemResp.json<{ id: string }>();
+
   const threadResp = await app.inject({
     method: "POST",
     url: "/threads",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      targetItemId: "22222222-2222-2222-2222-222222222222",
+      targetItemId: item.id,
       kind: "item_comment"
     }
   });
@@ -23,6 +39,7 @@ test("thread -> message -> list and manual convert flow", async () => {
   const messageResp = await app.inject({
     method: "POST",
     url: "/messages",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
       threadId: thread.id,
       role: "user",
@@ -32,16 +49,20 @@ test("thread -> message -> list and manual convert flow", async () => {
 
   assert.equal(messageResp.statusCode, 201);
 
-  const listResp = await app.inject({ method: "GET", url: `/threads/${thread.id}/messages` });
+  const listResp = await app.inject({
+    method: "GET",
+    url: `/threads/${thread.id}/messages`,
+    headers: { "x-yurbrain-user-id": userId }
+  });
   assert.equal(listResp.statusCode, 200);
   assert.equal(listResp.json<Array<{ content: string }>>()[0]?.content, "ship deterministic loop");
 
   const convertResp = await app.inject({
     method: "POST",
     url: "/tasks/manual-convert",
+    headers: { "x-yurbrain-user-id": userId },
     payload: {
-      userId: "11111111-1111-1111-1111-111111111111",
-      sourceItemId: "22222222-2222-2222-2222-222222222222",
+      sourceItemId: item.id,
       content: "Draft summary"
     }
   });

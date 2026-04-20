@@ -101,9 +101,9 @@ function readEnvCurrentUserId(): string | null {
 
 function generateRuntimeCurrentUserId(): string | null {
   if (typeof globalThis === "undefined") return null;
-  const randomUUID = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto?.randomUUID;
-  if (typeof randomUUID !== "function") return null;
-  return trimUserId(randomUUID());
+  const cryptoApi = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+  if (!cryptoApi || typeof cryptoApi.randomUUID !== "function") return null;
+  return trimUserId(cryptoApi.randomUUID());
 }
 
 function ensureCurrentUserId(): string | null {

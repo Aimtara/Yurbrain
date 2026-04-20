@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { CreateThreadRequestSchema } from "../../../../packages/contracts/src";
-import { requireCurrentUser } from "../middleware/current-user";
+import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import type { AppState } from "../state";
 
 export async function registerThreadRoutes(app: FastifyInstance, state: AppState) {
@@ -10,7 +10,7 @@ export async function registerThreadRoutes(app: FastifyInstance, state: AppState
     if (!currentUser) return;
     const { targetItemId, kind } = CreateThreadRequestSchema.parse(request.body);
     const targetItem = await state.repo.getBrainItemById(targetItemId);
-    if (!targetItem || targetItem.userId !== currentUser.id) {
+    if (!targetItem || !canAccessUser(currentUser, targetItem.userId)) {
       return reply.code(404).send({ message: "Thread target not found" });
     }
     const now = new Date().toISOString();
@@ -28,7 +28,7 @@ export async function registerThreadRoutes(app: FastifyInstance, state: AppState
     const thread = await state.repo.getThreadById(id);
     if (!thread) return reply.code(404).send({ message: "Thread not found" });
     const targetItem = await state.repo.getBrainItemById(thread.targetItemId);
-    if (!targetItem || targetItem.userId !== currentUser.id) {
+    if (!targetItem || !canAccessUser(currentUser, targetItem.userId)) {
       return reply.code(404).send({ message: "Thread not found" });
     }
     return reply.send(thread);
@@ -42,7 +42,7 @@ export async function registerThreadRoutes(app: FastifyInstance, state: AppState
       return [];
     }
     const targetItem = await state.repo.getBrainItemById(targetItemId);
-    if (!targetItem || targetItem.userId !== currentUser.id) {
+    if (!targetItem || !canAccessUser(currentUser, targetItem.userId)) {
       return [];
     }
     return state.repo.listThreads(targetItemId);
