@@ -44,6 +44,14 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Function namespace compatibility | `/functions/*` (feed, summarize, next-step, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | Keep only while cutover slices are being validated. |
 | Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | deprecate/delete | Raw events remain server-side or tightly restricted by policy. |
 
+## Frontend data-access coupling inventory
+
+| Surface | Current access pattern | Coupling risk | N2 action |
+| --- | --- | --- | --- |
+| `apps/web` feature controllers | Uses `yurbrainDomainClient` from `@yurbrain/client` for feed/capture/item/session/founder flows | Low runtime coupling, but package exports still allow accidental transport bypass | Migrate imports to explicit stable client entrypoint and tighten exports |
+| `apps/mobile` loop controller | Uses `yurbrainDomainClient` from `@yurbrain/client` | Low runtime coupling, same export leakage risk | Keep shared domain methods, avoid mobile-specific transport fork |
+| `packages/client` root exports | Exposes `api/*`, `hooks/*`, and `graphql/*` in addition to domain | Medium architectural coupling risk over time | Restrict public exports to domain interface and factory methods in N2 |
+
 ## Product-critical path protection
 
 The following capabilities are migration-critical and must never regress:
