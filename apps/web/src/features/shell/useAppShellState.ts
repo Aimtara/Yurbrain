@@ -6,7 +6,7 @@ import { storageKeys } from "./constants";
 
 const validFeedLenses: FeedLens[] = ["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"];
 const validExecutionLenses: ExecutionLens[] = ["all", "ready_to_move", "needs_unblock", "momentum"];
-const validSurfaces: Surface[] = ["feed", "item", "session", "time", "me"];
+const validSurfaces: Surface[] = ["feed", "item", "session", "time", "me", "founder_review"];
 const validRenderModes: Array<UserPreferenceDto["renderMode"]> = ["focus", "explore"];
 const validAiSummaryModes: Array<UserPreferenceDto["aiSummaryMode"]> = ["concise", "balanced", "detailed"];
 const validFeedDensity: Array<UserPreferenceDto["feedDensity"]> = ["comfortable", "compact"];

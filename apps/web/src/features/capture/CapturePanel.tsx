@@ -9,6 +9,7 @@ type CapturePanelProps = {
   captureSuccessNotice: string;
   onOpenTimeHome: () => void;
   onOpenMe: () => void;
+  onOpenFounderReview: () => void;
   onOpenCaptureSheet: () => void;
   onCaptureDraftChange: (value: CaptureComposerValue) => void;
   onCaptureSubmit: (intent: CaptureSubmitIntent) => void;
@@ -25,6 +26,7 @@ export function CapturePanel({
   captureSuccessNotice,
   onOpenTimeHome,
   onOpenMe,
+  onOpenFounderReview,
   onOpenCaptureSheet,
   onCaptureDraftChange,
   onCaptureSubmit,
@@ -41,6 +43,9 @@ export function CapturePanel({
           </button>
           <button type="button" onClick={onOpenMe}>
             Open Me
+          </button>
+          <button type="button" onClick={onOpenFounderReview}>
+            Open Founder Review
           </button>
           <button type="button" onClick={onOpenCaptureSheet}>
             Open capture sheet

@@ -1,6 +1,6 @@
 import type { FeedCardVariant, FeedLens } from "@yurbrain/ui";
 
-export type Surface = "feed" | "item" | "session" | "time" | "me";
+export type Surface = "feed" | "item" | "session" | "time" | "me" | "founder_review";
 
 export type CaptureDraft = {
   type: "text" | "link" | "image";
