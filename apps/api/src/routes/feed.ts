@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { FeedCardSchema, GenerateFeedCardRequestSchema } from "../../../../packages/contracts/src";
+import { FeedCardSchema, GenerateFeedCardRequestSchema } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { gatherFeedCandidates } from "../services/feed/candidates";
 import { generateCardFromItem } from "../services/feed/generate-card";

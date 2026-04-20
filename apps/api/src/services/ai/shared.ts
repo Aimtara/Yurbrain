@@ -5,7 +5,7 @@ import {
   buildSummaryFallback,
   runAiTask,
   validateAiEnvelope
-} from "../../../../../packages/ai/src";
+} from "@yurbrain/ai";
 
 type AiTask = "summarize" | "classify" | "query";
 

@@ -1,5 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
-import { encodeGroundedAiContext } from "../../../../../packages/ai/src";
+import { encodeGroundedAiContext } from "@yurbrain/ai";
 import type { AppState } from "../../state";
 import { buildItemExecutionContext } from "./execution-context";
 import { createArtifact, resolveAiEnvelope } from "./shared";

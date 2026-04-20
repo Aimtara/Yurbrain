@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { ListSessionsQuerySchema, SessionListResponseSchema, SessionResponseSchema } from "../../../../packages/contracts/src";
+import { ListSessionsQuerySchema, SessionListResponseSchema, SessionResponseSchema } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { finishSession, pauseSession, startTaskSession } from "../services/sessions/lifecycle";
 import type { AppState } from "../state";

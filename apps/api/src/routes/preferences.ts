@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { FastifyInstance } from "fastify";
-import { UpdateUserPreferenceRequestSchema, UserPreferenceResponseSchema, UserPreferenceMeResponseSchema } from "../../../../packages/contracts/src";
+import { UpdateUserPreferenceRequestSchema, UserPreferenceResponseSchema, UserPreferenceMeResponseSchema } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import type { AppState } from "../state";
 

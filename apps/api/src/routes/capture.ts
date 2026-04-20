@@ -8,7 +8,7 @@ import {
   CaptureIntakeResponseSchema,
   EventTypeSchema,
   FeedCardSchema
-} from "../../../../packages/contracts/src";
+} from "@yurbrain/contracts";
 import { enrichCapture } from "../services/capture/enrichment";
 import { getRelatedItems } from "../services/capture/related-items";
 import { generateCardFromItem } from "../services/feed/generate-card";

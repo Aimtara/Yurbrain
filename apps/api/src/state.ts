@@ -1,6 +1,6 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
-import { createDbRepository, type CreateRepositoryOptions, type DbRepository } from "../../../packages/db/src";
+import { createDbRepository, type CreateRepositoryOptions, type DbRepository } from "@yurbrain/db";
 
 export type {
   ArtifactRecord,
@@ -12,7 +12,7 @@ export type {
   TaskRecord,
   ThreadRecord,
   UserPreferenceRecord
-} from "../../../packages/db/src";
+} from "@yurbrain/db";
 
 export type AppState = {
   repo: DbRepository;
