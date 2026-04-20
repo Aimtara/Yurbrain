@@ -530,10 +530,12 @@ export default function Page() {
       {activeSurface === "founder_review" ? (
         <FounderReviewSurface
           review={founderReview}
-          loading={founderReviewLoading || founderReviewAiReadoutLoading}
+          loading={founderReviewLoading}
+          loadingAiReadout={founderReviewAiReadoutLoading}
           error={founderReviewError}
           actionNotice={founderReviewActionNotice}
-          onRefresh={() => void loadFounderReview(true)}
+          onRefresh={() => void loadFounderReview(false)}
+          onRefreshWithAiReadout={() => void loadFounderReview(true)}
           onRunAction={(action) => void applyFounderReviewAction(action)}
         />
       ) : null}
