@@ -35,7 +35,6 @@ test("endpoints cover the documented core loop surface", () => {
 
 test("function endpoint aliases resolve to canonical paths", () => {
   assert.equal(endpoints.functionFeed, "/functions/feed");
-  assert.equal(endpoints.functionFeedRank, endpoints.functionFeed);
   assert.equal(endpoints.functionNextStep, "/functions/what-should-i-do-next");
   assert.equal(endpoints.functionFounderReview, "/functions/founder-review");
   assert.equal(endpoints.functionFounderReviewDiagnostics, "/functions/founder-review/diagnostics");

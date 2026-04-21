@@ -127,7 +127,7 @@ N7 is complete when these are true:
 N8 is complete when these are true:
 
 1. Feed retrieval and interaction paths are routed through function-backed APIs (`/functions/feed` + feed action helpers) via `packages/client`.
-2. Canonical function routes and compatibility aliases are aligned (`/functions/feed` + `/functions/feed/rank`, `/functions/what-should-i-do-next` + `/functions/next-step`) with targeted tests.
+2. Canonical function routes are aligned on stable paths (`/functions/feed`, `/functions/what-should-i-do-next`) with targeted tests.
 3. Founder review and synthesis-computed pathways remain function-backed in the shared client boundary (no UI transport leakage).
 4. Validation evidence covers strict-auth loop safety and function-feed ranking ergonomics.
 
@@ -158,7 +158,7 @@ Completed in this repository state:
 2. `packages/client` keeps founder diagnostics access inside the domain boundary (`getFounderDiagnostics`) so UI/client layers do not embed function transport paths.
 3. Founder diagnostics function payload is now actionable: generated metadata, summary counters (`blocked/stale/continuation_gap`), item-level focus entries, and feed-level focus actions.
 4. Founder Review web integration now loads diagnostics alongside review data and wires diagnostics actions into existing founder action handlers.
-5. Legacy `/founder-review` compatibility route remains explicitly marked with deprecation signaling while cutover callers finish transitioning.
+5. Legacy `/founder-review` compatibility route is removed after all in-repo callers were validated on canonical `/functions/founder-review`.
 
 ## N11 implementation baseline (completed)
 
@@ -204,6 +204,20 @@ N13 starts when these are true:
 2. Compatibility routes retained in N8-N12 have explicit removal criteria and cleanup owners.
 3. Deletion candidates are constrained to capabilities already parity-validated on both web and mobile.
 4. Cleanup checkpoints keep `/events` public access disabled and preserve loop safety under strict auth.
+
+## N13 progress update (slice 1)
+
+Completed in this repository state:
+
+1. Removed dead function compatibility aliases now that web/mobile + `packages/client` use canonical paths:
+   - `GET /functions/feed/rank`
+   - `POST /functions/next-step`
+2. Removed unused duplicate function session endpoints in favor of canonical session helper + session routes:
+   - `POST /functions/tasks/:id/start`
+   - `POST /functions/sessions/:id/pause`
+   - `GET /functions/sessions/:id/diagnostics`
+3. Removed legacy founder review compatibility route `GET /founder-review` and corresponding web rewrite entry after caller audit confirmed canonical function usage.
+4. Preserved `/events` block and strict-auth/core-loop validation gates while reducing route-surface drift.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

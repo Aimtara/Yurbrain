@@ -37,7 +37,6 @@ import {
 import {
   buildPauseSessionResult,
   buildFinishSessionResult,
-  buildSessionDiagnostics,
   buildStartSessionResult
 } from "../services/functions/session-helper-logic";
 import type { AppState } from "../state";
@@ -107,8 +106,6 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     return reply.code(200).send(result.cards);
   };
   app.get("/functions/feed", handleFunctionFeedGet);
-  // Compatibility alias retained while older clients transition from /functions/feed/rank.
-  app.get("/functions/feed/rank", handleFunctionFeedGet);
   app.post("/functions/feed/:id/dismiss", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
@@ -244,8 +241,6 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     return reply.code(201).send(result);
   };
   app.post("/functions/what-should-i-do-next", handleWhatShouldIDoNext);
-  // Compatibility alias retained while older clients transition from /functions/next-step.
-  app.post("/functions/next-step", handleWhatShouldIDoNext);
 
   app.get("/functions/founder-review", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
@@ -282,44 +277,6 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
       includeAi: parsedQuery.includeAi
     });
     return reply.code(200).send(FounderReviewDiagnosticsResponseSchema.parse(diagnostics));
-  });
-
-  app.post("/functions/sessions/:id/pause", async (request, reply) => {
-    const currentUser = requireCurrentUser(request, reply, request.log);
-    if (!currentUser) return;
-
-    const { id } = request.params as { id: string };
-    const existingSession = await state.repo.getSessionById(id);
-    if (!existingSession) {
-      return reply.code(404).send({ message: "Session not found or already finished" });
-    }
-    const task = await state.repo.getTaskById(existingSession.taskId);
-    if (!task || !canAccessUser(currentUser, task.userId)) {
-      return reply.code(404).send({ message: "Session not found or already finished" });
-    }
-
-    const result = await buildPauseSessionResult(state, id);
-    if (!result.session) {
-      return reply.code(404).send({ message: "Session not found or already finished" });
-    }
-    return reply.code(200).send(result.session);
-  });
-
-  app.post("/functions/tasks/:id/start", async (request, reply) => {
-    const currentUser = requireCurrentUser(request, reply, request.log);
-    if (!currentUser) return;
-
-    const { id } = request.params as { id: string };
-    const task = await state.repo.getTaskById(id);
-    if (!task || !canAccessUser(currentUser, task.userId)) {
-      return reply.code(404).send({ message: "Task not found" });
-    }
-
-    const result = await buildStartSessionResult(state, id);
-    if (!result.session) {
-      return reply.code(404).send({ message: "Task not found" });
-    }
-    return reply.code(201).send(result.session);
   });
 
   app.post("/functions/session-helper", async (request, reply) => {
@@ -376,23 +333,4 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     return reply.code(400).send({ message: "action must be one of start, pause, finish" });
   });
 
-  app.get("/functions/sessions/:id/diagnostics", async (request, reply) => {
-    const currentUser = requireCurrentUser(request, reply, request.log);
-    if (!currentUser) return;
-
-    const { id } = request.params as { id: string };
-    const session = await state.repo.getSessionById(id);
-    if (!session) {
-      return reply.code(404).send({ message: "Session not found" });
-    }
-    const task = await state.repo.getTaskById(session.taskId);
-    if (!task || !canAccessUser(currentUser, task.userId)) {
-      return reply.code(404).send({ message: "Session not found" });
-    }
-    const diagnostics = await buildSessionDiagnostics(state, id);
-    if (!diagnostics) {
-      return reply.code(404).send({ message: "Session not found" });
-    }
-    return reply.code(200).send(diagnostics);
-  });
 }

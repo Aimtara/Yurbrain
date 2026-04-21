@@ -33,15 +33,15 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Session list/detail state | `GET /sessions`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish` | `apps/api/src/routes/sessions.ts` | Hasura GraphQL CRUD + function helper where needed | `startSession`, `finishSession`, `blockSession` | Yes | parity validated | Web N7 cutover now uses GraphQL owner-scoped session listing plus function-helper lifecycle endpoints (`/functions/session-helper`) for start/pause/finish parity. |
 | User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | parity validated | Web N7 preference path now uses GraphQL wrappers (`get/update preference me`) under Nhost GraphQL transport. |
 | User preferences (by userId) | `GET /preferences/:userId`, `PUT /preferences/:userId` | `apps/api/src/routes/preferences.ts` | temporary legacy compatibility | `setFounderMode`, `setDefaultFeedLens` | Yes | legacy retained | Keep until all callers use current-user path. |
-| Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | parity validated | N8 routes web/domain retrieval to `/functions/feed` (with `/functions/feed/rank` alias) using shared ranking + whyShown shaping in function service. |
+| Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | parity validated | N8 routes web/domain retrieval to canonical `/functions/feed` using shared ranking + whyShown shaping in function service. |
 | Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | parity validated | N8 routes web/domain feed actions to function endpoints (`/functions/feed/:id/{dismiss|snooze|refresh}`) with owner checks and parity behavior. |
 | Legacy AI feed card generator | `POST /ai/feed/generate-card` | `apps/api/src/routes/feed.ts` | deprecate/delete | none | No | deprecate/delete | Prototype helper, remove after feed function parity. |
 | Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | parity validated | N9 routes plan conversion through `/functions/convert` behind `packages/client`, preserving deterministic outcomes (`task_created`, `plan_suggested`, `not_recommended`). |
 | Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 routes thin-slice summarize/classify/query through `/functions/{summarize|classify|query}` with owner-scoped access and deterministic fallback parity. |
 | Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 validates `/functions/summarize-progress` and `/functions/what-should-i-do-next` in strict mode with concise, grounded outputs and graceful non-owner `404` behavior. |
-| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N10 keeps `/functions/founder-review` as canonical for web/domain/strict-auth validation and retains `/founder-review` only as a compatibility passthrough with explicit deprecation signaling. |
+| Founder review | `GET /functions/founder-review` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N13 removes legacy `/founder-review` compatibility path and uses function route as sole canonical endpoint for strict-auth validation. |
 | Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | parity validated | N10 now returns actionable diagnostics payload (`summary`, item-level `focusItems`, and `focusActions`) and web founder-review integrates the actions through `packages/client` with no transport leakage. |
-| Function namespace compatibility | `/functions/*` (feed, summarize, next-step, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | Keep only while cutover slices are being validated. |
+| Function namespace compatibility | `/functions/*` (feed, summarize, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | N13 removed dead aliases (`/functions/feed/rank`, `/functions/next-step`) and duplicate function-session endpoints with no active callers. |
 | Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | parity validated | N11 validates `/events` remains blocked and that client-facing founder diagnostics expose only derived summaries (no raw event payloads). |
 
 ## Frontend data-access coupling inventory
@@ -159,11 +159,11 @@ N7 is complete in this repository state:
 N8 is complete in this repository state:
 
 1. `packages/client` now routes feed retrieval and feed actions to function endpoints in Nhost mode:
-   - `GET /functions/feed` (canonical) and compatibility alias `/functions/feed/rank`.
+   - `GET /functions/feed` (canonical).
    - `POST /functions/feed/:id/{dismiss|snooze|refresh}` for re-entry interactions.
 2. Function-backed synthesis/founder computed routes are wired for migrated web/domain methods:
    - `POST /functions/summarize-progress`
-   - `POST /functions/what-should-i-do-next` (with `/functions/next-step` alias)
+   - `POST /functions/what-should-i-do-next`
    - `GET /functions/founder-review`
 3. N8 parity tests verify:
    - function feed route and alias consistency,
@@ -199,7 +199,7 @@ N10 is complete in this repository state:
 
 1. Founder-review diagnostics now provide actionable contract-backed payloads (`generatedAt`, `window`, aggregate `summary`, item-level `focusItems`, and feed-level `focusActions`) through canonical `GET /functions/founder-review/diagnostics`.
 2. Web Founder Review now consumes diagnostics through `packages/client` (`getFounderDiagnostics`) and exposes actionable follow-up flows from the diagnostics surface without transport calls in UI code.
-3. Strict-auth core-loop validation remains anchored to canonical `GET /functions/founder-review`, and legacy `/founder-review` is retained only as explicit compatibility/deprecation route.
+3. Strict-auth core-loop validation remains anchored to canonical `GET /functions/founder-review`.
 
 ## N11 kickoff update
 
@@ -241,6 +241,21 @@ N13 begins in this repository state with legacy cleanup scope:
 1. Inventory remaining REST and compatibility handlers still exercised by domain methods after N12 parity completion.
 2. Prioritize cleanup candidates that are already parity-validated across both web and mobile while preserving strict-auth safety gates.
 3. Keep public raw-event access blocked and retain loop-safety regression checks during each cleanup slice.
+
+## N13 cleanup slice 1 update
+
+Completed in this repository state:
+
+1. Removed dead function compatibility aliases and duplicate endpoints with no active callers:
+   - `GET /functions/feed/rank`
+   - `POST /functions/next-step`
+   - `POST /functions/sessions/:id/pause`
+   - `POST /functions/tasks/:id/start`
+   - `GET /functions/sessions/:id/diagnostics`
+2. Removed legacy founder-review compatibility path:
+   - deleted API route `GET /founder-review` and its server registration.
+   - removed web rewrite for `/founder-review`, keeping `/functions/*` as canonical.
+3. Preserved loop-critical canonical paths (`/functions/feed`, `/functions/what-should-i-do-next`, `/functions/founder-review`, `/functions/founder-review/diagnostics`, `/functions/session-helper`) and validated strict-auth core loop safety remains green.
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.

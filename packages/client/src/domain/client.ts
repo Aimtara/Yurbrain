@@ -217,7 +217,7 @@ function createRestDomainClient(): YurbrainDomainClient {
     updateUserPreferenceMe,
     getFounderReview: (query = {}) =>
       apiClient(
-        `${endpoints.founderReview}${renderQuery({
+        `${endpoints.functionFounderReview}${renderQuery({
           window: query.window ?? "7d",
           userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
@@ -236,7 +236,7 @@ function createRestDomainClient(): YurbrainDomainClient {
     getWhatShouldIDoNext: (payload) => requestNextStep(payload),
     getFounderReviewScored: (query = {}) =>
       apiClient(
-        `${endpoints.founderReview}${renderQuery({
+        `${endpoints.functionFounderReview}${renderQuery({
           window: query.window ?? "7d",
           userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined

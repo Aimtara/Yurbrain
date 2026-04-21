@@ -128,13 +128,3 @@ test("GET /functions/founder-review/diagnostics is owner-scoped and returns comp
   assert.equal(typeof body.summary.continuationGapCount, "number");
 });
 
-test("GET /founder-review stays as compatibility route and emits deprecation header", async () => {
-  const response = await app.inject({
-    method: "GET",
-    url: "/founder-review?window=7d",
-    headers: { "x-yurbrain-user-id": founderReviewUserId }
-  });
-
-  assert.equal(response.statusCode, 200);
-  assert.equal(response.headers["x-yurbrain-route-compat"], "legacy-founder-review");
-});
