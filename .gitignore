@@ -6,3 +6,6 @@ dist/
 .expo/
 .yurbrain-data/
 .DS_Store
+.env
+.env.local
+.env.*.local
