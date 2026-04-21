@@ -115,6 +115,15 @@ Optional / post-cutover cleanup:
 - On migrated Nhost paths, canonical identity source is auth subject (`x-hasura-user-id`); no demo/runtime fallback on strict web paths.
 - If a seeded local profile lacks auth metadata, keep nullable display fields and track provenance via `backfill_source` / `backfilled_at`.
 
+## N3 environment/config contract (explicit)
+
+N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and referenced by checklist evidence.
+
+Contract source of truth:
+
+- `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
+- Nhost initialization config for this migration includes `nhost/config.yaml`, with TOML (`nhost/nhost.toml` + overlays) documented as the modern CLI-forward path.
+
 ## Cutover rules
 
 - No big-bang rewrite.
