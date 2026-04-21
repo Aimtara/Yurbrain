@@ -100,7 +100,15 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
     }
     const query = ListItemArtifactsQuerySchema.parse(request.query ?? {});
     const artifacts = await state.repo.listArtifactsByItem(id, query.type ? { type: query.type } : undefined);
-    return reply.send(ItemArtifactListResponseSchema.parse(artifacts));
+    const response = artifacts.map((artifact) => ({
+      id: artifact.id,
+      itemId: artifact.itemId,
+      type: artifact.type,
+      payload: artifact.payload,
+      confidence: artifact.confidence,
+      createdAt: artifact.createdAt
+    }));
+    return reply.send(ItemArtifactListResponseSchema.parse(response));
   });
 
   app.get("/brain-items/:id/related", async (request, reply) => {

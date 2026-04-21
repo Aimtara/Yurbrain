@@ -26,7 +26,7 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
     if (!currentUser) return;
     const query = ListSessionsQuerySchema.parse({ ...(request.query as Record<string, unknown> | undefined), userId: currentUser.id });
     const sessions = await state.repo.listSessions({ ...query, userId: currentUser.id });
-    return reply.code(200).send(SessionListResponseSchema.parse(sessions));
+    return reply.code(200).send(SessionListResponseSchema.parse(sessions.map(toSessionResponsePayload)));
   });
 
   app.post("/tasks/:id/start", async (request, reply) => {
