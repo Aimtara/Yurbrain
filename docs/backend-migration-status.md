@@ -125,6 +125,10 @@ Completed in this repository state:
 2. Added `userProfiles` schema + repository APIs in `packages/db/src/schema.ts` and `packages/db/src/index.ts`.
 3. Added N5 profile backfill script scaffold (`packages/db/src/scripts/n5-backfill-profiles.ts`) to populate `profiles` from `user_preferences`.
 4. Added targeted N5 repository tests for profile/backfill behavior (`packages/db/src/__tests__/n5-profiles.test.ts`).
+5. Extended ownership scaffolding hardening:
+   - migration now backfills `item_artifacts.user_id`, `item_threads.user_id`, `thread_messages.user_id`, and `sessions.user_id` from existing relational ownership.
+   - repository write paths now stamp ownership where available for artifacts/threads/messages/sessions.
+6. Added explicit N5 Hasura permission scaffold doc (`docs/nhost-hasura-permission-scaffold.md`) with owner rules, insert presets, stricter artifact/events treatment, and required/optional backfill order.
 
 ## Unclassified capabilities
 

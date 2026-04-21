@@ -38,6 +38,39 @@ CREATE INDEX IF NOT EXISTS "item_threads_user_target_idx" ON "item_threads" ("us
 CREATE INDEX IF NOT EXISTS "thread_messages_user_thread_created_idx" ON "thread_messages" ("user_id", "thread_id", "created_at");
 CREATE INDEX IF NOT EXISTS "sessions_user_state_started_idx" ON "sessions" ("user_id", "state", "started_at");
 
+-- Backfill ownership scaffold columns from existing relational parents.
+UPDATE "item_artifacts" AS artifacts
+SET "user_id" = items."user_id"
+FROM "brain_items" AS items
+WHERE artifacts."user_id" IS NULL
+  AND items."id" = artifacts."item_id";
+
+UPDATE "item_threads" AS threads
+SET "user_id" = items."user_id"
+FROM "brain_items" AS items
+WHERE threads."user_id" IS NULL
+  AND items."id" = threads."target_item_id";
+
+UPDATE "thread_messages" AS messages
+SET "user_id" = owners."owner_id"
+FROM (
+  SELECT
+    msg."id" AS message_id,
+    COALESCE(threads."user_id", items."user_id") AS owner_id
+  FROM "thread_messages" AS msg
+  JOIN "item_threads" AS threads ON threads."id" = msg."thread_id"
+  LEFT JOIN "brain_items" AS items ON items."id" = threads."target_item_id"
+) AS owners
+WHERE messages."user_id" IS NULL
+  AND messages."id" = owners.message_id
+  AND owners.owner_id IS NOT NULL;
+
+UPDATE "sessions" AS session_rows
+SET "user_id" = task_rows."user_id"
+FROM "tasks" AS task_rows
+WHERE session_rows."user_id" IS NULL
+  AND task_rows."id" = session_rows."task_id";
+
 -- Backfill profile rows from known owner IDs in existing runtime tables.
 INSERT INTO "profiles" ("id")
 SELECT DISTINCT owner_ids.owner_id
@@ -49,6 +82,8 @@ FROM (
   SELECT user_id AS owner_id FROM tasks
   UNION
   SELECT user_id AS owner_id FROM events
+  UNION
+  SELECT user_id AS owner_id FROM sessions
   UNION
   SELECT user_id AS owner_id FROM user_preferences
 ) AS owner_ids

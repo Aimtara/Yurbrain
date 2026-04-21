@@ -52,6 +52,9 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Repository includes profile scaffold operations (`get/upsert/list-needing-backfill/mark-backfilled`).
 - [x] Backfill script scaffold added (`packages/db/src/scripts/n5-backfill-profiles.ts`) with dry-run support.
 - [x] N5 profile repository/backfill tests added and passing.
+- [x] Ownership backfills added for scaffolded `user_id` columns (`item_artifacts`, `item_threads`, `thread_messages`, `sessions`) with deterministic join order.
+- [x] Required vs optional backfill phases and demo/founder mapping notes documented (`docs/nhost-hasura-permission-scaffold.md`).
+- [x] Owner-scoped Hasura rule + insert preset scaffolding documented, including stricter treatment for `item_artifacts` and `events`.
 
 ## Web cutover checklist (must complete before mobile cutover)
 
