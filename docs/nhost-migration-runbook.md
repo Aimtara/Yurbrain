@@ -56,8 +56,9 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N7 (web CRUD cutover): complete.
 - N8 (feed function cutover): complete.
 - N9 (AI thin-slice functions): complete.
-- N10 (founder review hardening): in progress.
-- N11+ (event safety pass and beyond): in progress / not started per `docs/backend-migration-status.md`.
+- N10 (founder review hardening): complete.
+- N11 (event safety pass): in progress.
+- N12+ (mobile cutover and beyond): not started per `docs/backend-migration-status.md`.
 
 ## N3 implementation baseline (now in repo)
 
@@ -138,21 +139,34 @@ N9 is complete when these are true:
 3. Ownership failures for thin-slice function routes are graceful (`404`) and do not surface as internal server errors.
 4. Loop parity checkpoints remain green after N9 cutover slices.
 
-## N10 implementation baseline (kickoff)
+## N10 implementation baseline (completed)
 
-N10 is in progress when these are true:
+N10 is complete when these are true:
 
 1. Founder review computed quality and diagnostics are hardened for production-readiness while preserving concise continuity output.
-2. Temporary compatibility pathways retained from N8/N9 are reviewed and either removed or explicitly justified.
-3. Web integration continues to show no UI transport leakage while founder-facing actions remain continuity-first.
+2. Founder diagnostics returns actionable item-level payloads (reason/detail + item action) and scoped feed-level actions.
+3. Web Founder Review surface consumes diagnostics through `packages/client` only and can trigger meaningful follow-up actions from the diagnostics panel.
+4. Temporary compatibility pathways retained from N8/N9 are reviewed and explicitly justified.
+5. Validation evidence confirms founder diagnostics actions navigate to item/detail and feed contexts without UI transport leakage.
 
-## N10 progress update
+## N10 completion update
 
 Completed in this repository state:
 
 1. Founder-review domain calls are canonicalized to function endpoints for strict-auth parity checks (`/functions/founder-review` and `/functions/founder-review/diagnostics`).
-2. `packages/client` now keeps founder diagnostics access inside the domain client boundary (`getFounderDiagnostics`) so UI/client layers do not embed function transport paths.
-3. Legacy `/founder-review` compatibility route is explicitly marked with a deprecation response header to make retained debt visible while migration callers finish transitioning.
+2. `packages/client` keeps founder diagnostics access inside the domain boundary (`getFounderDiagnostics`) so UI/client layers do not embed function transport paths.
+3. Founder diagnostics function payload is now actionable: generated metadata, summary counters (`blocked/stale/continuation_gap`), item-level focus entries, and feed-level focus actions.
+4. Founder Review web integration now loads diagnostics alongside review data and wires diagnostics actions into existing founder action handlers.
+5. Legacy `/founder-review` compatibility route remains explicitly marked with deprecation signaling while cutover callers finish transitioning.
+
+## N11 implementation baseline (kickoff)
+
+N11 starts when these are true:
+
+1. Event and telemetry surfaces are audited for ownership safety and transport-boundary compliance.
+2. Public/raw event access remains blocked; only safe aggregate or server-only pathways remain reachable.
+3. Event-producing paths in capture/feed/plan/session/founder flows preserve loop behavior while reducing leakage risk.
+4. N11 checkpoints are captured in status + checklist docs with explicit parity evidence targets.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

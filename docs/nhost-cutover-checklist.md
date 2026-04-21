@@ -64,6 +64,21 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Session list GraphQL path scopes by `sessions.user_id` (leveraging N5 ownership scaffolding) instead of legacy task-join fallback.
 - [x] GraphQL CRUD wrappers continue to enforce owner scoping and preserve REST fallback when Hasura is not configured.
 - [x] Targeted client tests cover N6 GraphQL wrapper behavior and function/REST boundaries.
+
+### N10: Founder Review Functions + Web Integration
+
+- [x] Founder review canonical route uses `/functions/founder-review`; legacy `/founder-review` is explicit compatibility-only with deprecation signaling.
+- [x] Founder diagnostics payload is actionable at item level (`summary`, `focusItems`, `focusActions`) with typed contract validation.
+- [x] Founder Review web surface renders diagnostics and routes both item-level and feed-level follow-up actions through domain actions.
+- [x] Founder diagnostics remains behind `packages/client` (`getFounderDiagnostics`) with no direct function/GraphQL leakage in UI surfaces.
+- [x] Targeted API/client tests and manual walkthrough validate founder diagnostics actionability flow.
+
+### N11: Event Safety Pass (kickoff baseline)
+
+- [x] N11 baseline and scope are documented in runbook/status docs.
+- [ ] Event route and write-path safety audit completed for owner scoping and exposure boundaries.
+- [ ] Event policy hardening implemented and validated without loop regressions.
+- [ ] Post-hardening parity evidence captured across capture/feed/session/founder-review surfaces.
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
@@ -113,5 +128,5 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Temporary compatibility routes reviewed and either retained with rationale or removed.
 - [ ] Legacy REST logic removed only after parity evidence.
 - [ ] Public raw events route remains disabled/removed.
-- [ ] Docs updated (`backend-migration-status`, runbook, transport policy).
+- [x] Docs updated (`backend-migration-status`, runbook, transport policy).
 - [ ] Final risk pass confirms no product-loop regression.
