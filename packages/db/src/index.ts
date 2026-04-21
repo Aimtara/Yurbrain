@@ -121,6 +121,17 @@ export type UserPreferenceRecord = {
   updatedAt: string;
 };
 
+export type UserProfileRecord = {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  backfillSource: string | null;
+  backfilledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type RepositoryContext = {
   client: PGlite;
   db: ReturnType<typeof drizzle<typeof schema>>;
@@ -189,6 +200,15 @@ export type DbRepository = {
   createArtifact: (artifact: ArtifactRecord) => Promise<ArtifactRecord>;
   getArtifactById: (id: string) => Promise<ArtifactRecord | null>;
   listArtifactsByItem: (itemId: string, query?: { type?: ArtifactRecord["type"] }) => Promise<ArtifactRecord[]>;
+  getUserProfileById: (userId: string) => Promise<UserProfileRecord | null>;
+  upsertUserProfile: (
+    userId: string,
+    updates?: Partial<Pick<UserProfileRecord, "email" | "displayName" | "avatarUrl" | "backfillSource">> & {
+      backfilled?: boolean;
+    }
+  ) => Promise<UserProfileRecord>;
+  listUserProfilesNeedingBackfill: (limit?: number) => Promise<string[]>;
+  markUserProfileBackfilled: (userId: string, source?: string) => Promise<UserProfileRecord>;
   getUserPreference: (userId: string) => Promise<UserPreferenceRecord | null>;
   upsertUserPreference: (
     userId: string,
@@ -339,6 +359,19 @@ function toUserPreferenceRecord(row: typeof schema.userPreferences.$inferSelect)
     feedDensity: row.feedDensity as FeedDensity,
     resurfacingIntensity: row.resurfacingIntensity as ResurfacingIntensity,
     updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
+  };
+}
+
+function toUserProfileRecord(row: typeof schema.profiles.$inferSelect): UserProfileRecord {
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.displayName,
+    avatarUrl: row.avatarUrl,
+    backfillSource: row.backfillSource,
+    createdAt: toIso(row.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString(),
+    backfilledAt: toIso(row.backfilledAt)
   };
 }
 
@@ -822,6 +855,74 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           })
           .returning();
         return toUserPreferenceRecord(row);
+      }),
+    getUserProfileById: (userId) =>
+      withDb(async ({ db }) => {
+        const [row] = await db.select().from(schema.profiles).where(eq(schema.profiles.id, userId)).limit(1);
+        return row ? toUserProfileRecord(row) : null;
+      }),
+    upsertUserProfile: (userId, updates = {}) =>
+      withDb(async ({ db }) => {
+        const updatePatch: Partial<typeof schema.profiles.$inferInsert> = {
+          updatedAt: new Date()
+        };
+        if (updates.backfilled !== undefined) {
+          updatePatch.backfilledAt = updates.backfilled ? new Date() : null;
+        }
+        if (updates.displayName !== undefined) updatePatch.displayName = updates.displayName;
+        if (updates.avatarUrl !== undefined) updatePatch.avatarUrl = updates.avatarUrl;
+        if (updates.backfillSource !== undefined) updatePatch.backfillSource = updates.backfillSource;
+
+        const [row] = await db
+          .insert(schema.profiles)
+          .values({
+            id: userId,
+            displayName: updates.displayName ?? null,
+            avatarUrl: updates.avatarUrl ?? null,
+            backfillSource: updates.backfillSource ?? "manual",
+            backfilledAt: updates.backfilled ? new Date() : null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+          .onConflictDoUpdate({
+            target: schema.profiles.id,
+            set: updatePatch
+          })
+          .returning();
+        return toUserProfileRecord(row);
+      }),
+    listUserProfilesNeedingBackfill: (limit = 200) =>
+      withDb(async ({ db }) => {
+        const rows = await db
+          .select({ userId: schema.userPreferences.userId })
+          .from(schema.userPreferences)
+          .leftJoin(schema.profiles, eq(schema.userPreferences.userId, schema.profiles.id))
+          .where(sql`${schema.profiles.id} IS NULL`)
+          .orderBy(asc(schema.userPreferences.userId))
+          .limit(limit);
+        return rows.map((row) => row.userId);
+      }),
+    markUserProfileBackfilled: (userId, source = "n5_backfill") =>
+      withDb(async ({ db }) => {
+        const [row] = await db
+          .insert(schema.profiles)
+          .values({
+            id: userId,
+            backfillSource: source,
+            backfilledAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+          .onConflictDoUpdate({
+            target: schema.profiles.id,
+            set: {
+              backfillSource: source,
+              backfilledAt: new Date(),
+              updatedAt: new Date()
+            }
+          })
+          .returning();
+        return toUserProfileRecord(row);
       })
   };
 }

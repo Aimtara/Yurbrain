@@ -82,6 +82,16 @@ N4 is in progress when these are true:
 5. Strict-mode requests require bearer-derived identity server-side (header/query/body userId fallbacks are ignored in strict mode).
 6. Authenticated strict-mode smoke tests cover core loop operations (capture, feed, item detail, comments, plan, session, founder review).
 
+## N5 implementation baseline (current scaffolding)
+
+N5 is scaffolded when these are true:
+
+1. Schema includes `profiles` table keyed by auth subject (`id`) with optional display fields and backfill metadata.
+2. Existing owner-bearing tables keep explicit `user_id` columns to preserve parity during transition.
+3. Repository layer supports profile reads/upserts and profile-backfill discovery.
+4. Backfill script exists to populate missing profiles from known owner IDs without destructive rewrites.
+5. Validation tests cover profile upsert + backfill-selection behavior.
+
 ## Cutover rules
 
 - No big-bang rewrite.

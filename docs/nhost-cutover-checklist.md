@@ -45,6 +45,14 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] API strict mode requires bearer-derived identity and ignores header/query/body legacy fallbacks when strict mode is enabled.
 - [x] Authenticated strict-mode loop smoke test passes (`auth/me` → capture → feed → item detail → comments → manual-convert plan → session pause/finish → founder review).
 
+### N5: Schema + Permissions + Backfill Scaffolding
+
+- [x] Profile scaffold table added (`profiles`) with deterministic backfill metadata (`backfill_source`, `backfilled_at`).
+- [x] Sessions table includes nullable `user_id` scaffold column for future ownership simplification.
+- [x] Repository includes profile scaffold operations (`get/upsert/list-needing-backfill/mark-backfilled`).
+- [x] Backfill script scaffold added (`packages/db/src/scripts/n5-backfill-profiles.ts`) with dry-run support.
+- [x] N5 profile repository/backfill tests added and passing.
+
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
