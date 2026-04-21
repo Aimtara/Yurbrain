@@ -20,12 +20,13 @@ test("endpoints cover the documented core loop surface", () => {
     "tasks",
     "sessions",
     "manualConvertTask",
-    "aiSummarize",
-    "aiSummarizeCluster",
-    "aiClassify",
-    "aiQuery",
-    "aiNextStep",
-    "aiConvert"
+    "functionSummarizeItem",
+    "functionSummarizeProgress",
+    "functionClassifyItem",
+    "functionQueryItem",
+    "functionNextStep",
+    "functionConvert",
+    "functionFeedGenerateCard"
   ] as const;
 
   for (const key of required) {

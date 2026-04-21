@@ -58,7 +58,7 @@ test("GET /feed applies lens + limit deterministically", async () => {
 test("GET /feed excludes snoozed cards by default", async () => {
   const createResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId: "33333333-3333-3333-3333-333333333333",
       title: "Snooze me",
@@ -103,7 +103,7 @@ test("ranking de-prioritizes repeatedly postponed cards when included", async ()
 
   const stableResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Stable card",
@@ -115,7 +115,7 @@ test("ranking de-prioritizes repeatedly postponed cards when included", async ()
 
   const postponedResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Postponed card",
@@ -150,7 +150,7 @@ test("dismissed cards stay hidden and cannot be snoozed", async () => {
   const userId = "44444444-4444-4444-4444-444444444444";
   const createResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Dismiss me",
@@ -188,7 +188,7 @@ test("ranking lowers noisy over-refreshed cards", async () => {
   const userId = "55555555-5555-4555-8555-555555555555";
   const calmResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Calm card",
@@ -200,7 +200,7 @@ test("ranking lowers noisy over-refreshed cards", async () => {
 
   const noisyResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Noisy card",
@@ -231,7 +231,7 @@ test("ranking preserves continuity for recently revisited cards without adding n
   const userId = "66666666-6666-4666-8666-666666666666";
   const earlierResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Earlier card",
@@ -243,7 +243,7 @@ test("ranking preserves continuity for recently revisited cards without adding n
 
   const laterResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Later card",

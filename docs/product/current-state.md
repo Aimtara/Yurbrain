@@ -30,7 +30,7 @@ Not used for runtime truth:
   - Feed: `GET /feed`, `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh`
   - Preferences: `GET /preferences/:userId`, `PUT /preferences/:userId`
   - Tasks/sessions: `POST/GET/PATCH /tasks`, `GET /tasks`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish`, `GET /sessions`
-  - AI: `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query`, `POST /ai/convert`, `POST /ai/feed/generate-card`
+  - AI: `POST /functions/summarize`, `POST /functions/classify`, `POST /functions/query`, `POST /functions/convert`, `POST /functions/feed/generate-card`
 - Persistence across restart is covered by test (`apps/api/src/__tests__/sprint7/persistence.test.ts`).
 
 ### One coherent client loop (web, real)
@@ -96,7 +96,7 @@ Not used for runtime truth:
 ## What is placeholder or mocked
 
 - AI execution remains a deterministic runner abstraction with fallback envelopes; no external production model integration required for MVP loop completion.
-- `/ai/feed/generate-card` still supports placeholder defaults when title/body are omitted.
+- `/functions/feed/generate-card` still supports placeholder defaults when title/body are omitted.
 
 ## What is not wired through persistence
 

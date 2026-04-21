@@ -24,7 +24,7 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
 
   const summarize = await app.inject({
     method: "POST",
-    url: "/ai/summarize",
+    url: "/functions/summarize",
     headers: { "x-yurbrain-user-id": userId },
     payload: {
       itemId: item.id,
@@ -35,7 +35,7 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
 
   const classify = await app.inject({
     method: "POST",
-    url: "/ai/classify",
+    url: "/functions/classify",
     headers: { "x-yurbrain-user-id": userId },
     payload: {
       itemId: item.id,

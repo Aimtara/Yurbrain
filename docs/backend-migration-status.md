@@ -35,10 +35,10 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | User preferences (by userId) | `GET /preferences/:userId`, `PUT /preferences/:userId` | `apps/api/src/routes/preferences.ts` | temporary legacy compatibility | `setFounderMode`, `setDefaultFeedLens` | Yes | legacy retained | Keep until all callers use current-user path. |
 | Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | parity validated | N8 routes web/domain retrieval to canonical `/functions/feed` using shared ranking + whyShown shaping in function service. |
 | Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | parity validated | N8 routes web/domain feed actions to function endpoints (`/functions/feed/:id/{dismiss|snooze|refresh}`) with owner checks and parity behavior. |
-| Legacy AI feed card generator | `POST /ai/feed/generate-card` | `apps/api/src/routes/feed.ts` | deprecate/delete | none | No | deprecate/delete | Prototype helper, remove after feed function parity. |
-| Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | parity validated | N9 routes plan conversion through `/functions/convert` behind `packages/client`, preserving deterministic outcomes (`task_created`, `plan_suggested`, `not_recommended`). |
-| Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 routes thin-slice summarize/classify/query through `/functions/{summarize|classify|query}` with owner-scoped access and deterministic fallback parity. |
-| Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 validates `/functions/summarize-progress` and `/functions/what-should-i-do-next` in strict mode with concise, grounded outputs and graceful non-owner `404` behavior. |
+| Legacy AI feed card generator | `POST /functions/feed/generate-card` | `apps/api/src/routes/feed.ts` | deprecate/delete | none | No | deprecate/delete | Prototype helper retained for deterministic feed tests; remove after replacement test fixture strategy is in place. |
+| Plan-this AI convert | `POST /functions/convert` | `apps/api/src/routes/functions.ts` | Nhost Function | `planThis` | Yes | parity validated | N13 slice 2 removes `/ai/convert`; canonical function route remains behind `packages/client`. |
+| Summarize/classify/query | `POST /functions/summarize`, `POST /functions/classify`, `POST /functions/query` | `apps/api/src/routes/functions.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N13 slice 2 removes `/ai/summarize`, `/ai/classify`, and `/ai/query`; canonical function routes preserve owner-scoped deterministic fallback behavior. |
+| Cluster summary + next step | `POST /functions/summarize-progress`, `POST /functions/what-should-i-do-next` | `apps/api/src/routes/functions.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N13 slice 2 removes `/ai/summarize-cluster` and `/ai/next-step`; synthesis routes remain canonical under `/functions/*`. |
 | Founder review | `GET /functions/founder-review` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N13 removes legacy `/founder-review` compatibility path and uses function route as sole canonical endpoint for strict-auth validation. |
 | Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | parity validated | N10 now returns actionable diagnostics payload (`summary`, item-level `focusItems`, and `focusActions`) and web founder-review integrates the actions through `packages/client` with no transport leakage. |
 | Function namespace compatibility | `/functions/*` (feed, summarize, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | N13 removed dead aliases (`/functions/feed/rank`, `/functions/next-step`) and duplicate function-session endpoints with no active callers. |
@@ -256,6 +256,19 @@ Completed in this repository state:
    - deleted API route `GET /founder-review` and its server registration.
    - removed web rewrite for `/founder-review`, keeping `/functions/*` as canonical.
 3. Preserved loop-critical canonical paths (`/functions/feed`, `/functions/what-should-i-do-next`, `/functions/founder-review`, `/functions/founder-review/diagnostics`, `/functions/session-helper`) and validated strict-auth core loop safety remains green.
+
+## N13 cleanup slice 2 update
+
+Completed in this repository state:
+
+1. Removed remaining legacy `/ai/*` runtime surface from API registration by deleting the dedicated `/ai` route modules and keeping canonical function handlers only.
+2. Converted all in-repo callers/tests from `/ai/*` to `/functions/*` equivalents route-by-route:
+   - summarize/classify/query: `/functions/{summarize|classify|query}`
+   - synthesis: `/functions/summarize-progress`, `/functions/what-should-i-do-next`
+   - convert: `/functions/convert`
+   - feed card generator helper: `/functions/feed/generate-card`
+3. Removed the web `/ai/:path*` rewrite to prevent drift back to legacy paths after cleanup.
+4. Revalidated parity-focused API/client/e2e checks on canonical function paths to protect the validated loop during route strangler cleanup.
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.
@@ -265,4 +278,4 @@ None in current scope. Every meaningful route/capability is classified above.
 - CRUD to GraphQL: brain items, item artifacts reads, threads/messages, tasks, sessions, preferences/profile.
 - Computed logic to Functions: capture pipeline, feed shaping, summarize progress, next step, plan conversion, founder review, diagnostics.
 - Temporary legacy: `/functions/*` compatibility routes and `/preferences/:userId`.
-- Delete: legacy feed generator and public `/events` endpoint.
+- Delete: public `/events` endpoint (legacy feed generator helper is still tracked for follow-up deletion).

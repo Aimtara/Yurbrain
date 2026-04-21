@@ -218,6 +218,21 @@ Completed in this repository state:
    - `GET /functions/sessions/:id/diagnostics`
 3. Removed legacy founder review compatibility route `GET /founder-review` and corresponding web rewrite entry after caller audit confirmed canonical function usage.
 4. Preserved `/events` block and strict-auth/core-loop validation gates while reducing route-surface drift.
+
+## N13 progress update (slice 2)
+
+Completed in this repository state:
+
+1. Removed legacy REST AI route modules from server registration (`registerAiRoutes`, `registerConvertRoutes`) after all in-repo callers were moved to canonical function paths.
+2. Canonicalized remaining AI pathways under `/functions/*` only:
+   - `POST /functions/summarize`
+   - `POST /functions/classify`
+   - `POST /functions/query`
+   - `POST /functions/convert`
+   - `POST /functions/summarize-progress`
+   - `POST /functions/what-should-i-do-next`
+3. Re-homed the feed-card generator helper to `POST /functions/feed/generate-card` and removed web `/ai/:path*` rewrite forwarding.
+4. Updated domain client endpoint constants and legacy helper hooks to remove `/ai/*` dependencies and route exclusively through canonical function endpoints.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

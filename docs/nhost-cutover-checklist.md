@@ -91,7 +91,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Dead compatibility aliases with no active callers are removed (`/functions/feed/rank`, `/functions/next-step`).
 - [x] Duplicate/unused function session endpoints are removed in favor of canonical `/functions/session-helper`.
 - [x] Legacy founder-review compatibility route (`/founder-review`) is removed; canonical `/functions/founder-review` remains.
-- [ ] Remaining legacy REST AI routes (`/ai/*`) are either removed or converted into explicit temporary wrappers with end-of-life notes.
+- [x] Remaining legacy REST AI routes (`/ai/*`) are removed; canonical `/functions/*` routes are now the only in-repo AI endpoints.
 - [ ] Route deletion map and parity evidence are updated after each N13 cleanup slice.
 ## Web cutover checklist (must complete before mobile cutover)
 

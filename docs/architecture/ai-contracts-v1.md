@@ -12,9 +12,9 @@ If the model output fails envelope validation or exceeds timeout budget, the API
 
 ## Sprint 3 routes
 
-- `POST /ai/summarize` → persists a `summary` artifact.
-- `POST /ai/classify` → persists a `classification` artifact.
-- `POST /ai/query` → appends both user question and assistant reply into an existing thread.
+- `POST /functions/summarize` → persists a `summary` artifact.
+- `POST /functions/classify` → persists a `classification` artifact.
+- `POST /functions/query` → appends both user question and assistant reply into an existing thread.
 
 ## Fallback policy
 

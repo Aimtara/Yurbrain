@@ -46,7 +46,7 @@ test("feed function actions require owner identity and preserve behavior", async
   const userId = "15151515-1515-4515-8515-151515151515";
   const createResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Function action target card",

@@ -27,7 +27,7 @@ export async function listRelatedBrainItems<T>(itemId: string) {
 }
 
 export async function summarizeBrainItem<T>(payload: { itemId: string; rawContent: string; timeoutMs?: number }) {
-  return apiClient<T>(endpoints.aiSummarize, {
+  return apiClient<T>(endpoints.functionSummarizeItem, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)
@@ -35,7 +35,7 @@ export async function summarizeBrainItem<T>(payload: { itemId: string; rawConten
 }
 
 export async function classifyBrainItem<T>(payload: { itemId: string; rawContent: string; timeoutMs?: number }) {
-  return apiClient<T>(endpoints.aiClassify, {
+  return apiClient<T>(endpoints.functionClassifyItem, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)
@@ -43,7 +43,7 @@ export async function classifyBrainItem<T>(payload: { itemId: string; rawContent
 }
 
 export async function queryBrainItemThread<T>(payload: { threadId: string; question: string; timeoutMs?: number }) {
-  return apiClient<T>(endpoints.aiQuery, {
+  return apiClient<T>(endpoints.functionQueryItem, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)
@@ -51,7 +51,7 @@ export async function queryBrainItemThread<T>(payload: { threadId: string; quest
 }
 
 export async function summarizeBrainItemCluster<T>(payload: { itemIds: string[] }) {
-  return apiClient<T>(endpoints.aiSummarizeCluster, {
+  return apiClient<T>(endpoints.functionSummarizeProgress, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)
@@ -59,7 +59,7 @@ export async function summarizeBrainItemCluster<T>(payload: { itemIds: string[] 
 }
 
 export async function getBrainItemNextStep<T>(payload: { itemIds: string[] }) {
-  return apiClient<T>(endpoints.aiNextStep, {
+  return apiClient<T>(endpoints.functionNextStep, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(payload)

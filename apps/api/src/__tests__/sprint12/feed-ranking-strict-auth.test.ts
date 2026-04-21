@@ -26,7 +26,7 @@ test("feed ranking ergonomics hold under strict auth using function feed actions
 
   const stableResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Stable card",
@@ -38,7 +38,7 @@ test("feed ranking ergonomics hold under strict auth using function feed actions
 
   const postponedResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Postponed card",

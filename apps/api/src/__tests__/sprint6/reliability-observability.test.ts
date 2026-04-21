@@ -24,7 +24,7 @@ test("observability injects correlation id and preserves provided header", async
 test("error envelope includes correlation id and structured error details", async () => {
   const response = await app.inject({
     method: "POST",
-    url: "/ai/summarize",
+    url: "/functions/summarize",
     payload: {
       itemId: "not-a-uuid",
       rawContent: "content"
@@ -42,7 +42,7 @@ test("error envelope includes correlation id and structured error details", asyn
 test("ai query returns deterministic not-found envelope for missing thread", async () => {
   const response = await app.inject({
     method: "POST",
-    url: "/ai/query",
+    url: "/functions/query",
     payload: {
       threadId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
       question: "What is next?"

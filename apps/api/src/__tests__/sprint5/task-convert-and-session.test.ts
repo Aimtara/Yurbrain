@@ -7,10 +7,10 @@ test.after(async () => {
   await app.close();
 });
 
-test("POST /ai/convert returns not_recommended for very short content", async () => {
+test("POST /functions/convert returns not_recommended for very short content", async () => {
   const response = await app.inject({
     method: "POST",
-    url: "/ai/convert",
+    url: "/functions/convert",
     payload: {
       userId: "11111111-1111-1111-1111-111111111111",
       content: "ok"
@@ -23,10 +23,10 @@ test("POST /ai/convert returns not_recommended for very short content", async ()
   assert.ok(body.reason);
 });
 
-test("POST /ai/convert creates task and preserves source linkage", async () => {
+test("POST /functions/convert creates task and preserves source linkage", async () => {
   const response = await app.inject({
     method: "POST",
-    url: "/ai/convert",
+    url: "/functions/convert",
     payload: {
       userId: "22222222-2222-2222-2222-222222222222",
       sourceItemId: "33333333-3333-3333-3333-333333333333",

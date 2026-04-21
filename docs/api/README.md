@@ -14,7 +14,7 @@
 ## Feed
 
 - `GET /feed?userId=<uuid>` returns deterministic, non-dismissed stored feed cards ranked by feed logic (not a simple reverse-created listing).
-- `POST /ai/feed/generate-card` stores a placeholder/generated feed card for deterministic retrieval.
+- `POST /functions/feed/generate-card` stores a placeholder/generated feed card for deterministic retrieval.
 - `POST /feed/:id/dismiss` marks a feed card as dismissed.
 - `POST /feed/:id/snooze` snoozes a feed card until a future timestamp.
 - `POST /feed/:id/refresh` increments refresh metadata and returns the new count.
@@ -22,7 +22,7 @@
 ## Task conversion and task loop
 
 - `POST /tasks/manual-convert` creates a deterministic `todo` task from item/comment content.
-- `POST /ai/convert` returns one of: `task_created`, `plan_suggested`, `not_recommended`.
+- `POST /functions/convert` returns one of: `task_created`, `plan_suggested`, `not_recommended`.
 - `POST /tasks` creates a task.
 - `GET /tasks/:id` fetches a task.
 - `PATCH /tasks/:id` updates title/status.
@@ -36,9 +36,9 @@
 
 ## AI endpoints (validation + fallback)
 
-- `POST /ai/summarize` validates model envelope, persists a `summary` artifact, and falls back deterministically on timeout/invalid output.
-- `POST /ai/classify` validates model envelope, persists a `classification` artifact, and falls back deterministically on timeout/invalid output.
-- `POST /ai/query` validates model envelope, appends both the user question and assistant reply to a thread, and falls back deterministically on timeout/invalid output.
+- `POST /functions/summarize` validates model envelope, persists a `summary` artifact, and falls back deterministically on timeout/invalid output.
+- `POST /functions/classify` validates model envelope, persists a `classification` artifact, and falls back deterministically on timeout/invalid output.
+- `POST /functions/query` validates model envelope, appends both the user question and assistant reply to a thread, and falls back deterministically on timeout/invalid output.
 - AI responses include `fallbackUsed` and optional `fallbackReason` (`timeout` or `invalid_or_runner_error`).
 
 ## Validation and error mapping
