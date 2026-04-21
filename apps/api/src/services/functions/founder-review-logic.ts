@@ -1,5 +1,6 @@
 import type {
   FounderReviewAction,
+  FounderReviewDiagnosticsItem,
   FounderReviewDiagnosticsResponse,
   FounderReviewQuery,
   FounderReviewResponse
@@ -107,7 +108,7 @@ export async function buildFounderReviewDiagnostics(
       .map((item) => item.id)
   );
 
-  const rankedFocusItems = [...signals.items]
+  const rankedFocusItems: FounderReviewDiagnosticsItem[] = [...signals.items]
     .map((item) => {
       const blocked = blockedItemIds.has(item.id);
       const continueGap = continueGapItemIds.has(item.id);
@@ -129,7 +130,7 @@ export async function buildFounderReviewDiagnostics(
       if (entry.blocked) reasons.push("Blocked signals accumulating");
       if (entry.continueGap) reasons.push("No continuation touch yet");
       if (entry.stale) reasons.push("No meaningful update for 72h+");
-      const reasonCode = entry.blocked
+      const reasonCode: FounderReviewDiagnosticsItem["reason"] = entry.blocked
         ? "blocked"
         : entry.continueGap
           ? "continuation_gap"
@@ -167,11 +168,18 @@ export async function buildFounderReviewDiagnostics(
   ];
 
   return {
+    generatedAt: new Date().toISOString(),
+    window: options.window ?? "7d",
+    summary: {
+      itemCount: signals.items.length,
+      taskCount: signals.tasks.length,
+      sessionCount: signals.sessions.length,
+      blockedCount: blockedItemIds.size,
+      staleCount: staleItemIds.size,
+      continuationGapCount: continueGapItemIds.size
+    },
     strongestKeywords,
     latestItemTitles,
-    itemCount: signals.items.length,
-    taskCount: signals.tasks.length,
-    sessionCount: signals.sessions.length,
     focusItems: rankedFocusItems,
     focusActions
   };
