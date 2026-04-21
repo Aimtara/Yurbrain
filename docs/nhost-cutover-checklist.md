@@ -35,6 +35,13 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [ ] Nhost bootstrap smoke check confirmed (`bootstrapNhostSession` returns `configured: true` when keys are present).
 - [ ] Hasura GraphQL smoke check confirmed (`isHasuraGraphqlConfigured()` true and one read query succeeds in Nhost mode).
 
+### N4: Web Auth / Current User Cutover
+
+- [x] Web provider defaults to Nhost transport (`YurbrainClientProvider` uses `options={{ transport: "nhost" }}` in web layout).
+- [x] Nhost bootstrap enables strict identity resolution mode to prevent demo/runtime user-id fallback on web auth paths.
+- [x] When Nhost config is present but no session exists, bootstrap clears stale user/token state to allow proper unauthorized behavior.
+- [x] Web Founder Review path surfaces explicit unauthorized state for 401 responses.
+
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user

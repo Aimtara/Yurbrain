@@ -1,5 +1,6 @@
 import { createClient } from "@nhost/nhost-js";
 import {
+  configureIdentityResolutionMode,
   configureAccessToken,
   configureCurrentUserId
 } from "../api/client";
@@ -150,8 +151,12 @@ export async function bootstrapNhostSession(): Promise<{ configured: boolean; us
     return { configured: cachedConfigured };
   }
 
+  // N4: once nhost transport is selected, disable demo/runtime identity fallback.
+  configureIdentityResolutionMode("strict");
   const options = buildNhostRuntimeConfig();
   if (!options) {
+    configureCurrentUserId(null);
+    configureAccessToken(null);
     cachedConfigured = false;
     return { configured: false };
   }
@@ -163,6 +168,8 @@ export async function bootstrapNhostSession(): Promise<{ configured: boolean; us
   const nhost = createClient(options);
   const session = nhost.getUserSession();
   if (!session) {
+    configureCurrentUserId(null);
+    configureAccessToken(null);
     bootstrapped = true;
     return { configured: true };
   }
@@ -188,5 +195,6 @@ export async function bootstrapNhostSession(): Promise<{ configured: boolean; us
 export function resetNhostBootstrapStateForTests() {
   bootstrapped = false;
   cachedConfigured = false;
+  configureIdentityResolutionMode("legacy");
   setNhostEnvResolver(null);
 }

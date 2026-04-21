@@ -21,7 +21,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 
 | Capability | Current REST/API route(s) | Current source | Target source | Client method (target name) | Product critical | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Current user identity | `GET /auth/me` | `apps/api/src/server.ts` | Nhost Auth session + GraphQL profile read | `getCurrentUser` | Yes | not started | Remove demo identity assumptions and header fallback reliance from user paths. |
+| Current user identity | `GET /auth/me` | `apps/api/src/server.ts` | Nhost Auth session + GraphQL profile read | `getCurrentUser` | Yes | in progress | Web now boots client with Nhost transport + strict identity mode; no-session path yields 401 (no demo/runtime fallback) and explicit unauthorized handling. |
 | Capture intake pipeline | `POST /capture/intake` | `apps/api/src/routes/capture.ts` | Nhost Function | `createBrainItem` (capture mode) | Yes | not started | Includes enrichment, related detection, feed card side effects, and event append. |
 | Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | N2 stable client surface now includes these methods; runtime behavior remains parity-preserving. |
 | Brain item artifacts read | `GET /brain-items/:id/artifacts` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL read | `getBrainItem` (artifact expansion) | Yes | in progress | Keep writes server-side where feasible. |

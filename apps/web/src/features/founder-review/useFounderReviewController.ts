@@ -20,6 +20,11 @@ export function useFounderReviewController({
   const [error, setError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [unauthorized, setUnauthorized] = useState(false);
+
+  function isUnauthorizedError(error: unknown): boolean {
+    return error instanceof Error && /Request failed: 401/.test(error.message);
+  }
 
   const loadFounderReview = useCallback(async (includeAiReadout = false) => {
     setLoading(true);
@@ -31,8 +36,12 @@ export function useFounderReviewController({
         userId: currentUserId || undefined,
         includeAi: includeAiReadout
       });
+      setUnauthorized(false);
       setReview(data);
-    } catch {
+    } catch (error) {
+      if (isUnauthorizedError(error)) {
+        setUnauthorized(true);
+      }
       setReview(null);
       setError("Founder Review could not load right now.");
     } finally {
@@ -47,9 +56,13 @@ export function useFounderReviewController({
       try {
         const currentUser = await yurbrainClient.getCurrentUser<{ id: string }>();
         if (!mounted) return;
+        setUnauthorized(false);
         setCurrentUserId(currentUser.id);
-      } catch {
+      } catch (error) {
         if (!mounted) return;
+        if (isUnauthorizedError(error)) {
+          setUnauthorized(true);
+        }
         setCurrentUserId("");
       }
     })();
@@ -77,6 +90,7 @@ export function useFounderReviewController({
     founderReviewAiReadoutLoading: loadingAiReadout,
     founderReviewError: error,
     founderReviewActionNotice: actionNotice,
+    founderReviewUnauthorized: unauthorized,
     loadFounderReview,
     applyFounderReviewAction: applyAction
   };

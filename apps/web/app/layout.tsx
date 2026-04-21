@@ -5,7 +5,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <YurbrainClientProvider>{children}</YurbrainClientProvider>
+        <YurbrainClientProvider options={{ transport: "nhost" }}>
+          {children}
+        </YurbrainClientProvider>
       </body>
     </html>
   );

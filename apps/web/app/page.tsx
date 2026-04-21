@@ -324,6 +324,7 @@ export default function Page() {
     founderReviewAiReadoutLoading,
     founderReviewError,
     founderReviewActionNotice,
+    founderReviewUnauthorized,
     loadFounderReview,
     applyFounderReviewAction
   } = useFounderReviewController({
@@ -477,7 +478,16 @@ export default function Page() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
-      {activeSurface === "feed" ? (
+      {founderReviewUnauthorized ? (
+        <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
+          <p style={{ margin: 0 }}>
+            Yurbrain now requires an authenticated Nhost session for web access. Sign in through Nhost and reload this page.
+          </p>
+        </section>
+      ) : null}
+
+      {activeSurface === "feed" && !founderReviewUnauthorized ? (
         <FocusFeedSurface
           activeLens={activeLens}
           executionLens={executionLens}
@@ -536,7 +546,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "founder_review" ? (
+      {activeSurface === "founder_review" && !founderReviewUnauthorized ? (
         <FounderReviewSurface
           review={founderReview}
           loading={founderReviewLoading}
@@ -581,7 +591,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "time" ? (
+      {activeSurface === "time" && !founderReviewUnauthorized ? (
         <TimeSurface
           timeWindow={timeWindow}
           customWindowMinutes={customWindowMinutes}
@@ -600,7 +610,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "me" ? (
+      {activeSurface === "me" && !founderReviewUnauthorized ? (
         <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
           <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "14px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -685,7 +695,7 @@ export default function Page() {
         </section>
       ) : null}
 
-      {activeSurface === "item" ? (
+      {activeSurface === "item" && !founderReviewUnauthorized ? (
         <ItemDetailSurface
           selectedItem={selectedItem}
           continuity={derivedItemContinuity}
@@ -725,7 +735,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "session" ? (
+      {activeSurface === "session" && !founderReviewUnauthorized ? (
         <SessionSurface
           selectedTask={selectedTask}
           selectedTaskSession={selectedTaskSession}

@@ -5,6 +5,7 @@ import {
   configureApiBaseUrl,
   configureAccessToken,
   configureCurrentUserId,
+  configureIdentityResolutionMode,
   getConfiguredAccessToken,
   getConfiguredCurrentUserId
 } from "../api/client";
@@ -25,6 +26,7 @@ beforeEach(() => {
   configureApiBaseUrl(null);
   configureCurrentUserId(null);
   configureAccessToken(null);
+  configureIdentityResolutionMode("legacy");
   delete (globalThis as { __YURBRAIN_API_BASE_URL?: unknown }).__YURBRAIN_API_BASE_URL;
 });
 
@@ -32,6 +34,7 @@ afterEach(() => {
   configureApiBaseUrl(null);
   configureCurrentUserId(null);
   configureAccessToken(null);
+  configureIdentityResolutionMode("legacy");
   delete (globalThis as { fetch?: unknown }).fetch;
   delete (globalThis as { __YURBRAIN_API_BASE_URL?: unknown }).__YURBRAIN_API_BASE_URL;
 });
@@ -115,4 +118,13 @@ test("configureAccessToken(null) clears authorization header state", async () =>
   await apiClient<unknown>("/feed");
   const headers = new Headers(calls[0]?.init?.headers);
   assert.equal(headers.get("authorization"), null);
+});
+
+test("identity mode strict suppresses runtime user-id fallback", async () => {
+  configureIdentityResolutionMode("strict");
+  const calls = installFetch(() => new Response("{}", { status: 200 }));
+
+  await apiClient<unknown>("/feed");
+  const headers = new Headers(calls[0]?.init?.headers);
+  assert.equal(headers.get("x-yurbrain-user-id"), null);
 });
