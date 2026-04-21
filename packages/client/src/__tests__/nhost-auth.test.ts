@@ -4,7 +4,8 @@ import test, { afterEach } from "node:test";
 import {
   bootstrapNhostSession,
   resetNhostBootstrapStateForTests,
-  setNhostEnvResolver
+  setNhostEnvResolver,
+  setNhostClientFactory
 } from "../auth/nhost";
 import {
   getIdentityResolutionMode,
@@ -19,6 +20,7 @@ import { configureHasuraGraphqlUrl, isHasuraGraphqlConfigured } from "../graphql
 afterEach(() => {
   resetNhostBootstrapStateForTests();
   setNhostEnvResolver(null);
+  setNhostClientFactory(null);
   configureIdentityResolutionMode("legacy");
   configureAccessToken(null);
   configureCurrentUserId(null);

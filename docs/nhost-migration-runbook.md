@@ -79,6 +79,8 @@ N4 is in progress when these are true:
 2. Nhost bootstrap enforces strict identity mode (no env/random user-id fallback) once Nhost transport is active.
 3. Configured-but-no-session bootstrap path clears stale identity/token state.
 4. Web handles unauthorized identity state gracefully for protected views (without embedding transport calls in UI).
+5. Strict-mode requests require bearer-derived identity server-side (header/query/body userId fallbacks are ignored in strict mode).
+6. Authenticated strict-mode smoke tests cover core loop operations (capture, feed, item detail, comments, plan, session, founder review).
 
 ## Cutover rules
 

@@ -2,6 +2,8 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest }
 import { z } from "zod";
 
 export const CURRENT_USER_HEADER = "x-yurbrain-user-id";
+const STRICT_IDENTITY_MODE = "strict";
+const IDENTITY_MODE_HEADERS = ["x-yurbrain-auth-mode", "x-yurbrain-identity-mode"] as const;
 const BEARER_PREFIX = "bearer ";
 const UserIdSchema = z.string().uuid();
 
@@ -58,20 +60,34 @@ function resolveFromAuthorizationHeader(authorizationHeader: unknown): string | 
   return resolveBearerTokenUserId(normalized.slice(BEARER_PREFIX.length));
 }
 
+function isStrictIdentityMode(request: FastifyRequest): boolean {
+  for (const header of IDENTITY_MODE_HEADERS) {
+    const mode = request.headers[header];
+    if (typeof mode === "string" && mode.trim().toLowerCase() === STRICT_IDENTITY_MODE) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function readUserIdKey(input: unknown): string | null {
   if (!input || typeof input !== "object") return null;
   return parseUuid((input as ObjectLike).userId);
 }
 
 function resolveFromHeaders(request: FastifyRequest): CurrentUserContext | null {
-  const headerUserId = parseUuid(request.headers[CURRENT_USER_HEADER]);
-  if (headerUserId) {
-    return { id: headerUserId, source: "header" };
-  }
-
   const authorizationUserId = resolveFromAuthorizationHeader(request.headers.authorization);
   if (authorizationUserId) {
     return { id: authorizationUserId, source: "authorization" };
+  }
+
+  if (isStrictIdentityMode(request)) {
+    return null;
+  }
+
+  const headerUserId = parseUuid(request.headers[CURRENT_USER_HEADER]);
+  if (headerUserId) {
+    return { id: headerUserId, source: "header" };
   }
 
   return null;
@@ -106,7 +122,10 @@ export function registerCurrentUserResolution(app: FastifyInstance) {
 export function resolveCurrentUser(request: FastifyRequest): CurrentUserContext | null {
   const contextual = request as RequestWithCurrentUser;
   if (contextual.currentUser) return contextual.currentUser;
-  return resolveFromHeaders(request) ?? resolveLegacyFallback(request);
+  const fromHeaders = resolveFromHeaders(request);
+  if (fromHeaders) return fromHeaders;
+  if (isStrictIdentityMode(request)) return null;
+  return resolveLegacyFallback(request);
 }
 
 export function requireCurrentUser(request: FastifyRequest, reply: FastifyReply, log?: FastifyBaseLogger): CurrentUserContext | null {

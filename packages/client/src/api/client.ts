@@ -4,6 +4,8 @@ let configuredAccessToken: string | null = null;
 let identityResolutionMode: "legacy" | "strict" = "legacy";
 const CURRENT_USER_HEADER = "x-yurbrain-user-id";
 const AUTHORIZATION_HEADER = "authorization";
+const AUTH_MODE_HEADER = "x-yurbrain-auth-mode";
+const STRICT_AUTH_MODE = "strict";
 const CURRENT_USER_STORAGE_KEY = "yurbrain.currentUserId";
 const ACCESS_TOKEN_STORAGE_KEY = "yurbrain.accessToken";
 const GLOBAL_CURRENT_USER_KEY = "__YURBRAIN_CURRENT_USER_ID";
@@ -240,9 +242,15 @@ function ensureAccessToken(): string | null {
 
 export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
-  const currentUserId = ensureCurrentUserId();
-  if (currentUserId && !headers.has(CURRENT_USER_HEADER)) {
-    headers.set(CURRENT_USER_HEADER, currentUserId);
+  const isStrictMode = identityResolutionMode === "strict";
+  if (isStrictMode && !headers.has(AUTH_MODE_HEADER)) {
+    headers.set(AUTH_MODE_HEADER, STRICT_AUTH_MODE);
+  }
+  if (!isStrictMode) {
+    const currentUserId = ensureCurrentUserId();
+    if (currentUserId && !headers.has(CURRENT_USER_HEADER)) {
+      headers.set(CURRENT_USER_HEADER, currentUserId);
+    }
   }
   const accessToken = ensureAccessToken();
   if (accessToken && !headers.has(AUTHORIZATION_HEADER)) {

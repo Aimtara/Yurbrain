@@ -41,14 +41,17 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Nhost bootstrap enables strict identity resolution mode to prevent demo/runtime user-id fallback on web auth paths.
 - [x] When Nhost config is present but no session exists, bootstrap clears stale user/token state to allow proper unauthorized behavior.
 - [x] Web Founder Review path surfaces explicit unauthorized state for 401 responses.
+- [x] Strict identity mode now suppresses client-side `x-yurbrain-user-id` injection and sends explicit strict auth-mode header.
+- [x] API strict mode requires bearer-derived identity and ignores header/query/body legacy fallbacks when strict mode is enabled.
+- [x] Authenticated strict-mode loop smoke test passes (`auth/me` → capture → feed → item detail → comments → manual-convert plan → session pause/finish → founder review).
 
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
 
-- [ ] Web bootstrap resolves real current user via Nhost auth.
-- [ ] Demo-user fallback removed from web runtime path.
-- [ ] Unauthorized state is handled gracefully.
+- [x] Web bootstrap resolves real current user via Nhost auth.
+- [x] Demo-user fallback removed from web runtime path.
+- [x] Unauthorized state is handled gracefully.
 
 ### CRUD path cutover
 
@@ -65,12 +68,12 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ### Validation
 
-- [ ] Capture still works end-to-end.
-- [ ] Feed still loads and feels continuity-first.
-- [ ] Item detail continuity context still works.
-- [ ] Comments/continuation still persists and reads correctly.
-- [ ] Plan-this and session lifecycle are still coherent.
-- [ ] Founder review still produces concise, actionable output.
+- [x] Capture still works end-to-end.
+- [x] Feed still loads and feels continuity-first.
+- [x] Item detail continuity context still works.
+- [x] Comments/continuation still persists and reads correctly.
+- [x] Plan-this and session lifecycle are still coherent.
+- [x] Founder review still produces concise, actionable output.
 
 ## Mobile cutover checklist (after web stability)
 
