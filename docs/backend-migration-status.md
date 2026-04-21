@@ -36,10 +36,10 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | parity validated | N8 routes web/domain retrieval to `/functions/feed` (with `/functions/feed/rank` alias) using shared ranking + whyShown shaping in function service. |
 | Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | parity validated | N8 routes web/domain feed actions to function endpoints (`/functions/feed/:id/{dismiss|snooze|refresh}`) with owner checks and parity behavior. |
 | Legacy AI feed card generator | `POST /ai/feed/generate-card` | `apps/api/src/routes/feed.ts` | deprecate/delete | none | No | deprecate/delete | Prototype helper, remove after feed function parity. |
-| Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | not started | Keep deterministic fallback behavior. |
-| Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | not started | Thin-slice AI only; no generic chat expansion. |
-| Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | in progress | N8 web/domain paths now call function endpoints (`/functions/summarize-progress`, `/functions/what-should-i-do-next`) while legacy AI routes remain for compatibility until N9 cleanup. |
-| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | in progress | N8 web/domain paths now call `/functions/founder-review`; legacy route retained for compatibility during phased cutover. |
+| Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | parity validated | N9 routes plan conversion through `/functions/convert` behind `packages/client`, preserving deterministic outcomes (`task_created`, `plan_suggested`, `not_recommended`). |
+| Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 routes thin-slice summarize/classify/query through `/functions/{summarize|classify|query}` with owner-scoped access and deterministic fallback parity. |
+| Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 validates `/functions/summarize-progress` and `/functions/what-should-i-do-next` in strict mode with concise, grounded outputs and graceful non-owner `404` behavior. |
+| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N8 web/domain paths call `/functions/founder-review`; N9 preserves concise actionability while founder compatibility routes remain temporarily for phased cleanup. |
 | Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | not started | Return affected-item diagnostics, not broad analytics dashboards. |
 | Function namespace compatibility | `/functions/*` (feed, summarize, next-step, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | Keep only while cutover slices are being validated. |
 | Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | deprecate/delete | Raw events remain server-side or tightly restricted by policy. |
@@ -171,13 +171,27 @@ N8 is complete in this repository state:
    - owner-scoped feed action behavior,
    - strict-auth core-loop regression safety.
 
-## N9 kickoff update
+## N9 completion update
 
-N9 begins in this repository state with AI thin-slice scope:
+N9 is complete in this repository state:
 
-1. Migrate remaining AI thin-slice web/domain call sites fully to function endpoints and reduce compatibility duplication.
-2. Preserve concise, product-grounded synthesis outputs (no generic chat expansion).
-3. Capture parity evidence for summarize/classify/query/convert slices while keeping loop-safety checks green.
+1. `packages/client` now routes thin-slice AI methods to function endpoints:
+   - `POST /functions/summarize-progress`
+   - `POST /functions/what-should-i-do-next`
+   - `POST /functions/summarize`
+   - `POST /functions/classify`
+   - `POST /functions/query`
+   - `POST /functions/convert`
+2. Function route ownership handling for synthesis endpoints is now graceful (non-owner access returns `404` instead of bubbling uncaught errors).
+3. N9 parity tests validate strict-auth quality/grounding and fallback behavior across summarize/classify/query/convert while keeping core-loop regression checks green.
+
+## N10 kickoff update
+
+N10 begins in this repository state with founder-review completion scope:
+
+1. Consolidate founder-review web/domain usage on canonical function APIs and trim compatibility debt.
+2. Preserve concise founder readouts and diagnostics quality while tightening owner-scoped access guarantees.
+3. Capture parity evidence for founder review actionability before legacy founder routes are considered for deprecation.
 
 ## Unclassified capabilities
 

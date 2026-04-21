@@ -37,4 +37,8 @@ test("function endpoint aliases resolve to canonical paths", () => {
   assert.equal(endpoints.functionFeed, "/functions/feed");
   assert.equal(endpoints.functionFeedRank, endpoints.functionFeed);
   assert.equal(endpoints.functionNextStep, "/functions/what-should-i-do-next");
+  assert.equal(endpoints.functionSummarizeItem, "/functions/summarize");
+  assert.equal(endpoints.functionClassifyItem, "/functions/classify");
+  assert.equal(endpoints.functionQueryItem, "/functions/query");
+  assert.equal(endpoints.functionConvert, "/functions/convert");
 });

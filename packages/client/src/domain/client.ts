@@ -248,46 +248,29 @@ function createRestDomainClient(): YurbrainDomainClient {
 }
 
 function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
-  const runSessionHelperFunction = <T>(payload: FunctionSessionHelperPayload) =>
-    apiClient<T>(endpoints.functionSessionHelper, {
+  const postJson = <T>(url: string, payload: unknown) =>
+    apiClient<T>(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload)
     });
 
+  const runSessionHelperFunction = <T>(payload: FunctionSessionHelperPayload) =>
+    postJson<T>(endpoints.functionSessionHelper, payload);
+
   return {
     getFeedRanked: (query = {}) =>
       apiClient(`${endpoints.functionFeed}${renderQuery(query)}`),
     dismissFeedCard: (cardId) =>
-      apiClient(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/dismiss`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({})
-      }),
+      postJson(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/dismiss`, {}),
     snoozeFeedCard: (cardId, minutes = 60) =>
-      apiClient(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/snooze`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ minutes })
-      }),
+      postJson(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/snooze`, { minutes }),
     refreshFeedCard: (cardId) =>
-      apiClient(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/refresh`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({})
-      }),
+      postJson(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/refresh`, {}),
     summarizeProgress: (payload) =>
-      apiClient(endpoints.functionSummarizeProgress, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
+      postJson(endpoints.functionSummarizeProgress, payload),
     getWhatShouldIDoNext: (payload) =>
-      apiClient(endpoints.functionNextStep, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
+      postJson(endpoints.functionNextStep, payload),
     getFounderReviewScored: (query = {}) =>
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({
@@ -300,17 +283,25 @@ function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
     getFeed: (query = {}) =>
       apiClient(`${endpoints.functionFeed}${renderQuery(query)}`),
     summarizeCluster: (payload) =>
-      apiClient(endpoints.functionSummarizeProgress, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
+      postJson(endpoints.functionSummarizeProgress, payload),
     requestNextStep: (payload) =>
-      apiClient(endpoints.functionNextStep, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
+      postJson(endpoints.functionNextStep, payload),
+    summarizeBrainItem: (payload) =>
+      postJson(endpoints.functionSummarizeItem, payload),
+    summarizeItem: (payload) =>
+      postJson(endpoints.functionSummarizeItem, payload),
+    classifyBrainItem: (payload) =>
+      postJson(endpoints.functionClassifyItem, payload),
+    classifyItem: (payload) =>
+      postJson(endpoints.functionClassifyItem, payload),
+    queryBrainItemThread: (payload) =>
+      postJson(endpoints.functionQueryItem, payload),
+    queryItem: (payload) =>
+      postJson(endpoints.functionQueryItem, payload),
+    planThis: (payload) =>
+      postJson(endpoints.functionConvert, payload),
+    manualConvertTask: (payload) =>
+      postJson(endpoints.functionConvert, payload),
     getFounderReview: (query = {}) =>
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({

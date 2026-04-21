@@ -143,3 +143,130 @@ test("next-step function route alias matches canonical route response", async ()
     canonical.json<{ suggestedNextAction: string; reason: string }>()
   );
 });
+
+test("summarize-progress returns 404 for non-owner item access", async () => {
+  const ownerId = "18111111-1811-4811-8811-181111111111";
+  const outsiderId = "19111111-1911-4911-8911-191111111111";
+  const created = await app.inject({
+    method: "POST",
+    url: "/capture/intake",
+    payload: {
+      userId: ownerId,
+      type: "text",
+      content: "Owner-only synthesis item."
+    }
+  });
+  assert.equal(created.statusCode, 201);
+  const itemId = created.json<{ itemId: string }>().itemId;
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/functions/summarize-progress",
+    headers: { "x-yurbrain-user-id": outsiderId },
+    payload: { itemIds: [itemId] }
+  });
+
+  assert.equal(response.statusCode, 404);
+  assert.equal(response.json<{ message: string }>().message, "Brain item not found");
+});
+
+test("function thin-slice summarize/classify/query/convert routes preserve deterministic behavior", async () => {
+  const userId = "20202020-2020-4020-8020-202020202020";
+  const headers = { "x-yurbrain-user-id": userId };
+
+  const itemResponse = await app.inject({
+    method: "POST",
+    url: "/brain-items",
+    headers,
+    payload: {
+      type: "note",
+      title: "Function thin-slice target",
+      rawContent: "Summarize this continuity context for a concrete next action."
+    }
+  });
+  assert.equal(itemResponse.statusCode, 201);
+  const item = itemResponse.json<{ id: string; rawContent: string }>();
+
+  const summarizeResponse = await app.inject({
+    method: "POST",
+    url: "/functions/summarize",
+    headers,
+    payload: {
+      itemId: item.id,
+      rawContent: item.rawContent
+    }
+  });
+  assert.equal(summarizeResponse.statusCode, 201);
+  const summarizeBody = summarizeResponse.json<{ type: string; fallbackUsed: boolean; ai: { content: string } }>();
+  assert.equal(summarizeBody.type, "summary");
+  assert.match(summarizeBody.ai.content, /Changed:/);
+  assert.equal(summarizeBody.fallbackUsed, false);
+
+  const classifyResponse = await app.inject({
+    method: "POST",
+    url: "/functions/classify",
+    headers,
+    payload: {
+      itemId: item.id,
+      rawContent: item.rawContent
+    }
+  });
+  assert.equal(classifyResponse.statusCode, 201);
+  const classifyBody = classifyResponse.json<{ type: string; ai: { content: string } }>();
+  assert.equal(classifyBody.type, "classification");
+  assert.match(classifyBody.ai.content, /CLASSIFY:/);
+
+  const threadResponse = await app.inject({
+    method: "POST",
+    url: "/threads",
+    headers,
+    payload: {
+      targetItemId: item.id,
+      kind: "item_chat"
+    }
+  });
+  assert.equal(threadResponse.statusCode, 201);
+  const threadId = threadResponse.json<{ id: string }>().id;
+
+  const queryResponse = await app.inject({
+    method: "POST",
+    url: "/functions/query",
+    headers,
+    payload: {
+      threadId,
+      question: "[force-timeout] what should I do next?",
+      timeoutMs: 200
+    }
+  });
+  assert.equal(queryResponse.statusCode, 201);
+  const queryBody = queryResponse.json<{ fallbackUsed: boolean; fallbackReason?: string; message: { content: string } }>();
+  assert.equal(queryBody.fallbackUsed, true);
+  assert.equal(queryBody.fallbackReason, "timeout");
+  assert.match(queryBody.message.content, /Recommendation:/);
+
+  const convertNotRecommended = await app.inject({
+    method: "POST",
+    url: "/functions/convert",
+    headers,
+    payload: {
+      sourceItemId: item.id,
+      content: "Too short"
+    }
+  });
+  assert.equal(convertNotRecommended.statusCode, 201);
+  assert.equal(convertNotRecommended.json<{ outcome: string }>().outcome, "not_recommended");
+
+  const convertTask = await app.inject({
+    method: "POST",
+    url: "/functions/convert",
+    headers,
+    payload: {
+      sourceItemId: item.id,
+      content: "Ship production migration checklist updates and verify loop parity."
+    }
+  });
+  assert.equal(convertTask.statusCode, 201);
+  const convertTaskBody = convertTask.json<{ outcome: string; task?: { userId: string } }>();
+  assert.equal(convertTaskBody.outcome, "task_created");
+  assert.equal(convertTaskBody.task?.userId, userId);
+});

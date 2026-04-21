@@ -20,6 +20,10 @@ export const endpoints = {
   functionFeed: "/functions/feed",
   functionFeedRank: "/functions/feed",
   functionFounderReview: "/functions/founder-review",
+  functionSummarizeItem: "/functions/summarize",
+  functionClassifyItem: "/functions/classify",
+  functionQueryItem: "/functions/query",
+  functionConvert: "/functions/convert",
   functionSummarizeProgress: "/functions/summarize-progress",
   functionNextStep: "/functions/what-should-i-do-next",
   functionSessionHelper: "/functions/session-helper"

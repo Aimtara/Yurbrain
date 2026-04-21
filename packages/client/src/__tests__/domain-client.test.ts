@@ -236,7 +236,7 @@ test("domain client keeps CRUD/computed boundary in GraphQL mode", async () => {
   assert.ok(graphqlCall);
 });
 
-test("domain client function mode routes feed actions and synthesis/founder calls to function endpoints", async () => {
+test("domain client function mode routes feed actions and AI thin-slice calls to function endpoints", async () => {
   const calls = installFetch((call) => {
     if (call.url === "/functions/feed?lens=keep_in_mind&limit=3") {
       return new Response(JSON.stringify([]), { status: 200 });
@@ -256,6 +256,27 @@ test("domain client function mode routes feed actions and synthesis/founder call
     if (call.url === "/functions/what-should-i-do-next") {
       return new Response(JSON.stringify({ suggestedNextAction: "next" }), { status: 201 });
     }
+    if (call.url === "/functions/summarize") {
+      return new Response(JSON.stringify({ type: "summary", ai: { content: "summary" } }), { status: 201 });
+    }
+    if (call.url === "/functions/classify") {
+      return new Response(JSON.stringify({ type: "classification", ai: { content: "classify" } }), { status: 201 });
+    }
+    if (call.url === "/functions/query") {
+      return new Response(
+        JSON.stringify({
+          threadId: "thread-1",
+          userMessage: { id: "m1", threadId: "thread-1", role: "user", content: "question", createdAt: new Date().toISOString() },
+          message: { id: "m2", threadId: "thread-1", role: "assistant", content: "answer", createdAt: new Date().toISOString() },
+          ai: { content: "answer", confidence: 0.9, metadata: {} },
+          fallbackUsed: false
+        }),
+        { status: 201 }
+      );
+    }
+    if (call.url === "/functions/convert") {
+      return new Response(JSON.stringify({ outcome: "task_created" }), { status: 201 });
+    }
     if (call.url === "/functions/founder-review?window=7d&includeAi=1") {
       return new Response(JSON.stringify({ window: "7d" }), { status: 200 });
     }
@@ -269,6 +290,10 @@ test("domain client function mode routes feed actions and synthesis/founder call
   await client.refreshFeedCard("card-1");
   await client.summarizeCluster({ itemIds: ["item-1"] });
   await client.requestNextStep({ itemIds: ["item-1"] });
+  await client.summarizeBrainItem({ itemId: "item-1", rawContent: "summary input" });
+  await client.classifyBrainItem({ itemId: "item-1", rawContent: "classify input" });
+  await client.queryBrainItemThread({ threadId: "thread-1", question: "What next?" });
+  await client.planThis({ sourceItemId: "item-1", content: "Create follow-up task" });
   await client.getFounderReview({ window: "7d", includeAi: true });
 
   assert.ok(calls.find((call) => call.url === "/functions/feed?lens=keep_in_mind&limit=3"));
@@ -277,11 +302,18 @@ test("domain client function mode routes feed actions and synthesis/founder call
   assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/refresh"));
   assert.ok(calls.find((call) => call.url === "/functions/summarize-progress"));
   assert.ok(calls.find((call) => call.url === "/functions/what-should-i-do-next"));
+  assert.ok(calls.find((call) => call.url === "/functions/summarize"));
+  assert.ok(calls.find((call) => call.url === "/functions/classify"));
+  assert.ok(calls.find((call) => call.url === "/functions/query"));
+  assert.ok(calls.find((call) => call.url === "/functions/convert"));
   assert.ok(calls.find((call) => call.url === "/functions/founder-review?window=7d&includeAi=1"));
 
   const snoozeCall = calls.find((call) => call.url === "/functions/feed/card-1/snooze");
   const summarizeCall = calls.find((call) => call.url === "/functions/summarize-progress");
   const nextStepCall = calls.find((call) => call.url === "/functions/what-should-i-do-next");
+  const classifyCall = calls.find((call) => call.url === "/functions/classify");
+  const queryCall = calls.find((call) => call.url === "/functions/query");
+  const convertCall = calls.find((call) => call.url === "/functions/convert");
   assert.equal(
     String(snoozeCall?.init?.body),
     JSON.stringify({ minutes: 30 })
@@ -293,5 +325,17 @@ test("domain client function mode routes feed actions and synthesis/founder call
   assert.equal(
     String(nextStepCall?.init?.body),
     JSON.stringify({ itemIds: ["item-1"] })
+  );
+  assert.equal(
+    String(classifyCall?.init?.body),
+    JSON.stringify({ itemId: "item-1", rawContent: "classify input" })
+  );
+  assert.equal(
+    String(queryCall?.init?.body),
+    JSON.stringify({ threadId: "thread-1", question: "What next?" })
+  );
+  assert.equal(
+    String(convertCall?.init?.body),
+    JSON.stringify({ sourceItemId: "item-1", content: "Create follow-up task" })
   );
 });

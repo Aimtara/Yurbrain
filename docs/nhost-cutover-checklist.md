@@ -83,6 +83,8 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 - [x] Feed is served by function-backed `getFeed`.
 - [x] Summarize/next-step routes are function-backed.
+- [x] Summarize/classify/query/convert thin-slice routes are function-backed.
+- [x] Function ownership failures return graceful `404` responses (no internal-error leak).
 - [x] Founder review and diagnostics are function-backed.
 
 ### Validation
