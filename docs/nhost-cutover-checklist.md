@@ -36,13 +36,34 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [ ] Nhost bootstrap smoke check confirmed (`bootstrapNhostSession` returns `configured: true` when keys are present).
 - [ ] Hasura GraphQL smoke check confirmed (`isHasuraGraphqlConfigured()` true and one read query succeeds in Nhost mode).
 
+### N4: Web Auth / Current User Cutover
+
+- [x] Web provider defaults to Nhost transport (`YurbrainClientProvider` uses `options={{ transport: "nhost" }}` in web layout).
+- [x] Nhost bootstrap enables strict identity resolution mode to prevent demo/runtime user-id fallback on web auth paths.
+- [x] When Nhost config is present but no session exists, bootstrap clears stale user/token state to allow proper unauthorized behavior.
+- [x] Web Founder Review path surfaces explicit unauthorized state for 401 responses.
+- [x] Strict identity mode now suppresses client-side `x-yurbrain-user-id` injection and sends explicit strict auth-mode header.
+- [x] API strict mode requires bearer-derived identity and ignores header/query/body legacy fallbacks when strict mode is enabled.
+- [x] Authenticated strict-mode loop smoke test passes (`auth/me` → capture → feed → item detail → comments → manual-convert plan → session pause/finish → founder review).
+
+### N5: Schema + Permissions + Backfill Scaffolding
+
+- [x] Profile scaffold table added (`profiles`) with deterministic backfill metadata (`backfill_source`, `backfilled_at`).
+- [x] Sessions table includes nullable `user_id` scaffold column for future ownership simplification.
+- [x] Repository includes profile scaffold operations (`get/upsert/list-needing-backfill/mark-backfilled`).
+- [x] Backfill script scaffold added (`packages/db/src/scripts/n5-backfill-profiles.ts`) with dry-run support.
+- [x] N5 profile repository/backfill tests added and passing.
+- [x] Ownership backfills added for scaffolded `user_id` columns (`item_artifacts`, `item_threads`, `thread_messages`, `sessions`) with deterministic join order.
+- [x] Required vs optional backfill phases and demo/founder mapping notes documented (`docs/nhost-hasura-permission-scaffold.md`).
+- [x] Owner-scoped Hasura rule + insert preset scaffolding documented, including stricter treatment for `item_artifacts` and `events`.
+
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
 
-- [ ] Web bootstrap resolves real current user via Nhost auth.
-- [ ] Demo-user fallback removed from web runtime path.
-- [ ] Unauthorized state is handled gracefully.
+- [x] Web bootstrap resolves real current user via Nhost auth.
+- [x] Demo-user fallback removed from web runtime path.
+- [x] Unauthorized state is handled gracefully.
 
 ### CRUD path cutover
 
@@ -59,12 +80,12 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ### Validation
 
-- [ ] Capture still works end-to-end.
-- [ ] Feed still loads and feels continuity-first.
-- [ ] Item detail continuity context still works.
-- [ ] Comments/continuation still persists and reads correctly.
-- [ ] Plan-this and session lifecycle are still coherent.
-- [ ] Founder review still produces concise, actionable output.
+- [x] Capture still works end-to-end.
+- [x] Feed still loads and feels continuity-first.
+- [x] Item detail continuity context still works.
+- [x] Comments/continuation still persists and reads correctly.
+- [x] Plan-this and session lifecycle are still coherent.
+- [x] Founder review still produces concise, actionable output.
 
 ## Mobile cutover checklist (after web stability)
 

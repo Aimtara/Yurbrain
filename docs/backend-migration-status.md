@@ -21,7 +21,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 
 | Capability | Current REST/API route(s) | Current source | Target source | Client method (target name) | Product critical | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Current user identity | `GET /auth/me` | `apps/api/src/server.ts` | Nhost Auth session + GraphQL profile read | `getCurrentUser` | Yes | not started | Remove demo identity assumptions and header fallback reliance from user paths. |
+| Current user identity | `GET /auth/me` | `apps/api/src/server.ts` | Nhost Auth session + GraphQL profile read | `getCurrentUser` | Yes | in progress | Web now boots client with Nhost transport + strict identity mode; strict-mode requests require bearer-derived identity and ignore header/query/params/body fallback, and no-session path yields 401. |
 | Capture intake pipeline | `POST /capture/intake` | `apps/api/src/routes/capture.ts` | Nhost Function | `createBrainItem` (capture mode) | Yes | not started | Includes enrichment, related detection, feed card side effects, and event append. |
 | Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | N2 stable client surface now includes these methods; runtime behavior remains parity-preserving. |
 | Brain item artifacts read | `GET /brain-items/:id/artifacts` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL read | `getBrainItem` (artifact expansion) | Yes | in progress | Keep writes server-side where feasible. |
@@ -90,7 +90,45 @@ Completed in this repository state:
 
 - N1 (audit + migration tracker): complete.
 - N2 (domain client stabilization): complete.
-- N3+ phases remain open and tracked by capability status + cutover checklist.
+- N3 (Nhost foundation scaffolding): complete.
+- N4+ phases remain open and tracked by capability status + cutover checklist.
+
+## N3 progress update
+
+Completed in this repository state:
+
+1. Added a typed Nhost runtime config builder in `packages/client/src/auth/nhost.ts`.
+2. Added deterministic env-resolution hooks for testing (`setNhostEnvResolver`).
+3. Added derived Nhost URL synthesis from `subdomain + region` for auth/graphql/functions endpoints.
+4. Bootstrap now hydrates Hasura GraphQL URL from Nhost runtime config while keeping REST default behavior unchanged.
+5. Added Nhost foundation tests:
+   - `packages/client/src/__tests__/nhost-runtime-config.test.ts`
+   - updated `packages/client/src/__tests__/nhost-auth.test.ts`
+
+## N4 hardening update
+
+Completed in this repository state:
+
+1. Strict-mode requests now enforce bearer-token identity on the API (`x-yurbrain-auth-mode` / `x-yurbrain-identity-mode` => no header/query/params/body fallback).
+2. Client strict-mode request path now sends explicit strict-identity mode header and suppresses `x-yurbrain-user-id` injection.
+3. Added authenticated Nhost bootstrap test proving session-hydrated `userId` + access token.
+4. Added strict-auth core-loop smoke test proving capture -> feed -> item detail -> comments -> plan -> session -> founder review under strict auth mode.
+
+## N5 scaffolding update
+
+Completed in this repository state:
+
+1. Added initial profile + backfill schema scaffold migration (`packages/db/migrations/0010_n5_profiles_backfill_scaffold.sql`) including:
+   - `profiles` table with backfill tracking fields.
+   - `sessions.user_id` nullable ownership column.
+   - ownership indexes to support user-scoped queries.
+2. Added `userProfiles` schema + repository APIs in `packages/db/src/schema.ts` and `packages/db/src/index.ts`.
+3. Added N5 profile backfill script scaffold (`packages/db/src/scripts/n5-backfill-profiles.ts`) to populate `profiles` from `user_preferences`.
+4. Added targeted N5 repository tests for profile/backfill behavior (`packages/db/src/__tests__/n5-profiles.test.ts`).
+5. Extended ownership scaffolding hardening:
+   - migration now backfills `item_artifacts.user_id`, `item_threads.user_id`, `thread_messages.user_id`, and `sessions.user_id` from existing relational ownership.
+   - repository write paths now stamp ownership where available for artifacts/threads/messages/sessions.
+6. Added explicit N5 Hasura permission scaffold doc (`docs/nhost-hasura-permission-scaffold.md`) with owner rules, insert presets, stricter artifact/events treatment, and required/optional backfill order.
 
 ## Unclassified capabilities
 

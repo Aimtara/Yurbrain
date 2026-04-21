@@ -42,6 +42,7 @@ export type EventRecord = {
 export type ThreadRecord = {
   id: string;
   targetItemId: string;
+  userId?: string | null;
   kind: "item_comment" | "item_chat";
   createdAt: string;
   updatedAt: string;
@@ -50,6 +51,7 @@ export type ThreadRecord = {
 export type MessageRecord = {
   id: string;
   threadId: string;
+  userId?: string | null;
   role: "user" | "assistant" | "system";
   content: string;
   createdAt: string;
@@ -95,6 +97,7 @@ export type TaskRecord = {
 export type SessionRecord = {
   id: string;
   taskId: string;
+  userId?: string | null;
   state: "running" | "paused" | "finished";
   startedAt: string;
   endedAt: string | null;
@@ -103,6 +106,7 @@ export type SessionRecord = {
 export type ArtifactRecord = {
   id: string;
   itemId: string;
+  userId?: string | null;
   type: "summary" | "classification" | "relation" | "feed_card";
   payload: Record<string, unknown>;
   confidence: number;
@@ -118,6 +122,17 @@ export type UserPreferenceRecord = {
   aiSummaryMode: AiSummaryMode;
   feedDensity: FeedDensity;
   resurfacingIntensity: ResurfacingIntensity;
+  updatedAt: string;
+};
+
+export type UserProfileRecord = {
+  id: string;
+  email: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  backfillSource: string | null;
+  backfilledAt: string | null;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -189,6 +204,15 @@ export type DbRepository = {
   createArtifact: (artifact: ArtifactRecord) => Promise<ArtifactRecord>;
   getArtifactById: (id: string) => Promise<ArtifactRecord | null>;
   listArtifactsByItem: (itemId: string, query?: { type?: ArtifactRecord["type"] }) => Promise<ArtifactRecord[]>;
+  getUserProfileById: (userId: string) => Promise<UserProfileRecord | null>;
+  upsertUserProfile: (
+    userId: string,
+    updates?: Partial<Pick<UserProfileRecord, "email" | "displayName" | "avatarUrl" | "backfillSource">> & {
+      backfilled?: boolean;
+    }
+  ) => Promise<UserProfileRecord>;
+  listUserProfilesNeedingBackfill: (limit?: number) => Promise<string[]>;
+  markUserProfileBackfilled: (userId: string, source?: string) => Promise<UserProfileRecord>;
   getUserPreference: (userId: string) => Promise<UserPreferenceRecord | null>;
   upsertUserPreference: (
     userId: string,
@@ -256,6 +280,7 @@ function toThreadRecord(row: typeof schema.itemThreads.$inferSelect): ThreadReco
   return {
     id: row.id,
     targetItemId: row.targetItemId,
+    userId: row.userId,
     kind: row.kind,
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
@@ -266,6 +291,7 @@ function toMessageRecord(row: typeof schema.threadMessages.$inferSelect): Messag
   return {
     id: row.id,
     threadId: row.threadId,
+    userId: row.userId,
     role: row.role,
     content: row.content,
     createdAt: toIso(row.createdAt) ?? new Date(0).toISOString()
@@ -311,6 +337,7 @@ function toSessionRecord(row: typeof schema.sessions.$inferSelect): SessionRecor
   return {
     id: row.id,
     taskId: row.taskId,
+    userId: row.userId,
     state: row.state,
     startedAt: toIso(row.startedAt) ?? new Date(0).toISOString(),
     endedAt: toIso(row.endedAt)
@@ -321,6 +348,7 @@ function toArtifactRecord(row: typeof schema.itemArtifacts.$inferSelect): Artifa
   return {
     id: row.id,
     itemId: row.itemId,
+    userId: row.userId,
     type: row.type as ArtifactRecord["type"],
     payload: row.payload as Record<string, unknown>,
     confidence: Number(row.confidence),
@@ -339,6 +367,19 @@ function toUserPreferenceRecord(row: typeof schema.userPreferences.$inferSelect)
     feedDensity: row.feedDensity as FeedDensity,
     resurfacingIntensity: row.resurfacingIntensity as ResurfacingIntensity,
     updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString()
+  };
+}
+
+function toUserProfileRecord(row: typeof schema.profiles.$inferSelect): UserProfileRecord {
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.displayName,
+    avatarUrl: row.avatarUrl,
+    backfillSource: row.backfillSource,
+    createdAt: toIso(row.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: toIso(row.updatedAt) ?? new Date(0).toISOString(),
+    backfilledAt: toIso(row.backfilledAt)
   };
 }
 
@@ -494,11 +535,21 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
       }),
     createThread: (thread) =>
       withDb(async ({ db }) => {
+        let threadUserId = thread.userId ?? null;
+        if (!threadUserId) {
+          const [owner] = await db
+            .select({ userId: schema.brainItems.userId })
+            .from(schema.brainItems)
+            .where(eq(schema.brainItems.id, thread.targetItemId))
+            .limit(1);
+          threadUserId = owner?.userId ?? null;
+        }
         const [row] = await db
           .insert(schema.itemThreads)
           .values({
             id: thread.id,
             targetItemId: thread.targetItemId,
+            userId: threadUserId,
             kind: thread.kind,
             createdAt: toDate(thread.createdAt) ?? undefined,
             updatedAt: toDate(thread.updatedAt) ?? undefined
@@ -524,11 +575,21 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
       }),
     createMessage: (message) =>
       withDb(async ({ db }) => {
+        let messageUserId = message.userId ?? null;
+        if (!messageUserId) {
+          const [owner] = await db
+            .select({ userId: schema.itemThreads.userId })
+            .from(schema.itemThreads)
+            .where(eq(schema.itemThreads.id, message.threadId))
+            .limit(1);
+          messageUserId = owner?.userId ?? null;
+        }
         const [row] = await db
           .insert(schema.threadMessages)
           .values({
             id: message.id,
             threadId: message.threadId,
+            userId: messageUserId,
             role: message.role,
             content: message.content,
             createdAt: toDate(message.createdAt) ?? undefined
@@ -677,11 +738,17 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
       }),
     createSession: (session) =>
       withDb(async ({ db }) => {
+        let sessionUserId = session.userId ?? null;
+        if (!sessionUserId) {
+          const [task] = await db.select({ userId: schema.tasks.userId }).from(schema.tasks).where(eq(schema.tasks.id, session.taskId)).limit(1);
+          sessionUserId = task?.userId ?? null;
+        }
         const [row] = await db
           .insert(schema.sessions)
           .values({
             id: session.id,
             taskId: session.taskId,
+            userId: sessionUserId,
             state: session.state,
             startedAt: toDate(session.startedAt) ?? undefined,
             endedAt: toDate(session.endedAt)
@@ -752,11 +819,21 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
       }),
     createArtifact: (artifact) =>
       withDb(async ({ db }) => {
+        let artifactUserId = artifact.userId ?? null;
+        if (!artifactUserId) {
+          const [owner] = await db
+            .select({ userId: schema.brainItems.userId })
+            .from(schema.brainItems)
+            .where(eq(schema.brainItems.id, artifact.itemId))
+            .limit(1);
+          artifactUserId = owner?.userId ?? null;
+        }
         const [row] = await db
           .insert(schema.itemArtifacts)
           .values({
             id: artifact.id,
             itemId: artifact.itemId,
+            userId: artifactUserId,
             type: artifact.type,
             payload: artifact.payload,
             confidence: String(artifact.confidence),
@@ -822,6 +899,103 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           })
           .returning();
         return toUserPreferenceRecord(row);
+      }),
+    getUserProfileById: (userId) =>
+      withDb(async ({ db }) => {
+        const [row] = await db.select().from(schema.profiles).where(eq(schema.profiles.id, userId)).limit(1);
+        return row ? toUserProfileRecord(row) : null;
+      }),
+    upsertUserProfile: (userId, updates = {}) =>
+      withDb(async ({ db }) => {
+        const updatePatch: Partial<typeof schema.profiles.$inferInsert> = {
+          updatedAt: new Date()
+        };
+        if (updates.backfilled !== undefined) {
+          updatePatch.backfilledAt = updates.backfilled ? new Date() : null;
+        }
+        if (updates.displayName !== undefined) updatePatch.displayName = updates.displayName;
+        if (updates.avatarUrl !== undefined) updatePatch.avatarUrl = updates.avatarUrl;
+        if (updates.backfillSource !== undefined) updatePatch.backfillSource = updates.backfillSource;
+
+        const [row] = await db
+          .insert(schema.profiles)
+          .values({
+            id: userId,
+            displayName: updates.displayName ?? null,
+            avatarUrl: updates.avatarUrl ?? null,
+            backfillSource: updates.backfillSource ?? "manual",
+            backfilledAt: updates.backfilled ? new Date() : null,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+          .onConflictDoUpdate({
+            target: schema.profiles.id,
+            set: updatePatch
+          })
+          .returning();
+        return toUserProfileRecord(row);
+      }),
+    listUserProfilesNeedingBackfill: (limit = 200) =>
+      withDb(async ({ db }) => {
+        const ownerIds = new Set<string>();
+
+        const [brainItemOwners, feedCardOwners, taskOwners, eventOwners, preferenceOwners, sessionOwners, threadOwners, messageOwners, artifactOwners] = await Promise.all([
+          db.selectDistinct({ userId: schema.brainItems.userId }).from(schema.brainItems).where(sql`${schema.brainItems.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.feedCards.userId }).from(schema.feedCards).where(sql`${schema.feedCards.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.tasks.userId }).from(schema.tasks).where(sql`${schema.tasks.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.events.userId }).from(schema.events).where(sql`${schema.events.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.userPreferences.userId }).from(schema.userPreferences).where(sql`${schema.userPreferences.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.sessions.userId }).from(schema.sessions).where(sql`${schema.sessions.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.itemThreads.userId }).from(schema.itemThreads).where(sql`${schema.itemThreads.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.threadMessages.userId }).from(schema.threadMessages).where(sql`${schema.threadMessages.userId} IS NOT NULL`),
+          db.selectDistinct({ userId: schema.itemArtifacts.userId }).from(schema.itemArtifacts).where(sql`${schema.itemArtifacts.userId} IS NOT NULL`)
+        ]);
+
+        for (const owner of [
+          ...brainItemOwners,
+          ...feedCardOwners,
+          ...taskOwners,
+          ...eventOwners,
+          ...preferenceOwners,
+          ...sessionOwners,
+          ...threadOwners,
+          ...messageOwners,
+          ...artifactOwners
+        ]) {
+          if (owner.userId) {
+            ownerIds.add(owner.userId);
+          }
+        }
+
+        const sortedOwnerIds = Array.from(ownerIds).sort((left, right) => left.localeCompare(right));
+        const existingProfiles = sortedOwnerIds.length
+          ? await db.select({ id: schema.profiles.id }).from(schema.profiles).where(inArray(schema.profiles.id, sortedOwnerIds))
+          : [];
+        const existingProfileIds = new Set(existingProfiles.map((profile) => profile.id));
+
+        return sortedOwnerIds.filter((userId) => !existingProfileIds.has(userId)).slice(0, limit);
+      }),
+    markUserProfileBackfilled: (userId, source = "n5_backfill") =>
+      withDb(async ({ db }) => {
+        const [row] = await db
+          .insert(schema.profiles)
+          .values({
+            id: userId,
+            backfillSource: source,
+            backfilledAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+          .onConflictDoUpdate({
+            target: schema.profiles.id,
+            set: {
+              backfillSource: source,
+              backfilledAt: new Date(),
+              updatedAt: new Date()
+            }
+          })
+          .returning();
+        return toUserProfileRecord(row);
       })
   };
 }
