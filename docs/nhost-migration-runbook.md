@@ -54,7 +54,8 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N5 (schema/permissions/backfill scaffolding): complete.
 - N6 (GraphQL CRUD wrappers in client): complete.
 - N7 (web CRUD cutover): complete.
-- N8+ (feed/function and beyond): in progress / not started per `docs/backend-migration-status.md`.
+- N8 (feed function cutover): complete.
+- N9+ (AI thin-slice functions and beyond): in progress / not started per `docs/backend-migration-status.md`.
 
 ## N3 implementation baseline (now in repo)
 
@@ -116,13 +117,22 @@ N7 is complete when these are true:
 4. Web controllers keep transport hidden behind `YurbrainClient` methods and include no direct GraphQL/function calls.
 5. Validation evidence confirms loop safety checkpoints remained intact through the cutover.
 
-## N8 implementation baseline (kickoff)
+## N8 implementation baseline (completed)
 
-N8 is in progress when these are true:
+N8 is complete when these are true:
 
-1. Feed retrieval and interaction paths are moved to function-backed APIs with parity checks for continuity quality.
-2. Founder review and synthesis-computed pathways continue to use function-backed logic (no CRUD leakage).
-3. Checklist evidence is updated immediately after each N8 slice to prevent doc staleness.
+1. Feed retrieval and interaction paths are routed through function-backed APIs (`/functions/feed` + feed action helpers) via `packages/client`.
+2. Canonical function routes and compatibility aliases are aligned (`/functions/feed` + `/functions/feed/rank`, `/functions/what-should-i-do-next` + `/functions/next-step`) with targeted tests.
+3. Founder review and synthesis-computed pathways remain function-backed in the shared client boundary (no UI transport leakage).
+4. Validation evidence covers strict-auth loop safety and function-feed ranking ergonomics.
+
+## N9 implementation baseline (kickoff)
+
+N9 is in progress when these are true:
+
+1. AI thin-slice pathways (`summarize/classify/query/convert`) are routed to function-backed APIs behind `packages/client`.
+2. Response contracts remain concise and product-grounded (no generic assistant expansion).
+3. Loop parity checkpoints are revalidated after each cutover slice before any legacy route deprecation.
 
 ## N5 required/optional backfill order
 

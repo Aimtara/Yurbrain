@@ -39,7 +39,7 @@ test("domain client routes founder review query params", async () => {
     includeAi: true
   });
 
-  assert.equal(calls[0]?.url, "/founder-review?window=7d&userId=11111111-1111-1111-1111-111111111111&includeAi=1");
+  assert.equal(calls[0]?.url, "/functions/founder-review?window=7d&userId=11111111-1111-1111-1111-111111111111&includeAi=1");
 });
 
 test("domain client addComment writes user message payload", async () => {
@@ -169,7 +169,7 @@ test("domain client GraphQL mode routes session lifecycle through function helpe
     if (call.url === "/functions/session-helper") {
       return new Response(JSON.stringify({ id: "session-1", state: "running" }), { status: 201 });
     }
-    if (call.url === "/feed?lens=all&limit=5") {
+    if (call.url === "/functions/feed?lens=all&limit=5") {
       return new Response(JSON.stringify([]), { status: 200 });
     }
     return new Response(JSON.stringify({ data: {} }), { status: 200 });
@@ -184,7 +184,7 @@ test("domain client GraphQL mode routes session lifecycle through function helpe
   assert.equal(calls[0]?.url, "/functions/session-helper");
   assert.equal(calls[1]?.url, "/functions/session-helper");
   assert.equal(calls[2]?.url, "/functions/session-helper");
-  assert.equal(calls[3]?.url, "/feed?lens=all&limit=5");
+  assert.equal(calls[3]?.url, "/functions/feed?lens=all&limit=5");
   const startPayload = JSON.parse(String(calls[0]?.init?.body ?? "{}")) as Record<string, unknown>;
   const pausePayload = JSON.parse(String(calls[1]?.init?.body ?? "{}")) as Record<string, unknown>;
   const finishPayload = JSON.parse(String(calls[2]?.init?.body ?? "{}")) as Record<string, unknown>;
@@ -201,13 +201,13 @@ test("domain client founder review defaults to founder review route without user
 
   await client.getFounderReview({ window: "7d", includeAi: true });
 
-  assert.equal(calls[0]?.url, "/founder-review?window=7d&includeAi=1");
+  assert.equal(calls[0]?.url, "/functions/founder-review?window=7d&includeAi=1");
 });
 
 test("domain client keeps CRUD/computed boundary in GraphQL mode", async () => {
   configureHasuraGraphqlUrl("https://hasura.example.com/v1/graphql");
   const calls = installFetch((call) => {
-    if (call.url === "/feed?lens=all&limit=5") {
+    if (call.url === "/functions/feed?lens=all&limit=5") {
       return new Response("[]", { status: 200 });
     }
 
@@ -230,8 +230,68 @@ test("domain client keeps CRUD/computed boundary in GraphQL mode", async () => {
   await client.getFeed({ lens: "all", limit: 5 });
   await client.listTasks();
 
-  const feedCall = calls.find((call) => call.url === "/feed?lens=all&limit=5");
+  const feedCall = calls.find((call) => call.url === "/functions/feed?lens=all&limit=5");
   assert.ok(feedCall);
   const graphqlCall = calls.find((call) => call.url === "https://hasura.example.com/v1/graphql");
   assert.ok(graphqlCall);
+});
+
+test("domain client function mode routes feed actions and synthesis/founder calls to function endpoints", async () => {
+  const calls = installFetch((call) => {
+    if (call.url === "/functions/feed?lens=keep_in_mind&limit=3") {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/dismiss") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/snooze") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/refresh") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/summarize-progress") {
+      return new Response(JSON.stringify({ summary: "ok" }), { status: 201 });
+    }
+    if (call.url === "/functions/what-should-i-do-next") {
+      return new Response(JSON.stringify({ suggestedNextAction: "next" }), { status: 201 });
+    }
+    if (call.url === "/functions/founder-review?window=7d&includeAi=1") {
+      return new Response(JSON.stringify({ window: "7d" }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ data: {} }), { status: 200 });
+  });
+  const client = createYurbrainDomainClient();
+
+  await client.getFeed({ lens: "keep_in_mind", limit: 3 });
+  await client.dismissFeedCard("card-1");
+  await client.snoozeFeedCard("card-1", 30);
+  await client.refreshFeedCard("card-1");
+  await client.summarizeCluster({ itemIds: ["item-1"] });
+  await client.requestNextStep({ itemIds: ["item-1"] });
+  await client.getFounderReview({ window: "7d", includeAi: true });
+
+  assert.ok(calls.find((call) => call.url === "/functions/feed?lens=keep_in_mind&limit=3"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/dismiss"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/snooze"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/refresh"));
+  assert.ok(calls.find((call) => call.url === "/functions/summarize-progress"));
+  assert.ok(calls.find((call) => call.url === "/functions/what-should-i-do-next"));
+  assert.ok(calls.find((call) => call.url === "/functions/founder-review?window=7d&includeAi=1"));
+
+  const snoozeCall = calls.find((call) => call.url === "/functions/feed/card-1/snooze");
+  const summarizeCall = calls.find((call) => call.url === "/functions/summarize-progress");
+  const nextStepCall = calls.find((call) => call.url === "/functions/what-should-i-do-next");
+  assert.equal(
+    String(snoozeCall?.init?.body),
+    JSON.stringify({ minutes: 30 })
+  );
+  assert.equal(
+    String(summarizeCall?.init?.body),
+    JSON.stringify({ itemIds: ["item-1"] })
+  );
+  assert.equal(
+    String(nextStepCall?.init?.body),
+    JSON.stringify({ itemIds: ["item-1"] })
+  );
 });

@@ -83,3 +83,42 @@ test("yurbrain client touchBrainItem performs read then patch", async () => {
   assert.equal(calls[1]?.url, "/brain-items/item-1");
   assert.equal(calls[1]?.init?.method, "PATCH");
 });
+
+test("yurbrain client routes feed and synthesis to function endpoints", async () => {
+  const calls = installFetch((call) => {
+    if (call.url === "/functions/feed?lens=all&limit=4") {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/dismiss") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/snooze") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/refresh") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/summarize-progress") {
+      return new Response(JSON.stringify({ summary: "ok" }), { status: 201 });
+    }
+    if (call.url === "/functions/what-should-i-do-next") {
+      return new Response(JSON.stringify({ suggestedNextAction: "next" }), { status: 201 });
+    }
+    return new Response("{}", { status: 200 });
+  });
+  const client = createYurbrainClient();
+
+  await client.getFeed({ lens: "all", limit: 4 });
+  await client.dismissFeedCard("card-1");
+  await client.snoozeFeedCard("card-1", 20);
+  await client.refreshFeedCard("card-1");
+  await client.summarizeProgress({ itemIds: ["item-1"] });
+  await client.getNextStep({ itemIds: ["item-1"] });
+
+  assert.ok(calls.find((call) => call.url === "/functions/feed?lens=all&limit=4"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/dismiss"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/snooze"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/refresh"));
+  assert.ok(calls.find((call) => call.url === "/functions/summarize-progress"));
+  assert.ok(calls.find((call) => call.url === "/functions/what-should-i-do-next"));
+});

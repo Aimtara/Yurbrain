@@ -33,13 +33,13 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Session list/detail state | `GET /sessions`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish` | `apps/api/src/routes/sessions.ts` | Hasura GraphQL CRUD + function helper where needed | `startSession`, `finishSession`, `blockSession` | Yes | parity validated | Web N7 cutover now uses GraphQL owner-scoped session listing plus function-helper lifecycle endpoints (`/functions/session-helper`) for start/pause/finish parity. |
 | User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | parity validated | Web N7 preference path now uses GraphQL wrappers (`get/update preference me`) under Nhost GraphQL transport. |
 | User preferences (by userId) | `GET /preferences/:userId`, `PUT /preferences/:userId` | `apps/api/src/routes/preferences.ts` | temporary legacy compatibility | `setFounderMode`, `setDefaultFeedLens` | Yes | legacy retained | Keep until all callers use current-user path. |
-| Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | not started | Deterministic ranking + whyShown must preserve product feel. |
-| Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | not started | Keep behavior parity with current loop re-entry ergonomics. |
+| Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | parity validated | N8 routes web/domain retrieval to `/functions/feed` (with `/functions/feed/rank` alias) using shared ranking + whyShown shaping in function service. |
+| Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | parity validated | N8 routes web/domain feed actions to function endpoints (`/functions/feed/:id/{dismiss|snooze|refresh}`) with owner checks and parity behavior. |
 | Legacy AI feed card generator | `POST /ai/feed/generate-card` | `apps/api/src/routes/feed.ts` | deprecate/delete | none | No | deprecate/delete | Prototype helper, remove after feed function parity. |
 | Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | not started | Keep deterministic fallback behavior. |
 | Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | not started | Thin-slice AI only; no generic chat expansion. |
-| Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | not started | Product-aligned concise output required. |
-| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | not started | Derived summary/scoring only; avoid raw event leakage. |
+| Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | in progress | N8 web/domain paths now call function endpoints (`/functions/summarize-progress`, `/functions/what-should-i-do-next`) while legacy AI routes remain for compatibility until N9 cleanup. |
+| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | in progress | N8 web/domain paths now call `/functions/founder-review`; legacy route retained for compatibility during phased cutover. |
 | Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | not started | Return affected-item diagnostics, not broad analytics dashboards. |
 | Function namespace compatibility | `/functions/*` (feed, summarize, next-step, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | Keep only while cutover slices are being validated. |
 | Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | deprecate/delete | Raw events remain server-side or tightly restricted by policy. |
@@ -154,13 +154,30 @@ N7 is complete in this repository state:
 3. Session lifecycle start/pause/finish is now function-helper backed in GraphQL mode (`/functions/session-helper`), removing legacy REST coupling on migrated web path.
 4. N7 checklist/runbook/baseline docs are aligned to prevent staleness and to preserve explicit guardrails for loop-sensitive create and computed flows.
 
-## N8 kickoff update
+## N8 completion update
 
-N8 begins in this repository state with feed-focused scope:
+N8 is complete in this repository state:
 
-1. Move web feed retrieval and feed actions onto function-backed endpoints in Nhost mode.
-2. Preserve continuity quality (`whyShown`, ranking ergonomics, re-entry actions) as the primary parity gate.
-3. Keep checklist evidence updated immediately after each feed cutover slice.
+1. `packages/client` now routes feed retrieval and feed actions to function endpoints in Nhost mode:
+   - `GET /functions/feed` (canonical) and compatibility alias `/functions/feed/rank`.
+   - `POST /functions/feed/:id/{dismiss|snooze|refresh}` for re-entry interactions.
+2. Function-backed synthesis/founder computed routes are wired for migrated web/domain methods:
+   - `POST /functions/summarize-progress`
+   - `POST /functions/what-should-i-do-next` (with `/functions/next-step` alias)
+   - `GET /functions/founder-review`
+3. N8 parity tests verify:
+   - function feed route and alias consistency,
+   - strict-auth feed ranking/whyShown continuity quality,
+   - owner-scoped feed action behavior,
+   - strict-auth core-loop regression safety.
+
+## N9 kickoff update
+
+N9 begins in this repository state with AI thin-slice scope:
+
+1. Migrate remaining AI thin-slice web/domain call sites fully to function endpoints and reduce compatibility duplication.
+2. Preserve concise, product-grounded synthesis outputs (no generic chat expansion).
+3. Capture parity evidence for summarize/classify/query/convert slices while keeping loop-safety checks green.
 
 ## Unclassified capabilities
 

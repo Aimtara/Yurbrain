@@ -81,9 +81,9 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ### Function path cutover
 
-- [ ] Feed is served by function-backed `getFeed`.
-- [ ] Summarize/next-step routes are function-backed.
-- [ ] Founder review and diagnostics are function-backed.
+- [x] Feed is served by function-backed `getFeed`.
+- [x] Summarize/next-step routes are function-backed.
+- [x] Founder review and diagnostics are function-backed.
 
 ### Validation
 

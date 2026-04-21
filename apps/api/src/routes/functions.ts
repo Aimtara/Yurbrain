@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   FounderReviewQuerySchema,
   FeedLensSchema,
@@ -7,7 +7,13 @@ import {
   type FounderReviewQuery
 } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
-import { buildFunctionFeed, parseFunctionFeedInput } from "../services/functions/feed-logic";
+import {
+  buildFunctionFeed,
+  dismissFeedCardForUser,
+  parseFunctionFeedInput,
+  refreshFeedCardForUser,
+  snoozeFeedCardForUser
+} from "../services/functions/feed-logic";
 import {
   buildFounderReviewDiagnostics,
   buildFounderReviewForFunction
@@ -79,7 +85,7 @@ function assertScopedItemOwnership(
 }
 
 export async function registerFunctionRoutes(app: FastifyInstance, state: AppState) {
-  app.get("/functions/feed", async (request, reply) => {
+  const handleFunctionFeedGet = async (request: FastifyRequest, reply: FastifyReply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
 
@@ -91,6 +97,43 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     });
     const result = await buildFunctionFeed(state, currentUser.id, input);
     return reply.code(200).send(result.cards);
+  };
+  app.get("/functions/feed", handleFunctionFeedGet);
+  // Compatibility alias retained while older clients transition from /functions/feed/rank.
+  app.get("/functions/feed/rank", handleFunctionFeedGet);
+  app.post("/functions/feed/:id/dismiss", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { id } = request.params as { id: string };
+    const result = await dismissFeedCardForUser(state, currentUser, id);
+    if (!result) {
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    return reply.code(200).send(result);
+  });
+  app.post("/functions/feed/:id/snooze", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { id } = request.params as { id: string };
+    const { minutes } = (request.body as { minutes?: unknown }) ?? {};
+    const result = await snoozeFeedCardForUser(state, currentUser, id, minutes);
+    if (result.status === 404) {
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    if (result.status === 409) {
+      return reply.code(409).send({ message: "Cannot snooze a dismissed card" });
+    }
+    return reply.code(200).send(result.response);
+  });
+  app.post("/functions/feed/:id/refresh", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { id } = request.params as { id: string };
+    const result = await refreshFeedCardForUser(state, currentUser, id);
+    if (!result) {
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    return reply.code(200).send(result);
   });
 
   app.post("/functions/summarize-progress", async (request, reply) => {
@@ -113,7 +156,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     return reply.code(201).send(result);
   });
 
-  app.post("/functions/what-should-i-do-next", async (request, reply) => {
+  const handleWhatShouldIDoNext = async (request: FastifyRequest, reply: FastifyReply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
 
@@ -131,7 +174,10 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     assertScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId));
     const result = await buildWhatShouldIDoNext(state.repo, itemIds);
     return reply.code(201).send(result);
-  });
+  };
+  app.post("/functions/what-should-i-do-next", handleWhatShouldIDoNext);
+  // Compatibility alias retained while older clients transition from /functions/next-step.
+  app.post("/functions/next-step", handleWhatShouldIDoNext);
 
   app.get("/functions/founder-review", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);

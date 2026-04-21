@@ -32,3 +32,9 @@ test("endpoints cover the documented core loop surface", () => {
     assert.ok(key in endpoints, `missing endpoint entry: ${key}`);
   }
 });
+
+test("function endpoint aliases resolve to canonical paths", () => {
+  assert.equal(endpoints.functionFeed, "/functions/feed");
+  assert.equal(endpoints.functionFeedRank, endpoints.functionFeed);
+  assert.equal(endpoints.functionNextStep, "/functions/what-should-i-do-next");
+});

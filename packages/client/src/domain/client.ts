@@ -247,7 +247,7 @@ function createRestDomainClient(): YurbrainDomainClient {
   };
 }
 
-function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial<YurbrainDomainClient> {
+function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
   const runSessionHelperFunction = <T>(payload: FunctionSessionHelperPayload) =>
     apiClient<T>(endpoints.functionSessionHelper, {
       method: "POST",
@@ -257,7 +257,25 @@ function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial
 
   return {
     getFeedRanked: (query = {}) =>
-      apiClient(`${endpoints.functionFeedRank}${renderQuery(query)}`),
+      apiClient(`${endpoints.functionFeed}${renderQuery(query)}`),
+    dismissFeedCard: (cardId) =>
+      apiClient(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/dismiss`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({})
+      }),
+    snoozeFeedCard: (cardId, minutes = 60) =>
+      apiClient(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/snooze`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ minutes })
+      }),
+    refreshFeedCard: (cardId) =>
+      apiClient(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/refresh`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({})
+      }),
     summarizeProgress: (payload) =>
       apiClient(endpoints.functionSummarizeProgress, {
         method: "POST",
@@ -279,11 +297,28 @@ function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial
         })}`
       ),
     runSessionHelper: (payload) => runSessionHelperFunction(payload),
-    getFeed: (query = {}) => restClient.getFeedRanked(query),
-    summarizeCluster: (payload) => restClient.summarizeProgress(payload),
+    getFeed: (query = {}) =>
+      apiClient(`${endpoints.functionFeed}${renderQuery(query)}`),
+    summarizeCluster: (payload) =>
+      apiClient(endpoints.functionSummarizeProgress, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
     requestNextStep: (payload) =>
-      restClient.getWhatShouldIDoNext(payload as { itemIds: string[] }),
-    getFounderReview: (query = {}) => restClient.getFounderReviewScored(query),
+      apiClient(endpoints.functionNextStep, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      }),
+    getFounderReview: (query = {}) =>
+      apiClient(
+        `${endpoints.functionFounderReview}${renderQuery({
+          window: query.window ?? "7d",
+          userId: query.userId,
+          includeAi: query.includeAi ? "1" : undefined
+        })}`
+      ),
     startSession: (taskId) => runSessionHelperFunction({ action: "start", taskId }),
     pauseSession: (sessionId) => runSessionHelperFunction({ action: "pause", sessionId }),
     finishSession: (sessionId) => runSessionHelperFunction({ action: "finish", sessionId })
@@ -325,7 +360,7 @@ function createGraphqlCrudOverrides(restClient: YurbrainDomainClient): Partial<Y
 }
 
 const graphqlCrudOverrides = createGraphqlCrudOverrides(restDomainClient);
-const functionLogicOverrides = createFunctionLogicOverrides(restDomainClient);
+const functionLogicOverrides = createFunctionLogicOverrides();
 
 export function createYurbrainDomainClient(
   overrides: Partial<YurbrainDomainClient> = {}
