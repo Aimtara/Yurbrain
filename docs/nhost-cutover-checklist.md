@@ -7,7 +7,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] No direct GraphQL calls in React screens.
 - [x] No direct Nhost function calls in React screens.
 - [x] UI uses `packages/client` only.
-- [ ] Product loop still works: capture, feed, item detail, comments, plan, session, founder review.
+- [x] Product loop still works: capture, feed, item detail, comments, plan, session, founder review.
 - [x] N2 domain client/provider scaffolding added (`createYurbrainClient`, `yurbrainClient`, provider hooks) with no behavior cutover yet.
 
 ## Phase completion checkpoints
@@ -74,10 +74,10 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ### CRUD path cutover
 
-- [ ] Brain items read/write uses GraphQL-backed client wrappers.
-- [ ] Threads/messages uses GraphQL-backed client wrappers.
-- [ ] Tasks/sessions uses GraphQL-backed wrappers (or function helpers where required).
-- [ ] Preferences/founder-mode uses GraphQL-backed wrappers.
+- [x] Brain items read/write uses GraphQL-backed client wrappers where parity-safe (`list/get/update` GraphQL, `create` intentionally REST until side-effect parity slice).
+- [x] Threads/messages uses GraphQL-backed client wrappers.
+- [x] Tasks/sessions uses GraphQL-backed wrappers (or function helpers where required).
+- [x] Preferences/founder-mode uses GraphQL-backed wrappers.
 
 ### Function path cutover
 

@@ -163,10 +163,10 @@ test("domain client listSessions GraphQL path queries sessions by user ownership
   assert.equal(calls[0]?.url, "https://hasura.example.com/v1/graphql");
 });
 
-test("domain client GraphQL mode keeps computed logic off GraphQL transport", async () => {
+test("domain client GraphQL mode routes session lifecycle through function helper endpoint", async () => {
   configureHasuraGraphqlUrl("https://hasura.example.com/v1/graphql");
   const calls = installFetch((call) => {
-    if (call.url === "/tasks/task-123/start") {
+    if (call.url === "/functions/session-helper") {
       return new Response(JSON.stringify({ id: "session-1", state: "running" }), { status: 201 });
     }
     if (call.url === "/feed?lens=all&limit=5") {
@@ -177,10 +177,20 @@ test("domain client GraphQL mode keeps computed logic off GraphQL transport", as
   const client = createYurbrainDomainClient();
 
   await client.startSession("task-123");
+  await client.pauseSession("session-1");
+  await client.finishSession("session-1");
   await client.getFeed({ lens: "all", limit: 5 });
 
-  assert.equal(calls[0]?.url, "/tasks/task-123/start");
-  assert.equal(calls[1]?.url, "/feed?lens=all&limit=5");
+  assert.equal(calls[0]?.url, "/functions/session-helper");
+  assert.equal(calls[1]?.url, "/functions/session-helper");
+  assert.equal(calls[2]?.url, "/functions/session-helper");
+  assert.equal(calls[3]?.url, "/feed?lens=all&limit=5");
+  const startPayload = JSON.parse(String(calls[0]?.init?.body ?? "{}")) as Record<string, unknown>;
+  const pausePayload = JSON.parse(String(calls[1]?.init?.body ?? "{}")) as Record<string, unknown>;
+  const finishPayload = JSON.parse(String(calls[2]?.init?.body ?? "{}")) as Record<string, unknown>;
+  assert.deepEqual(startPayload, { action: "start", taskId: "task-123" });
+  assert.deepEqual(pausePayload, { action: "pause", sessionId: "session-1" });
+  assert.deepEqual(finishPayload, { action: "finish", sessionId: "session-1" });
   const graphqlCall = calls.find((call) => call.url === "https://hasura.example.com/v1/graphql");
   assert.equal(graphqlCall, undefined);
 });

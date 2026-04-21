@@ -18,6 +18,7 @@ import {
 } from "../services/functions/synthesis-logic";
 import {
   buildPauseSessionResult,
+  buildFinishSessionResult,
   buildSessionDiagnostics,
   buildStartSessionResult
 } from "../services/functions/session-helper-logic";
@@ -205,6 +206,60 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
       return reply.code(404).send({ message: "Task not found" });
     }
     return reply.code(201).send(result.session);
+  });
+
+  app.post("/functions/session-helper", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+
+    const body = (request.body ?? {}) as {
+      action?: "start" | "pause" | "finish";
+      taskId?: string;
+      sessionId?: string;
+    };
+
+    if (body.action === "start") {
+      if (!body.taskId) {
+        return reply.code(400).send({ message: "taskId is required for start" });
+      }
+      const task = await state.repo.getTaskById(body.taskId);
+      if (!task || !canAccessUser(currentUser, task.userId)) {
+        return reply.code(404).send({ message: "Task not found" });
+      }
+      const result = await buildStartSessionResult(state, body.taskId);
+      if (!result.session) {
+        return reply.code(404).send({ message: "Task not found" });
+      }
+      return reply.code(201).send(result.session);
+    }
+
+    if (body.action === "pause" || body.action === "finish") {
+      if (!body.sessionId) {
+        return reply.code(400).send({ message: "sessionId is required for pause/finish" });
+      }
+      const existingSession = await state.repo.getSessionById(body.sessionId);
+      if (!existingSession) {
+        return reply.code(404).send({ message: "Session not found or already finished" });
+      }
+      const task = await state.repo.getTaskById(existingSession.taskId);
+      if (!task || !canAccessUser(currentUser, task.userId)) {
+        return reply.code(404).send({ message: "Session not found or already finished" });
+      }
+      if (body.action === "pause") {
+        const result = await buildPauseSessionResult(state, body.sessionId);
+        if (!result.session) {
+          return reply.code(404).send({ message: "Session not found or already finished" });
+        }
+        return reply.code(200).send(result.session);
+      }
+      const result = await buildFinishSessionResult(state, body.sessionId);
+      if (!result.session) {
+        return reply.code(404).send({ message: "Session not found or already finished" });
+      }
+      return reply.code(200).send(result.session);
+    }
+
+    return reply.code(400).send({ message: "action must be one of start, pause, finish" });
   });
 
   app.get("/functions/sessions/:id/diagnostics", async (request, reply) => {

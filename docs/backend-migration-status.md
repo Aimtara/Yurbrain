@@ -30,8 +30,8 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Message create/list | `POST /messages`, `GET /threads/:id/messages` | `apps/api/src/routes/messages.ts` | Hasura GraphQL CRUD/read | `addComment` | Yes | in progress | Continuation timeline must stay stable. |
 | Task create/list/detail/update | `POST /tasks`, `GET /tasks`, `GET /tasks/:id`, `PATCH /tasks/:id` | `apps/api/src/routes/tasks.ts` | Hasura GraphQL CRUD/read | `planThis`, `blockSession` | Yes | in progress | Core for plan/session loop continuity. |
 | Manual task convert | `POST /tasks/manual-convert` | `apps/api/src/routes/tasks.ts` | Nhost Function | `planThis` | Yes | not started | Deterministic conversion logic belongs in functions. |
-| Session list/detail state | `GET /sessions`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish` | `apps/api/src/routes/sessions.ts` | Hasura GraphQL CRUD + function helper where needed | `startSession`, `finishSession`, `blockSession` | Yes | in progress | Start/pause/finish may remain function-backed if orchestration grows. |
-| User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | in progress | N2 introduces explicit domain methods for these preference updates. |
+| Session list/detail state | `GET /sessions`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish` | `apps/api/src/routes/sessions.ts` | Hasura GraphQL CRUD + function helper where needed | `startSession`, `finishSession`, `blockSession` | Yes | parity validated | Web N7 cutover now uses GraphQL owner-scoped session listing plus function-helper lifecycle endpoints (`/functions/session-helper`) for start/pause/finish parity. |
+| User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | parity validated | Web N7 preference path now uses GraphQL wrappers (`get/update preference me`) under Nhost GraphQL transport. |
 | User preferences (by userId) | `GET /preferences/:userId`, `PUT /preferences/:userId` | `apps/api/src/routes/preferences.ts` | temporary legacy compatibility | `setFounderMode`, `setDefaultFeedLens` | Yes | legacy retained | Keep until all callers use current-user path. |
 | Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | not started | Deterministic ranking + whyShown must preserve product feel. |
 | Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | not started | Keep behavior parity with current loop re-entry ergonomics. |
@@ -141,13 +141,26 @@ Completed in this repository state:
    - GraphQL list/detail/update brain-item and threads/tasks/preferences wrappers route in GraphQL mode.
    - GraphQL session list path queries by owner-scoped `sessions.user_id`.
 
-## N7 kickoff update
+## N7 completion update
 
-N7 begins in this repository state with a web-cutover-safe scope:
+N7 is complete in this repository state:
 
-1. Web still consumes only `YurbrainClient` methods; no UI transport leakage.
-2. First web CRUD cutover slice is list/detail/update reads/writes where parity is wrapper-proven.
-3. `createBrainItem` remains explicitly excluded from GraphQL cutover until side effects are moved to function-backed orchestration and parity-validated.
+1. Web continues to consume only `YurbrainClient` methods; no UI transport leakage introduced.
+2. Web CRUD/list/detail paths now run through GraphQL-backed domain wrappers where parity is safe:
+   - brain item list/detail/update (create remains intentionally REST-scoped).
+   - threads/messages CRUD.
+   - tasks/session list (owner-scoped GraphQL).
+   - preferences me/read-update flows.
+3. Session lifecycle start/pause/finish is now function-helper backed in GraphQL mode (`/functions/session-helper`), removing legacy REST coupling on migrated web path.
+4. N7 checklist/runbook/baseline docs are aligned to prevent staleness and to preserve explicit guardrails for loop-sensitive create and computed flows.
+
+## N8 kickoff update
+
+N8 begins in this repository state with feed-focused scope:
+
+1. Move web feed retrieval and feed actions onto function-backed endpoints in Nhost mode.
+2. Preserve continuity quality (`whyShown`, ranking ergonomics, re-entry actions) as the primary parity gate.
+3. Keep checklist evidence updated immediately after each feed cutover slice.
 
 ## Unclassified capabilities
 

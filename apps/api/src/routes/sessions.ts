@@ -4,6 +4,22 @@ import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { finishSession, pauseSession, startTaskSession } from "../services/sessions/lifecycle";
 import type { AppState } from "../state";
 
+function toSessionResponsePayload(session: {
+  id: string;
+  taskId: string;
+  state: "running" | "paused" | "finished";
+  startedAt: string;
+  endedAt: string | null;
+}) {
+  return {
+    id: session.id,
+    taskId: session.taskId,
+    state: session.state,
+    startedAt: session.startedAt,
+    endedAt: session.endedAt
+  };
+}
+
 export async function registerSessionRoutes(app: FastifyInstance, state: AppState) {
   app.get("/sessions", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
@@ -27,7 +43,7 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
       return reply.code(404).send({ message: "Task not found" });
     }
 
-    return reply.code(201).send(SessionResponseSchema.parse(session));
+    return reply.code(201).send(SessionResponseSchema.parse(toSessionResponsePayload(session)));
   });
 
   app.post("/sessions/:id/pause", async (request, reply) => {
@@ -48,7 +64,7 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
       return reply.code(404).send({ message: "Session not found or already finished" });
     }
 
-    return reply.code(200).send(SessionResponseSchema.parse(session));
+    return reply.code(200).send(SessionResponseSchema.parse(toSessionResponsePayload(session)));
   });
 
   app.post("/sessions/:id/finish", async (request, reply) => {
@@ -69,6 +85,6 @@ export async function registerSessionRoutes(app: FastifyInstance, state: AppStat
       return reply.code(404).send({ message: "Session not found or already finished" });
     }
 
-    return reply.code(200).send(SessionResponseSchema.parse(session));
+    return reply.code(200).send(SessionResponseSchema.parse(toSessionResponsePayload(session)));
   });
 }

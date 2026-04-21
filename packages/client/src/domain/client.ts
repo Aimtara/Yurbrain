@@ -248,6 +248,13 @@ function createRestDomainClient(): YurbrainDomainClient {
 }
 
 function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial<YurbrainDomainClient> {
+  const runSessionHelperFunction = <T>(payload: FunctionSessionHelperPayload) =>
+    apiClient<T>(endpoints.functionSessionHelper, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
   return {
     getFeedRanked: (query = {}) =>
       apiClient(`${endpoints.functionFeedRank}${renderQuery(query)}`),
@@ -271,20 +278,15 @@ function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),
-    runSessionHelper: (payload) =>
-      apiClient(endpoints.functionSessionHelper, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
+    runSessionHelper: (payload) => runSessionHelperFunction(payload),
     getFeed: (query = {}) => restClient.getFeedRanked(query),
     summarizeCluster: (payload) => restClient.summarizeProgress(payload),
     requestNextStep: (payload) =>
       restClient.getWhatShouldIDoNext(payload as { itemIds: string[] }),
     getFounderReview: (query = {}) => restClient.getFounderReviewScored(query),
-    startSession: (taskId) => restClient.runSessionHelper({ action: "start", taskId }),
-    pauseSession: (sessionId) => restClient.runSessionHelper({ action: "pause", sessionId }),
-    finishSession: (sessionId) => restClient.runSessionHelper({ action: "finish", sessionId })
+    startSession: (taskId) => runSessionHelperFunction({ action: "start", taskId }),
+    pauseSession: (sessionId) => runSessionHelperFunction({ action: "pause", sessionId }),
+    finishSession: (sessionId) => runSessionHelperFunction({ action: "finish", sessionId })
   };
 }
 

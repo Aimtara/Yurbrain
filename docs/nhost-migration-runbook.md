@@ -53,7 +53,8 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N4 (auth/current user cutover, web-first): complete.
 - N5 (schema/permissions/backfill scaffolding): complete.
 - N6 (GraphQL CRUD wrappers in client): complete.
-- N7+ (web CRUD cutover and beyond): in progress / not started per `docs/backend-migration-status.md`.
+- N7 (web CRUD cutover): complete.
+- N8+ (feed/function and beyond): in progress / not started per `docs/backend-migration-status.md`.
 
 ## N3 implementation baseline (now in repo)
 
@@ -105,14 +106,23 @@ N6 is complete when these are true:
 5. Loop-critical side-effectful create paths that are not parity-safe yet (notably `createBrainItem`) remain on REST/function path until N7 cutover evidence is complete.
 6. CRUD wrapper behavior is covered by targeted client tests proving GraphQL routing and fallback parity.
 
-## N7 implementation baseline (kickoff)
+## N7 implementation baseline (completed)
 
-N7 is in progress when these are true:
+N7 is complete when these are true:
 
-1. Web domain calls are cut over method-by-method to N6 GraphQL wrappers with parity checks per slice.
-2. Each CRUD slice is validated against loop safety checkpoints before enabling the next slice.
-3. Side-effectful create flows stay on REST/function until equivalent orchestration exists in GraphQL/Functions.
-4. Checklist evidence is updated immediately after each cutover slice to prevent doc staleness.
+1. Web domain calls for parity-safe CRUD/list/detail flows resolve through N6 GraphQL wrappers behind `packages/client` boundary.
+2. Session lifecycle in GraphQL mode no longer depends on legacy REST lifecycle routes; it uses function-helper-backed paths.
+3. Side-effectful create flows that are not parity-safe (`createBrainItem`) remain on REST/function path by design.
+4. Web controllers keep transport hidden behind `YurbrainClient` methods and include no direct GraphQL/function calls.
+5. Validation evidence confirms loop safety checkpoints remained intact through the cutover.
+
+## N8 implementation baseline (kickoff)
+
+N8 is in progress when these are true:
+
+1. Feed retrieval and interaction paths are moved to function-backed APIs with parity checks for continuity quality.
+2. Founder review and synthesis-computed pathways continue to use function-backed logic (no CRUD leakage).
+3. Checklist evidence is updated immediately after each N8 slice to prevent doc staleness.
 
 ## N5 required/optional backfill order
 
