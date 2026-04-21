@@ -56,7 +56,8 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N7 (web CRUD cutover): complete.
 - N8 (feed function cutover): complete.
 - N9 (AI thin-slice functions): complete.
-- N10+ (founder review hardening and beyond): in progress / not started per `docs/backend-migration-status.md`.
+- N10 (founder review hardening): in progress.
+- N11+ (event safety pass and beyond): in progress / not started per `docs/backend-migration-status.md`.
 
 ## N3 implementation baseline (now in repo)
 
@@ -144,6 +145,14 @@ N10 is in progress when these are true:
 1. Founder review computed quality and diagnostics are hardened for production-readiness while preserving concise continuity output.
 2. Temporary compatibility pathways retained from N8/N9 are reviewed and either removed or explicitly justified.
 3. Web integration continues to show no UI transport leakage while founder-facing actions remain continuity-first.
+
+## N10 progress update
+
+Completed in this repository state:
+
+1. Founder-review domain calls are canonicalized to function endpoints for strict-auth parity checks (`/functions/founder-review` and `/functions/founder-review/diagnostics`).
+2. `packages/client` now keeps founder diagnostics access inside the domain client boundary (`getFounderDiagnostics`) so UI/client layers do not embed function transport paths.
+3. Legacy `/founder-review` compatibility route is explicitly marked with a deprecation response header to make retained debt visible while migration callers finish transitioning.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

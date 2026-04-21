@@ -20,6 +20,7 @@ export const endpoints = {
   functionFeed: "/functions/feed",
   functionFeedRank: "/functions/feed",
   functionFounderReview: "/functions/founder-review",
+  functionFounderReviewDiagnostics: "/functions/founder-review/diagnostics",
   functionSummarizeItem: "/functions/summarize",
   functionClassifyItem: "/functions/classify",
   functionQueryItem: "/functions/query",

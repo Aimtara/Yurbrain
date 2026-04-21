@@ -142,7 +142,7 @@ test("strict auth core loop smoke: capture -> feed -> item detail -> comments ->
 
     const founderReviewResponse = await server.app.inject({
       method: "GET",
-      url: "/founder-review",
+      url: "/functions/founder-review",
       headers: strictHeaders
     });
     assert.equal(founderReviewResponse.statusCode, 200);

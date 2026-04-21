@@ -39,8 +39,8 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | parity validated | N9 routes plan conversion through `/functions/convert` behind `packages/client`, preserving deterministic outcomes (`task_created`, `plan_suggested`, `not_recommended`). |
 | Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 routes thin-slice summarize/classify/query through `/functions/{summarize|classify|query}` with owner-scoped access and deterministic fallback parity. |
 | Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 validates `/functions/summarize-progress` and `/functions/what-should-i-do-next` in strict mode with concise, grounded outputs and graceful non-owner `404` behavior. |
-| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N8 web/domain paths call `/functions/founder-review`; N9 preserves concise actionability while founder compatibility routes remain temporarily for phased cleanup. |
-| Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | not started | Return affected-item diagnostics, not broad analytics dashboards. |
+| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N10 keeps `/functions/founder-review` as canonical for web/domain/strict-auth validation and retains `/founder-review` only as a compatibility passthrough with explicit deprecation signaling. |
+| Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | in progress | N10 now routes diagnostics through `packages/client` domain boundary (no direct function calls from client facade); diagnostics hardening remains open. |
 | Function namespace compatibility | `/functions/*` (feed, summarize, next-step, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | Keep only while cutover slices are being validated. |
 | Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | deprecate/delete | Raw events remain server-side or tightly restricted by policy. |
 
@@ -192,6 +192,14 @@ N10 begins in this repository state with founder-review completion scope:
 1. Consolidate founder-review web/domain usage on canonical function APIs and trim compatibility debt.
 2. Preserve concise founder readouts and diagnostics quality while tightening owner-scoped access guarantees.
 3. Capture parity evidence for founder review actionability before legacy founder routes are considered for deprecation.
+
+## N10 progress update
+
+Current N10 hardening progress in this repository state:
+
+1. `packages/client` now exposes founder diagnostics via the same domain boundary as founder review (`domainClient.getFounderDiagnostics`), removing direct function-path coupling from `createYurbrainClient`.
+2. Strict-auth core-loop validation now exercises canonical `GET /functions/founder-review` instead of legacy `/founder-review`.
+3. Legacy `/founder-review` remains temporarily for compatibility, now with explicit deprecation signaling (`Deprecation` + `Sunset` headers) and targeted compatibility coverage.
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.

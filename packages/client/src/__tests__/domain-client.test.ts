@@ -204,6 +204,22 @@ test("domain client founder review defaults to founder review route without user
   assert.equal(calls[0]?.url, "/functions/founder-review?window=7d&includeAi=1");
 });
 
+test("domain client routes founder diagnostics query params", async () => {
+  const calls = installFetch(() => new Response("{}", { status: 200 }));
+  const client = createYurbrainDomainClient();
+
+  await client.getFounderDiagnostics({
+    window: "7d",
+    userId: "11111111-1111-1111-1111-111111111111",
+    includeAi: true
+  });
+
+  assert.equal(
+    calls[0]?.url,
+    "/functions/founder-review/diagnostics?window=7d&userId=11111111-1111-1111-1111-111111111111&includeAi=1"
+  );
+});
+
 test("domain client keeps CRUD/computed boundary in GraphQL mode", async () => {
   configureHasuraGraphqlUrl("https://hasura.example.com/v1/graphql");
   const calls = installFetch((call) => {

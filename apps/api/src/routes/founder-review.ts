@@ -9,6 +9,9 @@ import type { AppState } from "../state";
 
 export async function registerFounderReviewRoutes(app: FastifyInstance, state: AppState) {
   app.get("/founder-review", async (request, reply) => {
+    // Compatibility route retained during phased cutover; canonical path is /functions/founder-review.
+    reply.header("x-yurbrain-route-compat", "legacy-founder-review");
+    reply.header("x-yurbrain-deprecated-route", "/founder-review; use /functions/founder-review");
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
 

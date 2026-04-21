@@ -86,6 +86,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Summarize/classify/query/convert thin-slice routes are function-backed.
 - [x] Function ownership failures return graceful `404` responses (no internal-error leak).
 - [x] Founder review and diagnostics are function-backed.
+- [x] Founder review strict-auth loop validation uses canonical `/functions/founder-review` route.
 
 ### Validation
 
@@ -109,7 +110,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 ## Post-cutover cleanup checklist
 
 - [ ] Dead REST routes identified with no remaining callers.
-- [ ] Temporary compatibility routes reviewed and either retained with rationale or removed.
+- [x] Temporary compatibility routes reviewed and either retained with rationale or removed.
 - [ ] Legacy REST logic removed only after parity evidence.
 - [ ] Public raw events route remains disabled/removed.
 - [ ] Docs updated (`backend-migration-status`, runbook, transport policy).
