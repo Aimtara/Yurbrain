@@ -1,5 +1,6 @@
-import { createClient } from "@nhost/nhost-js";
+import { createClient, type NhostClient } from "@nhost/nhost-js";
 import {
+  configureIdentityResolutionMode,
   configureAccessToken,
   configureCurrentUserId
 } from "../api/client";
@@ -37,14 +38,23 @@ export type NhostRuntimeConfig = {
 
 type NhostEnv = Record<string, string | undefined>;
 type NhostEnvResolver = () => NhostEnv | undefined;
+type NhostClientFactory = (options: NhostRuntimeConfig) => NhostClient;
 
 let customEnvResolver: NhostEnvResolver | null = null;
+let customClientFactory: NhostClientFactory | null = null;
 
 export function setNhostEnvResolver(
   resolver: NhostEnvResolver | null
 ) {
   customEnvResolver = resolver;
 }
+
+export function setNhostClientFactory(factory: NhostClientFactory | null) {
+  customClientFactory = factory;
+}
+
+// Backward-compatible alias used by existing test helpers.
+export const setNhostSessionResolver = setNhostClientFactory;
 
 function getNhostEnv(): NhostEnv | undefined {
   if (customEnvResolver) {
@@ -150,8 +160,12 @@ export async function bootstrapNhostSession(): Promise<{ configured: boolean; us
     return { configured: cachedConfigured };
   }
 
+  // N4: once nhost transport is selected, disable demo/runtime identity fallback.
+  configureIdentityResolutionMode("strict");
   const options = buildNhostRuntimeConfig();
   if (!options) {
+    configureCurrentUserId(null);
+    configureAccessToken(null);
     cachedConfigured = false;
     return { configured: false };
   }
@@ -160,9 +174,11 @@ export async function bootstrapNhostSession(): Promise<{ configured: boolean; us
     configureHasuraGraphqlUrl(options.graphqlUrl);
   }
 
-  const nhost = createClient(options);
+  const nhost = customClientFactory ? customClientFactory(options) : createClient(options);
   const session = nhost.getUserSession();
   if (!session) {
+    configureCurrentUserId(null);
+    configureAccessToken(null);
     bootstrapped = true;
     return { configured: true };
   }
@@ -185,8 +201,21 @@ export async function bootstrapNhostSession(): Promise<{ configured: boolean; us
   return { configured: true, userId };
 }
 
+export function markAuthenticatedNhostSession(
+  accessToken: string,
+  userId: string
+) {
+  configureIdentityResolutionMode("strict");
+  configureAccessToken(accessToken);
+  configureCurrentUserId(userId);
+  bootstrapped = true;
+  cachedConfigured = true;
+}
+
 export function resetNhostBootstrapStateForTests() {
   bootstrapped = false;
   cachedConfigured = false;
+  configureIdentityResolutionMode("legacy");
+  customClientFactory = null;
   setNhostEnvResolver(null);
 }

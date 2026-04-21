@@ -50,7 +50,8 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N1 (audit and migration tracking): complete.
 - N2 (domain client stabilization): complete.
 - N3 (Nhost foundation scaffolding): complete.
-- N4+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
+- N4 (auth/current user cutover, web-first): in progress.
+- N5+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
 
 ## N3 implementation baseline (now in repo)
 
@@ -69,6 +70,17 @@ N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and
 Contract source of truth:
 
 - `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
+
+## N4 implementation baseline (current progress)
+
+N4 is in progress when these are true:
+
+1. Web provider initializes client with Nhost transport selected.
+2. Nhost bootstrap enforces strict identity mode (no env/random user-id fallback) once Nhost transport is active.
+3. Configured-but-no-session bootstrap path clears stale identity/token state.
+4. Web handles unauthorized identity state gracefully for protected views (without embedding transport calls in UI).
+5. Strict-mode requests require bearer-derived identity server-side (header/query/body userId fallbacks are ignored in strict mode).
+6. Authenticated strict-mode smoke tests cover core loop operations (capture, feed, item detail, comments, plan, session, founder review).
 
 ## Cutover rules
 

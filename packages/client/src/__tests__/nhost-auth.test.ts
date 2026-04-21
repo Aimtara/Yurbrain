@@ -4,9 +4,12 @@ import test, { afterEach } from "node:test";
 import {
   bootstrapNhostSession,
   resetNhostBootstrapStateForTests,
-  setNhostEnvResolver
+  setNhostEnvResolver,
+  setNhostClientFactory
 } from "../auth/nhost";
 import {
+  getIdentityResolutionMode,
+  configureIdentityResolutionMode,
   configureAccessToken,
   configureCurrentUserId,
   getConfiguredAccessToken,
@@ -17,6 +20,8 @@ import { configureHasuraGraphqlUrl, isHasuraGraphqlConfigured } from "../graphql
 afterEach(() => {
   resetNhostBootstrapStateForTests();
   setNhostEnvResolver(null);
+  setNhostClientFactory(null);
+  configureIdentityResolutionMode("legacy");
   configureAccessToken(null);
   configureCurrentUserId(null);
   configureHasuraGraphqlUrl(null);
@@ -27,18 +32,19 @@ test("bootstrapNhostSession returns disabled without nhost config", async () => 
   assert.deepEqual(result, { configured: false });
 });
 
-test("bootstrapNhostSession does not mutate identity when nhost config is absent", async () => {
+test("bootstrapNhostSession clears stale identity when nhost config is absent", async () => {
   configureCurrentUserId("stale-user");
   configureAccessToken("stale-token");
   configureHasuraGraphqlUrl("https://stale.example.com/v1/graphql");
   const result = await bootstrapNhostSession();
   assert.deepEqual(result, { configured: false });
-  assert.equal(getConfiguredCurrentUserId(), "stale-user");
-  assert.equal(getConfiguredAccessToken(), "stale-token");
+  assert.equal(getIdentityResolutionMode(), "strict");
+  assert.equal(getConfiguredCurrentUserId(), null);
+  assert.equal(getConfiguredAccessToken(), null);
   assert.equal(isHasuraGraphqlConfigured(), true);
 });
 
-test("bootstrapNhostSession hydrates graphql config and stays non-invasive without session", async () => {
+test("bootstrapNhostSession hydrates graphql config and clears stale identity without session", async () => {
   configureCurrentUserId("legacy-user");
   configureAccessToken("legacy-token");
   configureHasuraGraphqlUrl(null);
@@ -53,6 +59,23 @@ test("bootstrapNhostSession hydrates graphql config and stays non-invasive witho
 
   assert.deepEqual(result, { configured: true });
   assert.equal(isHasuraGraphqlConfigured(), true);
-  assert.equal(getConfiguredCurrentUserId(), "legacy-user");
-  assert.equal(getConfiguredAccessToken(), "legacy-token");
+  assert.equal(getConfiguredCurrentUserId(), null);
+  assert.equal(getConfiguredAccessToken(), null);
+});
+
+test("bootstrapNhostSession enforces strict identity mode and clears stale identity without session", async () => {
+  configureCurrentUserId("legacy-user");
+  configureAccessToken("legacy-token");
+  configureIdentityResolutionMode("legacy");
+  setNhostEnvResolver(() => ({
+    NEXT_PUBLIC_NHOST_GRAPHQL_URL: "https://graphql.foundation.example/v1/graphql",
+    NEXT_PUBLIC_NHOST_AUTH_URL: "https://auth.foundation.example/v1"
+  }));
+
+  const result = await bootstrapNhostSession();
+
+  assert.deepEqual(result, { configured: true });
+  assert.equal(getIdentityResolutionMode(), "strict");
+  assert.equal(getConfiguredCurrentUserId(), null);
+  assert.equal(getConfiguredAccessToken(), null);
 });

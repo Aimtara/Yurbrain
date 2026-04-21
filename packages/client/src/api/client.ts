@@ -1,8 +1,11 @@
 let configuredApiBaseUrl: string | null = null;
 let configuredCurrentUserId: string | null = null;
 let configuredAccessToken: string | null = null;
+let identityResolutionMode: "legacy" | "strict" = "legacy";
 const CURRENT_USER_HEADER = "x-yurbrain-user-id";
 const AUTHORIZATION_HEADER = "authorization";
+const AUTH_MODE_HEADER = "x-yurbrain-auth-mode";
+const STRICT_AUTH_MODE = "strict";
 const CURRENT_USER_STORAGE_KEY = "yurbrain.currentUserId";
 const ACCESS_TOKEN_STORAGE_KEY = "yurbrain.accessToken";
 const GLOBAL_CURRENT_USER_KEY = "__YURBRAIN_CURRENT_USER_ID";
@@ -53,6 +56,16 @@ function resolveRequestPath(path: string): string {
 export function configureApiBaseUrl(baseUrl: string | null | undefined) {
   configuredApiBaseUrl = trimBaseUrl(baseUrl);
 }
+
+export function configureIdentityResolutionMode(mode: "legacy" | "strict") {
+  identityResolutionMode = mode;
+}
+
+export function getIdentityResolutionMode(): "legacy" | "strict" {
+  return identityResolutionMode;
+}
+
+export const configureAuthIdentityMode = configureIdentityResolutionMode;
 
 function trimUserId(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -196,7 +209,13 @@ function generateRuntimeCurrentUserId(): string | null {
 
 function ensureCurrentUserId(): string | null {
   if (configuredCurrentUserId) return configuredCurrentUserId;
-  const resolved = readGlobalCurrentUserId() ?? readStoredCurrentUserId() ?? readEnvCurrentUserId() ?? generateRuntimeCurrentUserId();
+  const resolved =
+    identityResolutionMode === "strict"
+      ? readGlobalCurrentUserId() ?? readStoredCurrentUserId()
+      : readGlobalCurrentUserId() ??
+        readStoredCurrentUserId() ??
+        readEnvCurrentUserId() ??
+        generateRuntimeCurrentUserId();
   configuredCurrentUserId = trimUserId(resolved);
   if (configuredCurrentUserId) {
     writeGlobalCurrentUserId(configuredCurrentUserId);
@@ -207,7 +226,12 @@ function ensureCurrentUserId(): string | null {
 
 function ensureAccessToken(): string | null {
   if (configuredAccessToken) return configuredAccessToken;
-  const resolved = readGlobalAccessToken() ?? readStoredAccessToken() ?? readEnvAccessToken();
+  const resolved =
+    identityResolutionMode === "strict"
+      ? readGlobalAccessToken() ?? readStoredAccessToken()
+      : readGlobalAccessToken() ??
+        readStoredAccessToken() ??
+        readEnvAccessToken();
   configuredAccessToken = trimAccessToken(resolved);
   if (configuredAccessToken) {
     writeGlobalAccessToken(configuredAccessToken);
@@ -218,9 +242,15 @@ function ensureAccessToken(): string | null {
 
 export async function apiClient<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
-  const currentUserId = ensureCurrentUserId();
-  if (currentUserId && !headers.has(CURRENT_USER_HEADER)) {
-    headers.set(CURRENT_USER_HEADER, currentUserId);
+  const isStrictMode = identityResolutionMode === "strict";
+  if (isStrictMode && !headers.has(AUTH_MODE_HEADER)) {
+    headers.set(AUTH_MODE_HEADER, STRICT_AUTH_MODE);
+  }
+  if (!isStrictMode) {
+    const currentUserId = ensureCurrentUserId();
+    if (currentUserId && !headers.has(CURRENT_USER_HEADER)) {
+      headers.set(CURRENT_USER_HEADER, currentUserId);
+    }
   }
   const accessToken = ensureAccessToken();
   if (accessToken && !headers.has(AUTHORIZATION_HEADER)) {
