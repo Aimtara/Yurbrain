@@ -23,23 +23,23 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Current user identity | `GET /auth/me` | `apps/api/src/server.ts` | Nhost Auth session + GraphQL profile read | `getCurrentUser` | Yes | in progress | Web now boots client with Nhost transport + strict identity mode; strict-mode requests require bearer-derived identity and ignore header/query/params/body fallback, and no-session path yields 401. |
 | Capture intake pipeline | `POST /capture/intake` | `apps/api/src/routes/capture.ts` | Nhost Function | `createBrainItem` (capture mode) | Yes | not started | Includes enrichment, related detection, feed card side effects, and event append. |
-| Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | N2 stable client surface now includes these methods; runtime behavior remains parity-preserving. |
+| Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | N6 GraphQL path is enabled for list/detail/update; create remains REST-scoped until side-effect parity (feed card/event append) is functionized for safe cutover. |
 | Brain item artifacts read | `GET /brain-items/:id/artifacts` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL read | `getBrainItem` (artifact expansion) | Yes | in progress | Keep writes server-side where feasible. |
 | Related item discovery | `GET /brain-items/:id/related` | `apps/api/src/routes/brain-items.ts` | Nhost Function | `getBrainItem` (related context fetch) | Yes | not started | Computed logic, not pure CRUD. |
 | Thread create/read | `POST /threads`, `GET /threads/:id`, `GET /threads/by-target` | `apps/api/src/routes/threads.ts` | Hasura GraphQL CRUD/read | `addComment` (thread resolution path) | Yes | in progress | Owner-scoped access required. |
 | Message create/list | `POST /messages`, `GET /threads/:id/messages` | `apps/api/src/routes/messages.ts` | Hasura GraphQL CRUD/read | `addComment` | Yes | in progress | Continuation timeline must stay stable. |
 | Task create/list/detail/update | `POST /tasks`, `GET /tasks`, `GET /tasks/:id`, `PATCH /tasks/:id` | `apps/api/src/routes/tasks.ts` | Hasura GraphQL CRUD/read | `planThis`, `blockSession` | Yes | in progress | Core for plan/session loop continuity. |
 | Manual task convert | `POST /tasks/manual-convert` | `apps/api/src/routes/tasks.ts` | Nhost Function | `planThis` | Yes | not started | Deterministic conversion logic belongs in functions. |
-| Session list/detail state | `GET /sessions`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish` | `apps/api/src/routes/sessions.ts` | Hasura GraphQL CRUD + function helper where needed | `startSession`, `finishSession`, `blockSession` | Yes | in progress | Start/pause/finish may remain function-backed if orchestration grows. |
-| User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | in progress | N2 introduces explicit domain methods for these preference updates. |
+| Session list/detail state | `GET /sessions`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish` | `apps/api/src/routes/sessions.ts` | Hasura GraphQL CRUD + function helper where needed | `startSession`, `finishSession`, `blockSession` | Yes | parity validated | Web N7 cutover now uses GraphQL owner-scoped session listing plus function-helper lifecycle endpoints (`/functions/session-helper`) for start/pause/finish parity. |
+| User preferences (me) | `GET /preferences/me`, `PUT /preferences/me` | `apps/api/src/routes/preferences.ts` | Hasura GraphQL CRUD | `setFounderMode`, `setDefaultFeedLens` | Yes | parity validated | Web N7 preference path now uses GraphQL wrappers (`get/update preference me`) under Nhost GraphQL transport. |
 | User preferences (by userId) | `GET /preferences/:userId`, `PUT /preferences/:userId` | `apps/api/src/routes/preferences.ts` | temporary legacy compatibility | `setFounderMode`, `setDefaultFeedLens` | Yes | legacy retained | Keep until all callers use current-user path. |
-| Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | not started | Deterministic ranking + whyShown must preserve product feel. |
-| Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | not started | Keep behavior parity with current loop re-entry ergonomics. |
+| Feed retrieval and ranking | `GET /feed` | `apps/api/src/routes/feed.ts` | Nhost Function | `getFeed` | Yes | parity validated | N8 routes web/domain retrieval to `/functions/feed` (with `/functions/feed/rank` alias) using shared ranking + whyShown shaping in function service. |
+| Feed card interaction actions | `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh` | `apps/api/src/routes/feed.ts` | Nhost Function or GraphQL mutation wrappers | `getFeed` | Yes | parity validated | N8 routes web/domain feed actions to function endpoints (`/functions/feed/:id/{dismiss|snooze|refresh}`) with owner checks and parity behavior. |
 | Legacy AI feed card generator | `POST /ai/feed/generate-card` | `apps/api/src/routes/feed.ts` | deprecate/delete | none | No | deprecate/delete | Prototype helper, remove after feed function parity. |
-| Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | not started | Keep deterministic fallback behavior. |
-| Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | not started | Thin-slice AI only; no generic chat expansion. |
-| Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | not started | Product-aligned concise output required. |
-| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | not started | Derived summary/scoring only; avoid raw event leakage. |
+| Plan-this AI convert | `POST /ai/convert` | `apps/api/src/routes/convert.ts` | Nhost Function | `planThis` | Yes | parity validated | N9 routes plan conversion through `/functions/convert` behind `packages/client`, preserving deterministic outcomes (`task_created`, `plan_suggested`, `not_recommended`). |
+| Summarize/classify/query | `POST /ai/summarize`, `POST /ai/classify`, `POST /ai/query` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 routes thin-slice summarize/classify/query through `/functions/{summarize|classify|query}` with owner-scoped access and deterministic fallback parity. |
+| Cluster summary + next step | `POST /ai/summarize-cluster`, `POST /ai/next-step` | `apps/api/src/routes/ai.ts` | Nhost Functions | `summarizeProgress`, `getNextStep` | Yes | parity validated | N9 validates `/functions/summarize-progress` and `/functions/what-should-i-do-next` in strict mode with concise, grounded outputs and graceful non-owner `404` behavior. |
+| Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N8 web/domain paths call `/functions/founder-review`; N9 preserves concise actionability while founder compatibility routes remain temporarily for phased cleanup. |
 | Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | not started | Return affected-item diagnostics, not broad analytics dashboards. |
 | Function namespace compatibility | `/functions/*` (feed, summarize, next-step, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | Keep only while cutover slices are being validated. |
 | Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | deprecate/delete | Raw events remain server-side or tightly restricted by policy. |
@@ -130,6 +130,68 @@ Completed in this repository state:
    - repository write paths now stamp ownership where available for artifacts/threads/messages/sessions.
 6. Added explicit N5 Hasura permission scaffold doc (`docs/nhost-hasura-permission-scaffold.md`) with owner rules, insert presets, stricter artifact/events treatment, and required/optional backfill order.
 
+## N6 progress update
+
+Completed in this repository state:
+
+1. Extended GraphQL CRUD adapter coverage in `packages/client/src/graphql/crud-adapter.ts` for:
+   - owner-scoped session listing based on `sessions.user_id`.
+2. Kept `createBrainItem` on REST path to preserve loop-critical side effects (feed-card generation + event append) until N7/N8 function parity slice is validated.
+3. Added targeted N6 client tests proving:
+   - GraphQL list/detail/update brain-item and threads/tasks/preferences wrappers route in GraphQL mode.
+   - GraphQL session list path queries by owner-scoped `sessions.user_id`.
+
+## N7 completion update
+
+N7 is complete in this repository state:
+
+1. Web continues to consume only `YurbrainClient` methods; no UI transport leakage introduced.
+2. Web CRUD/list/detail paths now run through GraphQL-backed domain wrappers where parity is safe:
+   - brain item list/detail/update (create remains intentionally REST-scoped).
+   - threads/messages CRUD.
+   - tasks/session list (owner-scoped GraphQL).
+   - preferences me/read-update flows.
+3. Session lifecycle start/pause/finish is now function-helper backed in GraphQL mode (`/functions/session-helper`), removing legacy REST coupling on migrated web path.
+4. N7 checklist/runbook/baseline docs are aligned to prevent staleness and to preserve explicit guardrails for loop-sensitive create and computed flows.
+
+## N8 completion update
+
+N8 is complete in this repository state:
+
+1. `packages/client` now routes feed retrieval and feed actions to function endpoints in Nhost mode:
+   - `GET /functions/feed` (canonical) and compatibility alias `/functions/feed/rank`.
+   - `POST /functions/feed/:id/{dismiss|snooze|refresh}` for re-entry interactions.
+2. Function-backed synthesis/founder computed routes are wired for migrated web/domain methods:
+   - `POST /functions/summarize-progress`
+   - `POST /functions/what-should-i-do-next` (with `/functions/next-step` alias)
+   - `GET /functions/founder-review`
+3. N8 parity tests verify:
+   - function feed route and alias consistency,
+   - strict-auth feed ranking/whyShown continuity quality,
+   - owner-scoped feed action behavior,
+   - strict-auth core-loop regression safety.
+
+## N9 completion update
+
+N9 is complete in this repository state:
+
+1. `packages/client` now routes thin-slice AI methods to function endpoints:
+   - `POST /functions/summarize-progress`
+   - `POST /functions/what-should-i-do-next`
+   - `POST /functions/summarize`
+   - `POST /functions/classify`
+   - `POST /functions/query`
+   - `POST /functions/convert`
+2. Function route ownership handling for synthesis endpoints is now graceful (non-owner access returns `404` instead of bubbling uncaught errors).
+3. N9 parity tests validate strict-auth quality/grounding and fallback behavior across summarize/classify/query/convert while keeping core-loop regression checks green.
+
+## N10 kickoff update
+
+N10 begins in this repository state with founder-review completion scope:
+
+1. Consolidate founder-review web/domain usage on canonical function APIs and trim compatibility debt.
+2. Preserve concise founder readouts and diagnostics quality while tightening owner-scoped access guarantees.
+3. Capture parity evidence for founder review actionability before legacy founder routes are considered for deprecation.
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.

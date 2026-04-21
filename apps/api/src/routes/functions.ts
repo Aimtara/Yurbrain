@@ -1,13 +1,30 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
+  AiArtifactResponseSchema,
+  AiConvertRequestSchema,
+  AiConvertResponseSchema,
+  ClassifyItemRequestSchema,
   FounderReviewQuerySchema,
   FeedLensSchema,
   FounderReviewResponseSchema,
+  QueryItemRequestSchema,
+  QueryItemResponseSchema,
+  SummarizeItemRequestSchema,
   type FounderReviewResponse,
   type FounderReviewQuery
 } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
-import { buildFunctionFeed, parseFunctionFeedInput } from "../services/functions/feed-logic";
+import { classifyItem } from "../services/ai/classify";
+import { queryItemAssistant } from "../services/ai/item-query";
+import { summarizeItem } from "../services/ai/summarize";
+import { convertToTaskDecision } from "../services/tasks/convert";
+import {
+  buildFunctionFeed,
+  dismissFeedCardForUser,
+  parseFunctionFeedInput,
+  refreshFeedCardForUser,
+  snoozeFeedCardForUser
+} from "../services/functions/feed-logic";
 import {
   buildFounderReviewDiagnostics,
   buildFounderReviewForFunction
@@ -18,6 +35,7 @@ import {
 } from "../services/functions/synthesis-logic";
 import {
   buildPauseSessionResult,
+  buildFinishSessionResult,
   buildSessionDiagnostics,
   buildStartSessionResult
 } from "../services/functions/session-helper-logic";
@@ -66,19 +84,15 @@ function parseFeedLens(value: unknown):
   return parsed.success ? parsed.data : undefined;
 }
 
-function assertScopedItemOwnership(
+function hasScopedItemOwnership(
   currentUserId: string,
   itemOwnerIds: string[]
-) {
-  for (const ownerId of itemOwnerIds) {
-    if (ownerId !== currentUserId) {
-      throw new Error("Brain item not found");
-    }
-  }
+): boolean {
+  return itemOwnerIds.every((ownerId) => ownerId === currentUserId);
 }
 
 export async function registerFunctionRoutes(app: FastifyInstance, state: AppState) {
-  app.get("/functions/feed", async (request, reply) => {
+  const handleFunctionFeedGet = async (request: FastifyRequest, reply: FastifyReply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
 
@@ -90,6 +104,99 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     });
     const result = await buildFunctionFeed(state, currentUser.id, input);
     return reply.code(200).send(result.cards);
+  };
+  app.get("/functions/feed", handleFunctionFeedGet);
+  // Compatibility alias retained while older clients transition from /functions/feed/rank.
+  app.get("/functions/feed/rank", handleFunctionFeedGet);
+  app.post("/functions/feed/:id/dismiss", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { id } = request.params as { id: string };
+    const result = await dismissFeedCardForUser(state, currentUser, id);
+    if (!result) {
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    return reply.code(200).send(result);
+  });
+  app.post("/functions/feed/:id/snooze", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { id } = request.params as { id: string };
+    const { minutes } = (request.body as { minutes?: unknown }) ?? {};
+    const result = await snoozeFeedCardForUser(state, currentUser, id, minutes);
+    if (result.status === 404) {
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    if (result.status === 409) {
+      return reply.code(409).send({ message: "Cannot snooze a dismissed card" });
+    }
+    return reply.code(200).send(result.response);
+  });
+  app.post("/functions/feed/:id/refresh", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { id } = request.params as { id: string };
+    const result = await refreshFeedCardForUser(state, currentUser, id);
+    if (!result) {
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    return reply.code(200).send(result);
+  });
+
+  app.post("/functions/summarize", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const payload = SummarizeItemRequestSchema.parse(request.body);
+    const item = await state.repo.getBrainItemById(payload.itemId);
+    if (!item || !canAccessUser(currentUser, item.userId)) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
+    return reply.code(201).send(AiArtifactResponseSchema.parse(result));
+  });
+
+  app.post("/functions/classify", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const payload = ClassifyItemRequestSchema.parse(request.body);
+    const item = await state.repo.getBrainItemById(payload.itemId);
+    if (!item || !canAccessUser(currentUser, item.userId)) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
+    const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
+    return reply.code(201).send(AiArtifactResponseSchema.parse(result));
+  });
+
+  app.post("/functions/query", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const payload = QueryItemRequestSchema.parse(request.body);
+    const thread = await state.repo.getThreadById(payload.threadId);
+    if (!thread) {
+      return reply.code(404).send({ message: "Thread not found" });
+    }
+    const item = await state.repo.getBrainItemById(thread.targetItemId);
+    if (!item || !canAccessUser(currentUser, item.userId)) {
+      return reply.code(404).send({ message: "Thread not found" });
+    }
+    const result = await queryItemAssistant(state, payload, request.log, (request as { correlationId?: string }).correlationId);
+    if (!result) {
+      return reply.code(404).send({ message: "Thread not found" });
+    }
+    return reply.code(201).send(QueryItemResponseSchema.parse(result));
+  });
+
+  app.post("/functions/convert", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const payload = AiConvertRequestSchema.parse(request.body);
+    const decision = convertToTaskDecision({ ...payload, userId: currentUser.id });
+
+    if (decision.outcome === "task_created") {
+      await state.repo.createTask(decision.task);
+    }
+
+    return reply.code(201).send(AiConvertResponseSchema.parse(decision));
   });
 
   app.post("/functions/summarize-progress", async (request, reply) => {
@@ -107,12 +214,14 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (ownedItems.length !== itemIds.length) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
-    assertScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId));
+    if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
     const result = await buildSummarizeProgress(state.repo, itemIds);
     return reply.code(201).send(result);
   });
 
-  app.post("/functions/what-should-i-do-next", async (request, reply) => {
+  const handleWhatShouldIDoNext = async (request: FastifyRequest, reply: FastifyReply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
 
@@ -127,10 +236,15 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (ownedItems.length !== itemIds.length) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
-    assertScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId));
+    if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
+      return reply.code(404).send({ message: "Brain item not found" });
+    }
     const result = await buildWhatShouldIDoNext(state.repo, itemIds);
     return reply.code(201).send(result);
-  });
+  };
+  app.post("/functions/what-should-i-do-next", handleWhatShouldIDoNext);
+  // Compatibility alias retained while older clients transition from /functions/next-step.
+  app.post("/functions/next-step", handleWhatShouldIDoNext);
 
   app.get("/functions/founder-review", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
@@ -205,6 +319,60 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
       return reply.code(404).send({ message: "Task not found" });
     }
     return reply.code(201).send(result.session);
+  });
+
+  app.post("/functions/session-helper", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+
+    const body = (request.body ?? {}) as {
+      action?: "start" | "pause" | "finish";
+      taskId?: string;
+      sessionId?: string;
+    };
+
+    if (body.action === "start") {
+      if (!body.taskId) {
+        return reply.code(400).send({ message: "taskId is required for start" });
+      }
+      const task = await state.repo.getTaskById(body.taskId);
+      if (!task || !canAccessUser(currentUser, task.userId)) {
+        return reply.code(404).send({ message: "Task not found" });
+      }
+      const result = await buildStartSessionResult(state, body.taskId);
+      if (!result.session) {
+        return reply.code(404).send({ message: "Task not found" });
+      }
+      return reply.code(201).send(result.session);
+    }
+
+    if (body.action === "pause" || body.action === "finish") {
+      if (!body.sessionId) {
+        return reply.code(400).send({ message: "sessionId is required for pause/finish" });
+      }
+      const existingSession = await state.repo.getSessionById(body.sessionId);
+      if (!existingSession) {
+        return reply.code(404).send({ message: "Session not found or already finished" });
+      }
+      const task = await state.repo.getTaskById(existingSession.taskId);
+      if (!task || !canAccessUser(currentUser, task.userId)) {
+        return reply.code(404).send({ message: "Session not found or already finished" });
+      }
+      if (body.action === "pause") {
+        const result = await buildPauseSessionResult(state, body.sessionId);
+        if (!result.session) {
+          return reply.code(404).send({ message: "Session not found or already finished" });
+        }
+        return reply.code(200).send(result.session);
+      }
+      const result = await buildFinishSessionResult(state, body.sessionId);
+      if (!result.session) {
+        return reply.code(404).send({ message: "Session not found or already finished" });
+      }
+      return reply.code(200).send(result.session);
+    }
+
+    return reply.code(400).send({ message: "action must be one of start, pause, finish" });
   });
 
   app.get("/functions/sessions/:id/diagnostics", async (request, reply) => {

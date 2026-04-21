@@ -7,7 +7,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] No direct GraphQL calls in React screens.
 - [x] No direct Nhost function calls in React screens.
 - [x] UI uses `packages/client` only.
-- [ ] Product loop still works: capture, feed, item detail, comments, plan, session, founder review.
+- [x] Product loop still works: capture, feed, item detail, comments, plan, session, founder review.
 - [x] N2 domain client/provider scaffolding added (`createYurbrainClient`, `yurbrainClient`, provider hooks) with no behavior cutover yet.
 
 ## Phase completion checkpoints
@@ -57,6 +57,13 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Required vs optional backfill phases and demo/founder mapping notes documented (`docs/nhost-hasura-permission-scaffold.md`).
 - [x] Owner-scoped Hasura rule + insert preset scaffolding documented, including stricter treatment for `item_artifacts` and `events`.
 
+### N6: GraphQL CRUD Wrappers in Client
+
+- [x] Domain client exposes transport-safe GraphQL CRUD wrappers for web-cutover CRUD surfaces (brain item read/update, artifacts read, threads/messages, tasks/sessions, preferences) without changing UI call sites.
+- [x] Loop-sensitive create capture flow (`createCaptureIntake`) and REST `createBrainItem` parity-sensitive side effects remain on non-GraphQL path until explicit side-effect parity is implemented.
+- [x] Session list GraphQL path scopes by `sessions.user_id` (leveraging N5 ownership scaffolding) instead of legacy task-join fallback.
+- [x] GraphQL CRUD wrappers continue to enforce owner scoping and preserve REST fallback when Hasura is not configured.
+- [x] Targeted client tests cover N6 GraphQL wrapper behavior and function/REST boundaries.
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
@@ -67,16 +74,18 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ### CRUD path cutover
 
-- [ ] Brain items read/write uses GraphQL-backed client wrappers.
-- [ ] Threads/messages uses GraphQL-backed client wrappers.
-- [ ] Tasks/sessions uses GraphQL-backed wrappers (or function helpers where required).
-- [ ] Preferences/founder-mode uses GraphQL-backed wrappers.
+- [x] Brain items read/write uses GraphQL-backed client wrappers where parity-safe (`list/get/update` GraphQL, `create` intentionally REST until side-effect parity slice).
+- [x] Threads/messages uses GraphQL-backed client wrappers.
+- [x] Tasks/sessions uses GraphQL-backed wrappers (or function helpers where required).
+- [x] Preferences/founder-mode uses GraphQL-backed wrappers.
 
 ### Function path cutover
 
-- [ ] Feed is served by function-backed `getFeed`.
-- [ ] Summarize/next-step routes are function-backed.
-- [ ] Founder review and diagnostics are function-backed.
+- [x] Feed is served by function-backed `getFeed`.
+- [x] Summarize/next-step routes are function-backed.
+- [x] Summarize/classify/query/convert thin-slice routes are function-backed.
+- [x] Function ownership failures return graceful `404` responses (no internal-error leak).
+- [x] Founder review and diagnostics are function-backed.
 
 ### Validation
 

@@ -83,3 +83,69 @@ test("yurbrain client touchBrainItem performs read then patch", async () => {
   assert.equal(calls[1]?.url, "/brain-items/item-1");
   assert.equal(calls[1]?.init?.method, "PATCH");
 });
+
+test("yurbrain client routes feed and synthesis to function endpoints", async () => {
+  const calls = installFetch((call) => {
+    if (call.url === "/functions/feed?lens=all&limit=4") {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/dismiss") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/snooze") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/feed/card-1/refresh") {
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }
+    if (call.url === "/functions/summarize-progress") {
+      return new Response(JSON.stringify({ summary: "ok" }), { status: 201 });
+    }
+    if (call.url === "/functions/what-should-i-do-next") {
+      return new Response(JSON.stringify({ suggestedNextAction: "next" }), { status: 201 });
+    }
+    if (call.url === "/functions/summarize") {
+      return new Response(JSON.stringify({ ai: { content: "summary", confidence: 0.9 }, fallbackUsed: false }), { status: 201 });
+    }
+    if (call.url === "/functions/classify") {
+      return new Response(JSON.stringify({ ai: { content: "classify", confidence: 0.9 }, fallbackUsed: false }), { status: 201 });
+    }
+    if (call.url === "/functions/query") {
+      return new Response(
+        JSON.stringify({
+          threadId: "thread-1",
+          userMessage: { id: "m1", threadId: "thread-1", role: "user", content: "q", createdAt: "2026-01-01T00:00:00.000Z" },
+          message: { id: "m2", threadId: "thread-1", role: "assistant", content: "Recommendation: next", createdAt: "2026-01-01T00:00:01.000Z" },
+          ai: { content: "Recommendation: next", confidence: 0.9 },
+          fallbackUsed: false
+        }),
+        { status: 201 }
+      );
+    }
+    if (call.url === "/functions/convert") {
+      return new Response(JSON.stringify({ outcome: "task_created", task: { id: "task-1" }, confidence: 0.8 }), { status: 201 });
+    }
+    return new Response("{}", { status: 200 });
+  });
+  const client = createYurbrainClient();
+
+  await client.getFeed({ lens: "all", limit: 4 });
+  await client.dismissFeedCard("card-1");
+  await client.snoozeFeedCard("card-1", 20);
+  await client.refreshFeedCard("card-1");
+  await client.summarizeProgress({ itemIds: ["item-1"] });
+  await client.getNextStep({ itemIds: ["item-1"] });
+  await client.classifyBrainItem({ itemId: "item-1", rawContent: "classify me" });
+  await client.queryBrainItemThread({ threadId: "thread-1", question: "what next?" });
+  await client.planThis({ content: "ship next milestone" });
+
+  assert.ok(calls.find((call) => call.url === "/functions/feed?lens=all&limit=4"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/dismiss"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/snooze"));
+  assert.ok(calls.find((call) => call.url === "/functions/feed/card-1/refresh"));
+  assert.ok(calls.find((call) => call.url === "/functions/summarize-progress"));
+  assert.ok(calls.find((call) => call.url === "/functions/what-should-i-do-next"));
+  assert.ok(calls.find((call) => call.url === "/functions/classify"));
+  assert.ok(calls.find((call) => call.url === "/functions/query"));
+  assert.ok(calls.find((call) => call.url === "/functions/convert"));
+});

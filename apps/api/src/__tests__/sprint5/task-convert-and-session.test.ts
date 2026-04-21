@@ -48,11 +48,14 @@ test("POST /ai/convert creates task and preserves source linkage", async () => {
 });
 
 test("session lifecycle start -> pause -> finish updates task status", async () => {
+  const userId = "55555555-5555-5555-5555-555555555555";
+  const headers = { "x-yurbrain-user-id": userId };
   const taskCreate = await app.inject({
     method: "POST",
     url: "/tasks",
+    headers,
     payload: {
-      userId: "55555555-5555-5555-5555-555555555555",
+      userId,
       title: "Prepare release notes"
     }
   });
@@ -63,6 +66,7 @@ test("session lifecycle start -> pause -> finish updates task status", async () 
   const startResponse = await app.inject({
     method: "POST",
     url: `/tasks/${task.id}/start`,
+    headers,
     payload: {}
   });
   assert.equal(startResponse.statusCode, 201);
@@ -72,6 +76,7 @@ test("session lifecycle start -> pause -> finish updates task status", async () 
   const pausedResponse = await app.inject({
     method: "POST",
     url: `/sessions/${started.id}/pause`,
+    headers,
     payload: {}
   });
   assert.equal(pausedResponse.statusCode, 200);
@@ -80,6 +85,7 @@ test("session lifecycle start -> pause -> finish updates task status", async () 
   const finishedResponse = await app.inject({
     method: "POST",
     url: `/sessions/${started.id}/finish`,
+    headers,
     payload: {}
   });
   assert.equal(finishedResponse.statusCode, 200);
@@ -87,7 +93,7 @@ test("session lifecycle start -> pause -> finish updates task status", async () 
   assert.equal(finished.state, "finished");
   assert.ok(finished.endedAt);
 
-  const taskFetch = await app.inject({ method: "GET", url: `/tasks/${task.id}` });
+  const taskFetch = await app.inject({ method: "GET", url: `/tasks/${task.id}`, headers });
   assert.equal(taskFetch.statusCode, 200);
   assert.equal(taskFetch.json<{ status: string }>().status, "done");
 });

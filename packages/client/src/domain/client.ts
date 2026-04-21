@@ -247,22 +247,30 @@ function createRestDomainClient(): YurbrainDomainClient {
   };
 }
 
-function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial<YurbrainDomainClient> {
+function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
+  const postJson = <T>(url: string, payload: unknown) =>
+    apiClient<T>(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+  const runSessionHelperFunction = <T>(payload: FunctionSessionHelperPayload) =>
+    postJson<T>(endpoints.functionSessionHelper, payload);
+
   return {
     getFeedRanked: (query = {}) =>
-      apiClient(`${endpoints.functionFeedRank}${renderQuery(query)}`),
+      apiClient(`${endpoints.functionFeed}${renderQuery(query)}`),
+    dismissFeedCard: (cardId) =>
+      postJson(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/dismiss`, {}),
+    snoozeFeedCard: (cardId, minutes = 60) =>
+      postJson(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/snooze`, { minutes }),
+    refreshFeedCard: (cardId) =>
+      postJson(`${endpoints.functionFeed}/${encodeURIComponent(cardId)}/refresh`, {}),
     summarizeProgress: (payload) =>
-      apiClient(endpoints.functionSummarizeProgress, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
+      postJson(endpoints.functionSummarizeProgress, payload),
     getWhatShouldIDoNext: (payload) =>
-      apiClient(endpoints.functionNextStep, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
+      postJson(endpoints.functionNextStep, payload),
     getFounderReviewScored: (query = {}) =>
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({
@@ -271,20 +279,40 @@ function createFunctionLogicOverrides(restClient: YurbrainDomainClient): Partial
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),
-    runSessionHelper: (payload) =>
-      apiClient(endpoints.functionSessionHelper, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload)
-      }),
-    getFeed: (query = {}) => restClient.getFeedRanked(query),
-    summarizeCluster: (payload) => restClient.summarizeProgress(payload),
+    runSessionHelper: (payload) => runSessionHelperFunction(payload),
+    getFeed: (query = {}) =>
+      apiClient(`${endpoints.functionFeed}${renderQuery(query)}`),
+    summarizeCluster: (payload) =>
+      postJson(endpoints.functionSummarizeProgress, payload),
     requestNextStep: (payload) =>
-      restClient.getWhatShouldIDoNext(payload as { itemIds: string[] }),
-    getFounderReview: (query = {}) => restClient.getFounderReviewScored(query),
-    startSession: (taskId) => restClient.runSessionHelper({ action: "start", taskId }),
-    pauseSession: (sessionId) => restClient.runSessionHelper({ action: "pause", sessionId }),
-    finishSession: (sessionId) => restClient.runSessionHelper({ action: "finish", sessionId })
+      postJson(endpoints.functionNextStep, payload),
+    summarizeBrainItem: (payload) =>
+      postJson(endpoints.functionSummarizeItem, payload),
+    summarizeItem: (payload) =>
+      postJson(endpoints.functionSummarizeItem, payload),
+    classifyBrainItem: (payload) =>
+      postJson(endpoints.functionClassifyItem, payload),
+    classifyItem: (payload) =>
+      postJson(endpoints.functionClassifyItem, payload),
+    queryBrainItemThread: (payload) =>
+      postJson(endpoints.functionQueryItem, payload),
+    queryItem: (payload) =>
+      postJson(endpoints.functionQueryItem, payload),
+    planThis: (payload) =>
+      postJson(endpoints.functionConvert, payload),
+    manualConvertTask: (payload) =>
+      postJson(endpoints.functionConvert, payload),
+    getFounderReview: (query = {}) =>
+      apiClient(
+        `${endpoints.functionFounderReview}${renderQuery({
+          window: query.window ?? "7d",
+          userId: query.userId,
+          includeAi: query.includeAi ? "1" : undefined
+        })}`
+      ),
+    startSession: (taskId) => runSessionHelperFunction({ action: "start", taskId }),
+    pauseSession: (sessionId) => runSessionHelperFunction({ action: "pause", sessionId }),
+    finishSession: (sessionId) => runSessionHelperFunction({ action: "finish", sessionId })
   };
 }
 
@@ -323,7 +351,7 @@ function createGraphqlCrudOverrides(restClient: YurbrainDomainClient): Partial<Y
 }
 
 const graphqlCrudOverrides = createGraphqlCrudOverrides(restDomainClient);
-const functionLogicOverrides = createFunctionLogicOverrides(restDomainClient);
+const functionLogicOverrides = createFunctionLogicOverrides();
 
 export function createYurbrainDomainClient(
   overrides: Partial<YurbrainDomainClient> = {}

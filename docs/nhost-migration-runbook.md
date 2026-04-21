@@ -50,8 +50,13 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N1 (audit and migration tracking): complete.
 - N2 (domain client stabilization): complete.
 - N3 (Nhost foundation scaffolding): complete.
-- N4 (auth/current user cutover, web-first): in progress.
-- N5+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
+- N4 (auth/current user cutover, web-first): complete.
+- N5 (schema/permissions/backfill scaffolding): complete.
+- N6 (GraphQL CRUD wrappers in client): complete.
+- N7 (web CRUD cutover): complete.
+- N8 (feed function cutover): complete.
+- N9 (AI thin-slice functions): complete.
+- N10+ (founder review hardening and beyond): in progress / not started per `docs/backend-migration-status.md`.
 
 ## N3 implementation baseline (now in repo)
 
@@ -70,6 +75,7 @@ N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and
 Contract source of truth:
 
 - `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
+- Nhost initialization config for this migration includes `nhost/config.yaml`, with TOML (`nhost/nhost.toml` + overlays) documented as the modern CLI-forward path.
 
 ## N4 implementation baseline (current progress)
 
@@ -92,6 +98,52 @@ N5 is scaffolded when these are true:
 4. Backfill script exists to populate missing profiles from known owner IDs without destructive rewrites.
 5. Validation tests cover profile upsert + backfill-selection behavior.
 
+## N6 implementation baseline (completed)
+
+N6 is complete when these are true:
+
+1. `packages/client` provides GraphQL CRUD wrappers for web-cutover target entities where parity is safe (`brain item list/detail/update`, threads/messages, tasks/sessions, preferences).
+2. GraphQL wrappers remain owner-scoped and depend on authenticated identity (`x-hasura-user-id`) with no UI transport leakage.
+3. Domain client selects GraphQL CRUD wrappers only when Hasura GraphQL is configured; otherwise REST parity path remains intact.
+4. Session list GraphQL path uses owner-backed `sessions.user_id` scoping, aligned to N5 ownership scaffolding.
+5. Loop-critical side-effectful create paths that are not parity-safe yet (notably `createBrainItem`) remain on REST/function path until N7 cutover evidence is complete.
+6. CRUD wrapper behavior is covered by targeted client tests proving GraphQL routing and fallback parity.
+
+## N7 implementation baseline (completed)
+
+N7 is complete when these are true:
+
+1. Web domain calls for parity-safe CRUD/list/detail flows resolve through N6 GraphQL wrappers behind `packages/client` boundary.
+2. Session lifecycle in GraphQL mode no longer depends on legacy REST lifecycle routes; it uses function-helper-backed paths.
+3. Side-effectful create flows that are not parity-safe (`createBrainItem`) remain on REST/function path by design.
+4. Web controllers keep transport hidden behind `YurbrainClient` methods and include no direct GraphQL/function calls.
+5. Validation evidence confirms loop safety checkpoints remained intact through the cutover.
+
+## N8 implementation baseline (completed)
+
+N8 is complete when these are true:
+
+1. Feed retrieval and interaction paths are routed through function-backed APIs (`/functions/feed` + feed action helpers) via `packages/client`.
+2. Canonical function routes and compatibility aliases are aligned (`/functions/feed` + `/functions/feed/rank`, `/functions/what-should-i-do-next` + `/functions/next-step`) with targeted tests.
+3. Founder review and synthesis-computed pathways remain function-backed in the shared client boundary (no UI transport leakage).
+4. Validation evidence covers strict-auth loop safety and function-feed ranking ergonomics.
+
+## N9 implementation baseline (completed)
+
+N9 is complete when these are true:
+
+1. AI thin-slice pathways (`summarize/classify/query/convert`) are routed to function-backed APIs behind `packages/client`.
+2. Function-route behavior is validated with strict-auth tests covering concise, grounded synthesis and deterministic fallback behavior.
+3. Ownership failures for thin-slice function routes are graceful (`404`) and do not surface as internal server errors.
+4. Loop parity checkpoints remain green after N9 cutover slices.
+
+## N10 implementation baseline (kickoff)
+
+N10 is in progress when these are true:
+
+1. Founder review computed quality and diagnostics are hardened for production-readiness while preserving concise continuity output.
+2. Temporary compatibility pathways retained from N8/N9 are reviewed and either removed or explicitly justified.
+3. Web integration continues to show no UI transport leakage while founder-facing actions remain continuity-first.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:
@@ -114,15 +166,6 @@ Optional / post-cutover cleanup:
 - Local seeded founder UUID (`11111111-1111-1111-1111-111111111111`) maps one-to-one to `profiles.id`.
 - On migrated Nhost paths, canonical identity source is auth subject (`x-hasura-user-id`); no demo/runtime fallback on strict web paths.
 - If a seeded local profile lacks auth metadata, keep nullable display fields and track provenance via `backfill_source` / `backfilled_at`.
-
-## N3 environment/config contract (explicit)
-
-N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and referenced by checklist evidence.
-
-Contract source of truth:
-
-- `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
-- Nhost initialization config for this migration includes `nhost/config.yaml`, with TOML (`nhost/nhost.toml` + overlays) documented as the modern CLI-forward path.
 
 ## Cutover rules
 

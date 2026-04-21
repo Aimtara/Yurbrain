@@ -320,6 +320,79 @@ export async function getBrainItemGraphql<T>(itemId: string): Promise<T> {
   return mapBrainItem(item) as T;
 }
 
+export async function createBrainItemGraphql<T>(payload: unknown): Promise<T> {
+  const userId = requireCurrentUserId();
+  const input = payload as {
+    type: BrainItemRow["type"];
+    title: string;
+    rawContent: string;
+    contentType?: BrainItemRow["content_type"];
+    sourceApp?: string | null;
+    sourceLink?: string | null;
+    topicGuess?: string | null;
+  };
+  const now = new Date().toISOString();
+  const data = await hasuraGraphqlRequest<{ insert_brain_items_one: BrainItemRow | null }>(
+    `
+      mutation GraphqlCreateBrainItem(
+        $userId: uuid!
+        $type: brain_item_type!
+        $contentType: String
+        $title: String!
+        $rawContent: String!
+        $sourceApp: String
+        $sourceLink: String
+        $topicGuess: String
+        $now: timestamptz!
+      ) {
+        insert_brain_items_one(
+          object: {
+            user_id: $userId
+            type: $type
+            content_type: $contentType
+            title: $title
+            raw_content: $rawContent
+            source_app: $sourceApp
+            source_link: $sourceLink
+            topic_guess: $topicGuess
+            status: active
+            created_at: $now
+            updated_at: $now
+          }
+        ) {
+          id
+          user_id
+          type
+          content_type
+          title
+          raw_content
+          source_app
+          source_link
+          topic_guess
+          status
+          created_at
+          updated_at
+        }
+      }
+    `,
+    {
+      userId,
+      type: input.type,
+      contentType: input.contentType ?? "text",
+      title: input.title,
+      rawContent: input.rawContent,
+      sourceApp: input.sourceApp ?? null,
+      sourceLink: input.sourceLink ?? null,
+      topicGuess: input.topicGuess ?? null,
+      now
+    }
+  );
+  if (!data.insert_brain_items_one) {
+    throw new Error("Brain item create failed");
+  }
+  return mapBrainItem(data.insert_brain_items_one) as T;
+}
+
 export async function updateBrainItemGraphql<T>(itemId: string, payload: unknown): Promise<T> {
   const userId = requireCurrentUserId();
   const updates = payload as {
@@ -684,65 +757,97 @@ export async function updateTaskGraphql<T>(taskId: string, payload: unknown): Pr
 
 export async function listSessionsGraphql<T>(query: SessionListQuery = {}): Promise<T> {
   const userId = requireCurrentUserId();
-  let taskIds: string[] = [];
-  if (query.taskId) {
-    const task = await getTaskForUser(query.taskId, userId);
-    taskIds = [task.id];
-  } else {
-    const tasksData = await hasuraGraphqlRequest<{ tasks: Array<{ id: string }> }>(
-      `
-        query GraphqlListTaskIdsForSessions($userId: uuid!) {
-          tasks(where: { user_id: { _eq: $userId } }) {
-            id
-          }
-        }
-      `,
-      { userId: query.userId && query.userId === userId ? query.userId : userId }
-    );
-    taskIds = tasksData.tasks.map((task) => task.id);
-  }
+  const scopedUserId = query.userId && query.userId === userId ? query.userId : userId;
 
-  if (taskIds.length === 0) {
-    return [] as T;
+  if (query.taskId) {
+    await getTaskForUser(query.taskId, scopedUserId);
   }
 
   const data = query.state
-    ? await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
-        `
-          query GraphqlListSessionsByState($taskIds: [uuid!]!, $state: session_state!) {
-            sessions(
-              where: { task_id: { _in: $taskIds }, state: { _eq: $state } }
-              order_by: [{ started_at: desc }, { id: desc }]
-            ) {
-              id
-              task_id
-              state
-              started_at
-              ended_at
+    ? query.taskId
+      ? await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
+          `
+            query GraphqlListSessionsByStateAndTask($userId: uuid!, $state: session_state!, $taskId: uuid!) {
+              sessions(
+                where: {
+                  user_id: { _eq: $userId }
+                  state: { _eq: $state }
+                  task_id: { _eq: $taskId }
+                }
+                order_by: [{ started_at: desc }, { id: desc }]
+              ) {
+                id
+                task_id
+                state
+                started_at
+                ended_at
+              }
             }
-          }
-        `,
-        { taskIds, state: query.state }
-      )
-    : await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
-        `
-          query GraphqlListSessions($taskIds: [uuid!]!) {
-            sessions(
-              where: { task_id: { _in: $taskIds } }
-              order_by: [{ started_at: desc }, { id: desc }]
-            ) {
-              id
-              task_id
-              state
-              started_at
-              ended_at
+          `,
+          { userId: scopedUserId, state: query.state, taskId: query.taskId }
+        )
+      : await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
+          `
+            query GraphqlListSessionsByState($userId: uuid!, $state: session_state!) {
+              sessions(
+                where: {
+                  user_id: { _eq: $userId }
+                  state: { _eq: $state }
+                }
+                order_by: [{ started_at: desc }, { id: desc }]
+              ) {
+                id
+                task_id
+                state
+                started_at
+                ended_at
+              }
             }
-          }
-        `,
-        { taskIds }
-      );
+          `,
+          { userId: scopedUserId, state: query.state }
+        )
+    : query.taskId
+      ? await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
+          `
+            query GraphqlListSessionsByTask($userId: uuid!, $taskId: uuid!) {
+              sessions(
+                where: {
+                  user_id: { _eq: $userId }
+                  task_id: { _eq: $taskId }
+                }
+                order_by: [{ started_at: desc }, { id: desc }]
+              ) {
+                id
+                task_id
+                state
+                started_at
+                ended_at
+              }
+            }
+          `,
+          { userId: scopedUserId, taskId: query.taskId }
+        )
+      : await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
+          `
+            query GraphqlListSessionsByUser($userId: uuid!) {
+              sessions(
+                where: {
+                  user_id: { _eq: $userId }
+                }
+                order_by: [{ started_at: desc }, { id: desc }]
+              ) {
+                id
+                task_id
+                state
+                started_at
+                ended_at
+              }
+            }
+          `,
+          { userId: scopedUserId }
+        );
 
-  return data.sessions.map(mapSession) as T;
+  return (data.sessions ?? []).map(mapSession) as T;
 }
 
 export async function getUserPreferenceGraphql<T>(requestedUserId: string): Promise<T> {
