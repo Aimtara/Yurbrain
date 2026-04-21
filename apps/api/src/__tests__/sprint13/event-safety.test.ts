@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { randomUUID } from "node:crypto";
 
-import { app } from "../../server";
-import { buildBrainItemUpdatedEventPayload } from "../../services/events/policy";
+import { createServer } from "../../server";
 
 const founderReviewUserId = "11111111-1111-1111-1111-111111111111";
+const server = createServer();
+const { app, state } = server;
+
+type StoredEvent = Awaited<ReturnType<typeof state.repo.listEventsByUser>>[number];
 
 test.after(async () => {
   await app.close();
@@ -61,9 +64,15 @@ test("capture and update write only allowlisted event payload fields", async () 
   });
   assert.equal(updateResponse.statusCode, 200);
 
-  const events = await app.state.repo.listEventsByUser(founderReviewUserId);
-  const createdEvent = events.find((event) => event.eventType === "brain_item_created" && event.payload.id === createdBody.itemId);
-  const updatedEvent = events.find((event) => event.eventType === "brain_item_updated" && event.payload.id === createdBody.itemId);
+  const events = await state.repo.listEventsByUser(founderReviewUserId);
+  const createdEvent = events.find(
+    (event: StoredEvent) =>
+      event.eventType === "brain_item_created" && event.payload.id === createdBody.itemId
+  );
+  const updatedEvent = events.find(
+    (event: StoredEvent) =>
+      event.eventType === "brain_item_updated" && event.payload.id === createdBody.itemId
+  );
 
   assert.ok(createdEvent);
   assert.deepEqual(
@@ -81,7 +90,7 @@ test("event writes are owner-scoped to authenticated user identity", async () =>
   const itemId = randomUUID();
   const now = new Date().toISOString();
 
-  await app.state.repo.createBrainItem({
+  await state.repo.createBrainItem({
     id: itemId,
     userId: victimId,
     type: "note",
@@ -103,10 +112,15 @@ test("event writes are owner-scoped to authenticated user identity", async () =>
   });
 
   assert.equal(response.statusCode, 404);
-  const attackerEvents = await app.state.repo.listEventsByUser(attackerId);
-  const victimEvents = await app.state.repo.listEventsByUser(victimId);
-  const touchedVictimByAttacker = attackerEvents.some((event) => event.payload.id === itemId);
-  const touchedVictimByVictim = victimEvents.some((event) => event.payload.id === itemId && event.eventType === "brain_item_updated");
+  const attackerEvents = await state.repo.listEventsByUser(attackerId);
+  const victimEvents = await state.repo.listEventsByUser(victimId);
+  const touchedVictimByAttacker = attackerEvents.some(
+    (event: StoredEvent) => event.payload.id === itemId
+  );
+  const touchedVictimByVictim = victimEvents.some(
+    (event: StoredEvent) =>
+      event.payload.id === itemId && event.eventType === "brain_item_updated"
+  );
   assert.equal(touchedVictimByAttacker, false);
   assert.equal(touchedVictimByVictim, false);
 });
@@ -129,10 +143,13 @@ test("capture route ignores legacy body.userId and records events for authentica
   const body = response.json<{ item: { id: string; userId: string } }>();
   assert.equal(body.item.userId, headerUserId);
 
-  const ownerEvents = await app.state.repo.listEventsByUser(headerUserId);
-  const spoofedEvents = await app.state.repo.listEventsByUser(spoofedBodyUserId);
-  assert.ok(ownerEvents.some((event) => event.payload.id === body.item.id));
-  assert.equal(spoofedEvents.some((event) => event.payload.id === body.item.id), false);
+  const ownerEvents = await state.repo.listEventsByUser(headerUserId);
+  const spoofedEvents = await state.repo.listEventsByUser(spoofedBodyUserId);
+  assert.ok(ownerEvents.some((event: StoredEvent) => event.payload.id === body.item.id));
+  assert.equal(
+    spoofedEvents.some((event: StoredEvent) => event.payload.id === body.item.id),
+    false
+  );
 });
 
 test("brain-items create route ignores legacy body.userId and records events for authenticated user", async () => {
@@ -155,8 +172,11 @@ test("brain-items create route ignores legacy body.userId and records events for
   const created = response.json<{ id: string; userId: string }>();
   assert.equal(created.userId, headerUserId);
 
-  const ownerEvents = await app.state.repo.listEventsByUser(headerUserId);
-  const spoofedEvents = await app.state.repo.listEventsByUser(spoofedBodyUserId);
-  assert.ok(ownerEvents.some((event) => event.payload.id === created.id));
-  assert.equal(spoofedEvents.some((event) => event.payload.id === created.id), false);
+  const ownerEvents = await state.repo.listEventsByUser(headerUserId);
+  const spoofedEvents = await state.repo.listEventsByUser(spoofedBodyUserId);
+  assert.ok(ownerEvents.some((event: StoredEvent) => event.payload.id === created.id));
+  assert.equal(
+    spoofedEvents.some((event: StoredEvent) => event.payload.id === created.id),
+    false
+  );
 });

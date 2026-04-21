@@ -73,12 +73,19 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Founder diagnostics remains behind `packages/client` (`getFounderDiagnostics`) with no direct function/GraphQL leakage in UI surfaces.
 - [x] Targeted API/client tests and manual walkthrough validate founder diagnostics actionability flow.
 
-### N11: Event Safety Pass (kickoff baseline)
+### N11: Event Safety Pass
 
-- [x] N11 baseline and scope are documented in runbook/status docs.
-- [ ] Event route and write-path safety audit completed for owner scoping and exposure boundaries.
-- [ ] Event policy hardening implemented and validated without loop regressions.
-- [ ] Post-hardening parity evidence captured across capture/feed/session/founder-review surfaces.
+- [x] Raw event access policy is explicit (`GET /events` remains disabled with explicit message).
+- [x] Event write-path safety audit is completed for owner scoping and exposure boundaries across capture + brain-item routes.
+- [x] Event policy hardening is implemented: event payloads are allowlisted/minimized and do not carry raw content.
+- [x] Event safety parity evidence is captured across capture/feed/session/founder-review surfaces (strict-auth core loop + founder diagnostics + event-safety tests).
+
+### N12: Mobile Cutover (kickoff baseline)
+
+- [x] N12 baseline and scope are documented in runbook/status docs.
+- [ ] Mobile provider/bootstrap cutover uses authenticated Nhost transport with no demo-user fallback.
+- [ ] Mobile loop surfaces (capture/feed/item/comments/plan/session) run through shared `packages/client` domain methods with parity checks.
+- [ ] N12 parity evidence captured before any mobile-specific transport divergence.
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user

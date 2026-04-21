@@ -42,7 +42,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Founder review | `GET /founder-review` | `apps/api/src/routes/founder-review.ts` | Nhost Function | `getFounderReview` | Yes | parity validated | N10 keeps `/functions/founder-review` as canonical for web/domain/strict-auth validation and retains `/founder-review` only as a compatibility passthrough with explicit deprecation signaling. |
 | Founder diagnostics | `GET /functions/founder-review/diagnostics` | `apps/api/src/routes/functions.ts` | Nhost Function | `getFounderDiagnostics` | Yes | parity validated | N10 now returns actionable diagnostics payload (`summary`, item-level `focusItems`, and `focusActions`) and web founder-review integrates the actions through `packages/client` with no transport leakage. |
 | Function namespace compatibility | `/functions/*` (feed, summarize, next-step, founder-review, session helper) | `apps/api/src/routes/functions.ts` | temporary legacy compatibility | same domain methods | Yes | legacy retained | Keep only while cutover slices are being validated. |
-| Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | deprecate/delete | Raw events remain server-side or tightly restricted by policy. |
+| Raw events endpoint | `GET /events` (returns 403) | `apps/api/src/server.ts` | deprecate/delete public path | none | Safety critical | parity validated | N11 validates `/events` remains blocked and that client-facing founder diagnostics expose only derived summaries (no raw event payloads). |
 
 ## Frontend data-access coupling inventory
 
@@ -208,6 +208,22 @@ N11 begins in this repository state with event-safety scope:
 1. Re-verify that raw event data remains inaccessible from public client routes and stays server-only/tightly restricted.
 2. Audit function and GraphQL pathways for inadvertent event payload leakage into UI-facing contracts.
 3. Document final keep/remove decisions for any event-adjacent compatibility routes before N12 mobile cutover.
+
+## N11 completion update
+
+N11 is complete in this repository state:
+
+1. Event write payloads are now explicitly allowlisted and normalized by event type (`brain_item_created`, `brain_item_updated`) in API service logic before persistence.
+2. Raw event endpoint remains blocked (`GET /events` => `403`), and founder diagnostics continue exposing only derived data (`summary`, `focusItems`, `focusActions`) with no raw event payload pass-through.
+3. Expanded N11 tests validate event access policy, owner-scoped write behavior, and that legacy body `userId` spoofing cannot redirect event ownership on capture or brain-item creation routes.
+
+## N12 kickoff update
+
+N12 begins in this repository state with mobile cutover scope:
+
+1. Align mobile bootstrap with authenticated shared client initialization, mirroring web transport boundary rules.
+2. Validate mobile capture/feed/item/session/founder flows continue using `packages/client` domain methods only (no transport forks).
+3. Capture mobile parity evidence against the validated continuity loop before any legacy route cleanup in N13.
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.

@@ -57,8 +57,9 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N8 (feed function cutover): complete.
 - N9 (AI thin-slice functions): complete.
 - N10 (founder review hardening): complete.
-- N11 (event safety pass): in progress.
-- N12+ (mobile cutover and beyond): not started per `docs/backend-migration-status.md`.
+- N11 (event safety pass): complete.
+- N12 (mobile cutover): in progress (kickoff baseline documented).
+- N13 (legacy REST strangler cleanup): not started per `docs/backend-migration-status.md`.
 
 ## N3 implementation baseline (now in repo)
 
@@ -159,14 +160,32 @@ Completed in this repository state:
 4. Founder Review web integration now loads diagnostics alongside review data and wires diagnostics actions into existing founder action handlers.
 5. Legacy `/founder-review` compatibility route remains explicitly marked with deprecation signaling while cutover callers finish transitioning.
 
-## N11 implementation baseline (kickoff)
+## N11 implementation baseline (completed)
 
-N11 starts when these are true:
+N11 is complete when these are true:
 
 1. Event and telemetry surfaces are audited for ownership safety and transport-boundary compliance.
 2. Public/raw event access remains blocked; only safe aggregate or server-only pathways remain reachable.
 3. Event-producing paths in capture/feed/plan/session/founder flows preserve loop behavior while reducing leakage risk.
 4. N11 checkpoints are captured in status + checklist docs with explicit parity evidence targets.
+
+## N11 completion update
+
+Completed in this repository state:
+
+1. Raw event read remains explicitly blocked on `/events` (403) and is now covered by dedicated N11 safety tests.
+2. Event payload writes for `brain_item_created` and `brain_item_updated` now pass through typed allowlisted policy builders, preventing accidental leakage of raw or oversized fields.
+3. Event safety tests now validate owner-scoped write behavior, legacy `body.userId` spoof resistance on create paths, and founder diagnostics exclusion of raw event payloads.
+4. Test runtime safety was hardened by isolating default per-process test database paths per server instance to prevent PGlite collisions during concurrent server construction.
+
+## N12 implementation baseline (kickoff)
+
+N12 starts when these are true:
+
+1. Mobile app data flows route exclusively through the same `packages/client` domain methods already validated on web.
+2. Mobile boot/auth behavior is aligned to strict identity expectations without introducing transport forks.
+3. Capture/feed/item/comments/plan/session/founder-review mobile parity checkpoints are defined with explicit test evidence targets.
+4. Any mobile-only compatibility seams are documented as temporary and tracked for N13 cleanup.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:
