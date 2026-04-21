@@ -50,8 +50,10 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N1 (audit and migration tracking): complete.
 - N2 (domain client stabilization): complete.
 - N3 (Nhost foundation scaffolding): complete.
-- N4 (auth/current user cutover, web-first): in progress.
-- N5+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
+- N4 (auth/current user cutover, web-first): complete.
+- N5 (schema/permissions/backfill scaffolding): complete.
+- N6 (GraphQL CRUD wrappers in client): complete.
+- N7+ (web CRUD cutover and beyond): in progress / not started per `docs/backend-migration-status.md`.
 
 ## N3 implementation baseline (now in repo)
 
@@ -92,15 +94,25 @@ N5 is scaffolded when these are true:
 4. Backfill script exists to populate missing profiles from known owner IDs without destructive rewrites.
 5. Validation tests cover profile upsert + backfill-selection behavior.
 
-## N6 implementation baseline (current progress)
+## N6 implementation baseline (completed)
 
-N6 is in progress when these are true:
+N6 is complete when these are true:
 
-1. `packages/client` provides GraphQL CRUD wrappers for web-cutover target entities (brain items, threads/messages, tasks/sessions, preferences).
+1. `packages/client` provides GraphQL CRUD wrappers for web-cutover target entities where parity is safe (`brain item list/detail/update`, threads/messages, tasks/sessions, preferences).
 2. GraphQL wrappers remain owner-scoped and depend on authenticated identity (`x-hasura-user-id`) with no UI transport leakage.
 3. Domain client selects GraphQL CRUD wrappers only when Hasura GraphQL is configured; otherwise REST parity path remains intact.
 4. Session list GraphQL path uses owner-backed `sessions.user_id` scoping, aligned to N5 ownership scaffolding.
-5. CRUD wrapper behavior is covered by targeted client tests proving GraphQL routing and fallback parity.
+5. Loop-critical side-effectful create paths that are not parity-safe yet (notably `createBrainItem`) remain on REST/function path until N7 cutover evidence is complete.
+6. CRUD wrapper behavior is covered by targeted client tests proving GraphQL routing and fallback parity.
+
+## N7 implementation baseline (kickoff)
+
+N7 is in progress when these are true:
+
+1. Web domain calls are cut over method-by-method to N6 GraphQL wrappers with parity checks per slice.
+2. Each CRUD slice is validated against loop safety checkpoints before enabling the next slice.
+3. Side-effectful create flows stay on REST/function until equivalent orchestration exists in GraphQL/Functions.
+4. Checklist evidence is updated immediately after each cutover slice to prevent doc staleness.
 
 ## N5 required/optional backfill order
 

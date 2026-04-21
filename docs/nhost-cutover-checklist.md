@@ -58,11 +58,11 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ### N6: GraphQL CRUD Wrappers in Client
 
-- [x] Domain client exposes transport-safe GraphQL CRUD wrappers for core CRUD surfaces (brain items, threads/messages, tasks/sessions, preferences) without changing UI call sites.
-- [x] `createBrainItem` supports GraphQL CRUD path under Hasura configuration (N6 wrapper completeness for core CRUD).
+- [x] Domain client exposes transport-safe GraphQL CRUD wrappers for web-cutover CRUD surfaces (brain item read/update, artifacts read, threads/messages, tasks/sessions, preferences) without changing UI call sites.
+- [x] Loop-sensitive create capture flow (`createCaptureIntake`) and REST `createBrainItem` parity-sensitive side effects remain on non-GraphQL path until explicit side-effect parity is implemented.
 - [x] Session list GraphQL path scopes by `sessions.user_id` (leveraging N5 ownership scaffolding) instead of legacy task-join fallback.
 - [x] GraphQL CRUD wrappers continue to enforce owner scoping and preserve REST fallback when Hasura is not configured.
-- [x] Targeted client tests cover N6 GraphQL wrapper behavior.
+- [x] Targeted client tests cover N6 GraphQL wrapper behavior and function/REST boundaries.
 
 ## Web cutover checklist (must complete before mobile cutover)
 

@@ -23,7 +23,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Current user identity | `GET /auth/me` | `apps/api/src/server.ts` | Nhost Auth session + GraphQL profile read | `getCurrentUser` | Yes | in progress | Web now boots client with Nhost transport + strict identity mode; strict-mode requests require bearer-derived identity and ignore header/query/params/body fallback, and no-session path yields 401. |
 | Capture intake pipeline | `POST /capture/intake` | `apps/api/src/routes/capture.ts` | Nhost Function | `createBrainItem` (capture mode) | Yes | not started | Includes enrichment, related detection, feed card side effects, and event append. |
-| Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | N2 stable client surface now includes these methods; runtime behavior remains parity-preserving. |
+| Brain item list/detail/create/update | `GET /brain-items`, `GET /brain-items/:id`, `POST /brain-items`, `PATCH /brain-items/:id` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL CRUD | `createBrainItem`, `getBrainItem`, `touchBrainItem` | Yes | in progress | N6 GraphQL path is enabled for list/detail/update; create remains REST-scoped until side-effect parity (feed card/event append) is functionized for safe cutover. |
 | Brain item artifacts read | `GET /brain-items/:id/artifacts` | `apps/api/src/routes/brain-items.ts` | Hasura GraphQL read | `getBrainItem` (artifact expansion) | Yes | in progress | Keep writes server-side where feasible. |
 | Related item discovery | `GET /brain-items/:id/related` | `apps/api/src/routes/brain-items.ts` | Nhost Function | `getBrainItem` (related context fetch) | Yes | not started | Computed logic, not pure CRUD. |
 | Thread create/read | `POST /threads`, `GET /threads/:id`, `GET /threads/by-target` | `apps/api/src/routes/threads.ts` | Hasura GraphQL CRUD/read | `addComment` (thread resolution path) | Yes | in progress | Owner-scoped access required. |
@@ -135,12 +135,19 @@ Completed in this repository state:
 Completed in this repository state:
 
 1. Extended GraphQL CRUD adapter coverage in `packages/client/src/graphql/crud-adapter.ts` for:
-   - `createBrainItem`
    - owner-scoped session listing based on `sessions.user_id`.
-2. Updated domain client GraphQL overrides (`packages/client/src/domain/client.ts`) so `createBrainItem` uses GraphQL adapter when Hasura is configured.
+2. Kept `createBrainItem` on REST path to preserve loop-critical side effects (feed-card generation + event append) until N7/N8 function parity slice is validated.
 3. Added targeted N6 client tests proving:
-   - GraphQL create-brain-item path is used in GraphQL mode.
+   - GraphQL list/detail/update brain-item and threads/tasks/preferences wrappers route in GraphQL mode.
    - GraphQL session list path queries by owner-scoped `sessions.user_id`.
+
+## N7 kickoff update
+
+N7 begins in this repository state with a web-cutover-safe scope:
+
+1. Web still consumes only `YurbrainClient` methods; no UI transport leakage.
+2. First web CRUD cutover slice is list/detail/update reads/writes where parity is wrapper-proven.
+3. `createBrainItem` remains explicitly excluded from GraphQL cutover until side effects are moved to function-backed orchestration and parity-validated.
 
 ## Unclassified capabilities
 

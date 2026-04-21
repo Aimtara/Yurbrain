@@ -78,50 +78,38 @@ test("domain client uses GraphQL CRUD adapter when configured", async () => {
   assert.equal(calls[0]?.init?.method, "POST");
 });
 
-test("domain client createBrainItem uses GraphQL CRUD adapter when configured", async () => {
+test("domain client createBrainItem remains REST-backed even when GraphQL is configured", async () => {
   configureHasuraGraphqlUrl("https://hasura.example.com/v1/graphql");
   const calls = installFetch((call) => {
-    const body = JSON.parse(String(call.init?.body ?? "{}")) as { query?: string };
-    if (body.query?.includes("GraphqlCreateBrainItem")) {
+    if (call.url === "/brain-items") {
       return new Response(
         JSON.stringify({
-          data: {
-            insert_brain_items_one: {
-              id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-              user_id: "11111111-1111-4111-8111-111111111111",
-              type: "note",
-              content_type: "text",
-              title: "GraphQL create item",
-              raw_content: "Created through GraphQL adapter",
-              source_app: null,
-              source_link: null,
-              topic_guess: null,
-              status: "active",
-              created_at: "2026-04-21T00:00:00.000Z",
-              updated_at: "2026-04-21T00:00:00.000Z"
-            }
-          }
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          userId: "11111111-1111-4111-8111-111111111111",
+          type: "note",
+          title: "REST create item",
+          rawContent: "Created through REST route",
+          status: "active",
+          createdAt: "2026-04-21T00:00:00.000Z",
+          updatedAt: "2026-04-21T00:00:00.000Z"
         }),
-        { status: 200 }
+        { status: 201 }
       );
     }
-    return new Response(JSON.stringify({ data: {} }), { status: 200 });
+    return new Response("{}", { status: 200 });
   });
   const client = createYurbrainDomainClient();
 
   const created = await client.createBrainItem<{ id: string; userId: string }>({
     type: "note",
-    title: "GraphQL create item",
-    rawContent: "Created through GraphQL adapter"
+    title: "REST create item",
+    rawContent: "Created through REST route"
   });
 
   assert.equal(created.id, "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
   assert.equal(created.userId, "11111111-1111-4111-8111-111111111111");
-  assert.equal(calls[0]?.url, "https://hasura.example.com/v1/graphql");
-  const createCall = calls.find((call) =>
-    JSON.parse(String(call.init?.body ?? "{}")).query?.includes("GraphqlCreateBrainItem")
-  );
-  assert.ok(createCall);
+  assert.equal(calls[0]?.url, "/brain-items");
+  assert.equal(calls[0]?.init?.method, "POST");
 });
 
 test("domain client listSessions GraphQL path queries sessions by user ownership", async () => {
@@ -175,6 +163,28 @@ test("domain client listSessions GraphQL path queries sessions by user ownership
   assert.equal(calls[0]?.url, "https://hasura.example.com/v1/graphql");
 });
 
+test("domain client GraphQL mode keeps computed logic off GraphQL transport", async () => {
+  configureHasuraGraphqlUrl("https://hasura.example.com/v1/graphql");
+  const calls = installFetch((call) => {
+    if (call.url === "/tasks/task-123/start") {
+      return new Response(JSON.stringify({ id: "session-1", state: "running" }), { status: 201 });
+    }
+    if (call.url === "/feed?lens=all&limit=5") {
+      return new Response(JSON.stringify([]), { status: 200 });
+    }
+    return new Response(JSON.stringify({ data: {} }), { status: 200 });
+  });
+  const client = createYurbrainDomainClient();
+
+  await client.startSession("task-123");
+  await client.getFeed({ lens: "all", limit: 5 });
+
+  assert.equal(calls[0]?.url, "/tasks/task-123/start");
+  assert.equal(calls[1]?.url, "/feed?lens=all&limit=5");
+  const graphqlCall = calls.find((call) => call.url === "https://hasura.example.com/v1/graphql");
+  assert.equal(graphqlCall, undefined);
+});
+
 test("domain client founder review defaults to founder review route without userId", async () => {
   const calls = installFetch(() => new Response("{}", { status: 200 }));
   const client = createYurbrainDomainClient();
@@ -182,4 +192,36 @@ test("domain client founder review defaults to founder review route without user
   await client.getFounderReview({ window: "7d", includeAi: true });
 
   assert.equal(calls[0]?.url, "/founder-review?window=7d&includeAi=1");
+});
+
+test("domain client keeps CRUD/computed boundary in GraphQL mode", async () => {
+  configureHasuraGraphqlUrl("https://hasura.example.com/v1/graphql");
+  const calls = installFetch((call) => {
+    if (call.url === "/feed?lens=all&limit=5") {
+      return new Response("[]", { status: 200 });
+    }
+
+    const body = JSON.parse(String(call.init?.body ?? "{}")) as { query?: string };
+    if (body.query?.includes("GraphqlListTasks")) {
+      return new Response(
+        JSON.stringify({
+          data: {
+            tasks: []
+          }
+        }),
+        { status: 200 }
+      );
+    }
+
+    return new Response(JSON.stringify({ data: {} }), { status: 200 });
+  });
+
+  const client = createYurbrainDomainClient();
+  await client.getFeed({ lens: "all", limit: 5 });
+  await client.listTasks();
+
+  const feedCall = calls.find((call) => call.url === "/feed?lens=all&limit=5");
+  assert.ok(feedCall);
+  const graphqlCall = calls.find((call) => call.url === "https://hasura.example.com/v1/graphql");
+  assert.ok(graphqlCall);
 });
