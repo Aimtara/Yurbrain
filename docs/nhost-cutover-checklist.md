@@ -28,6 +28,14 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] `blockSession` client contract aligned to implemented behavior (`blockSession(sessionId)`).
 - [x] Runtime remains parity-preserving (REST-backed by default; no backend cutover in N2).
 
+### N3: Nhost Foundation Scaffolding
+
+- [x] Explicit Nhost/Hasura environment-key contract documented (required vs optional keys, precedence, sample values) in `docs/nhost-env-contract.md` and linked from runbook.
+- [x] Nhost initialization config checked in at `nhost/config.yaml` (project/region/postgres/auth/storage) and TOML overlay direction documented for modern CLI workflows.
+- [ ] Example `.env` files for web/mobile are aligned with the N3 env contract.
+- [ ] Nhost bootstrap smoke check confirmed (`bootstrapNhostSession` returns `configured: true` when keys are present).
+- [ ] Hasura GraphQL smoke check confirmed (`isHasuraGraphqlConfigured()` true and one read query succeeds in Nhost mode).
+
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user

@@ -51,6 +51,15 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N2 (domain client stabilization): complete.
 - N3+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
 
+## N3 environment/config contract (explicit)
+
+N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and referenced by checklist evidence.
+
+Contract source of truth:
+
+- `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
+- Nhost initialization config for this migration includes `nhost/config.yaml`, with TOML (`nhost/nhost.toml` + overlays) documented as the modern CLI-forward path.
+
 ## Cutover rules
 
 - No big-bang rewrite.
