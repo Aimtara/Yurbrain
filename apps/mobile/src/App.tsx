@@ -1,5 +1,5 @@
 import { SafeAreaView, StatusBar, View } from "react-native";
-import { configureApiBaseUrl, YurbrainClientProvider } from "@yurbrain/client";
+import { configureApiBaseUrl } from "@yurbrain/client";
 
 import { AppCaptureSheet } from "./features/capture/AppCaptureSheet";
 import { FocusFeedSurface } from "./features/feed/FocusFeedSurface";
@@ -9,6 +9,7 @@ import { SessionSurface } from "./features/session/SessionSurface";
 import { TimeSurface } from "./features/session/TimeSurface";
 import { MobileTabBar } from "./features/shell/MobileTabBar";
 import { useMobileLoopController } from "./features/shell/useMobileLoopController";
+import { YurbrainClientProvider } from "./providers/YurbrainClientProvider";
 
 if (typeof window !== "undefined") {
   configureApiBaseUrl(`${window.location.protocol}//${window.location.hostname}:3001`);

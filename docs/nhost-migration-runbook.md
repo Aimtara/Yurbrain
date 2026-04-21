@@ -58,8 +58,8 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N9 (AI thin-slice functions): complete.
 - N10 (founder review hardening): complete.
 - N11 (event safety pass): complete.
-- N12 (mobile cutover): in progress (kickoff baseline documented).
-- N13 (legacy REST strangler cleanup): not started per `docs/backend-migration-status.md`.
+- N12 (mobile cutover): complete.
+- N13 (legacy REST strangler cleanup): in progress (kickoff baseline documented).
 
 ## N3 implementation baseline (now in repo)
 
@@ -178,14 +178,32 @@ Completed in this repository state:
 3. Event safety tests now validate owner-scoped write behavior, legacy `body.userId` spoof resistance on create paths, and founder diagnostics exclusion of raw event payloads.
 4. Test runtime safety was hardened by isolating default per-process test database paths per server instance to prevent PGlite collisions during concurrent server construction.
 
-## N12 implementation baseline (kickoff)
+## N12 implementation baseline (completed)
 
-N12 starts when these are true:
+N12 is complete when these are true:
 
 1. Mobile app data flows route exclusively through the same `packages/client` domain methods already validated on web.
 2. Mobile boot/auth behavior is aligned to strict identity expectations without introducing transport forks.
 3. Capture/feed/item/comments/plan/session/founder-review mobile parity checkpoints are defined with explicit test evidence targets.
 4. Any mobile-only compatibility seams are documented as temporary and tracked for N13 cleanup.
+
+## N12 completion update
+
+Completed in this repository state:
+
+1. Mobile provider now uses explicit Nhost transport selection through local wrapper wiring (`SharedYurbrainClientProvider options={{ transport: "nhost" }}`), matching web bootstrap identity boundary expectations.
+2. Mobile app root now imports the local provider wrapper (instead of package-level default provider) so transport policy stays explicit and guarded.
+3. Mobile loop controller parity remains on shared `packages/client` domain methods for capture/feed/item/comments/plan/session/founder-mode paths with no direct GraphQL/function calls in mobile surfaces.
+4. Added N12 mobile guard tests covering provider transport wiring, app/provider composition, and mobile persisted-state helper parity.
+
+## N13 implementation baseline (kickoff)
+
+N13 starts when these are true:
+
+1. Remaining legacy REST handlers are inventoried by caller and classified as remove now vs keep temporarily.
+2. Compatibility routes retained in N8-N12 have explicit removal criteria and cleanup owners.
+3. Deletion candidates are constrained to capabilities already parity-validated on both web and mobile.
+4. Cleanup checkpoints keep `/events` public access disabled and preserve loop safety under strict auth.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

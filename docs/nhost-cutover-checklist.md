@@ -80,12 +80,11 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Event policy hardening is implemented: event payloads are allowlisted/minimized and do not carry raw content.
 - [x] Event safety parity evidence is captured across capture/feed/session/founder-review surfaces (strict-auth core loop + founder diagnostics + event-safety tests).
 
-### N12: Mobile Cutover (kickoff baseline)
+### N12: Mobile Cutover
 
-- [x] N12 baseline and scope are documented in runbook/status docs.
-- [ ] Mobile provider/bootstrap cutover uses authenticated Nhost transport with no demo-user fallback.
-- [ ] Mobile loop surfaces (capture/feed/item/comments/plan/session) run through shared `packages/client` domain methods with parity checks.
-- [ ] N12 parity evidence captured before any mobile-specific transport divergence.
+- [x] Mobile provider/bootstrap cutover uses authenticated Nhost transport with no demo-user fallback.
+- [x] Mobile loop surfaces (capture/feed/item/comments/plan/session) run through shared `packages/client` domain methods with parity checks.
+- [x] N12 parity evidence captured before any mobile-specific transport divergence.
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
@@ -121,19 +120,19 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ## Mobile cutover checklist (after web stability)
 
-- [ ] Mobile bootstrap uses same authenticated client initialization.
-- [ ] Capture uses shared domain client methods.
-- [ ] Feed uses shared domain client methods.
-- [ ] Item detail/comments use shared domain client methods.
-- [ ] Plan/session path uses shared domain client methods.
-- [ ] Founder-mode/founder-review integration remains coherent where applicable.
-- [ ] No mobile-specific transport fork created.
+- [x] Mobile bootstrap uses same authenticated client initialization.
+- [x] Capture uses shared domain client methods.
+- [x] Feed uses shared domain client methods.
+- [x] Item detail/comments use shared domain client methods.
+- [x] Plan/session path uses shared domain client methods.
+- [x] Founder-mode/founder-review integration remains coherent where applicable.
+- [x] No mobile-specific transport fork created.
 
 ## Post-cutover cleanup checklist
 
 - [ ] Dead REST routes identified with no remaining callers.
 - [x] Temporary compatibility routes reviewed and either retained with rationale or removed.
 - [ ] Legacy REST logic removed only after parity evidence.
-- [ ] Public raw events route remains disabled/removed.
+- [x] Public raw events route remains disabled/removed.
 - [x] Docs updated (`backend-migration-status`, runbook, transport policy).
-- [ ] Final risk pass confirms no product-loop regression.
+- [x] Final risk pass confirms no product-loop regression.

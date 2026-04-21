@@ -49,7 +49,7 @@ This document is the Nhost migration control plane for Yurbrain backend and data
 | Surface | Current access pattern | Coupling risk | N2 action |
 | --- | --- | --- | --- |
 | `apps/web` feature controllers | Uses `yurbrainDomainClient` from `@yurbrain/client` for feed/capture/item/session/founder flows | Low runtime coupling, but package exports still allow accidental transport bypass | Migrate imports to explicit stable client entrypoint and tighten exports |
-| `apps/mobile` loop controller | Uses `yurbrainDomainClient` from `@yurbrain/client` | Low runtime coupling, same export leakage risk | Keep shared domain methods, avoid mobile-specific transport fork |
+| `apps/mobile` loop controller | Uses `useYurbrainClient` domain methods from `@yurbrain/client` under app-level provider wrapper | Low runtime coupling, bounded by shared client/provider transport policy | Keep shared domain methods, avoid mobile-specific transport fork |
 | `packages/client` root exports | Exposes stable client interface, provider, singleton, and `configureApiBaseUrl` only | Reduced risk with explicit boundary | N2 boundary restriction completed |
 
 ## Product-critical path protection
@@ -224,6 +224,23 @@ N12 begins in this repository state with mobile cutover scope:
 1. Align mobile bootstrap with authenticated shared client initialization, mirroring web transport boundary rules.
 2. Validate mobile capture/feed/item/session/founder flows continue using `packages/client` domain methods only (no transport forks).
 3. Capture mobile parity evidence against the validated continuity loop before any legacy route cleanup in N13.
+
+## N12 completion update
+
+N12 is complete in this repository state:
+
+1. Mobile app provider wiring now explicitly selects Nhost transport via the local provider wrapper (`options={{ transport: "nhost" }}`), aligning bootstrap behavior with web.
+2. Mobile root app now imports and uses the local provider wrapper, keeping transport policy explicit instead of implicitly relying on package defaults.
+3. Mobile loop flow remains routed through shared `packages/client` domain methods (`getFeed`, `createCaptureIntake`, `getItemContext`, `planThis`, `startSession`/`blockSession`/`finishSession`, founder preference patching) with no direct GraphQL/function calls in mobile surfaces.
+4. Added targeted mobile guard tests to prevent transport-boundary regression (`apps/mobile/src/__tests__/n12-mobile-cutover.test.ts`).
+
+## N13 kickoff update
+
+N13 begins in this repository state with legacy cleanup scope:
+
+1. Inventory remaining REST and compatibility handlers still exercised by domain methods after N12 parity completion.
+2. Prioritize cleanup candidates that are already parity-validated across both web and mobile while preserving strict-auth safety gates.
+3. Keep public raw-event access blocked and retain loop-safety regression checks during each cleanup slice.
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.
