@@ -130,6 +130,18 @@ Completed in this repository state:
    - repository write paths now stamp ownership where available for artifacts/threads/messages/sessions.
 6. Added explicit N5 Hasura permission scaffold doc (`docs/nhost-hasura-permission-scaffold.md`) with owner rules, insert presets, stricter artifact/events treatment, and required/optional backfill order.
 
+## N6 progress update
+
+Completed in this repository state:
+
+1. Extended GraphQL CRUD adapter coverage in `packages/client/src/graphql/crud-adapter.ts` for:
+   - `createBrainItem`
+   - owner-scoped session listing based on `sessions.user_id`.
+2. Updated domain client GraphQL overrides (`packages/client/src/domain/client.ts`) so `createBrainItem` uses GraphQL adapter when Hasura is configured.
+3. Added targeted N6 client tests proving:
+   - GraphQL create-brain-item path is used in GraphQL mode.
+   - GraphQL session list path queries by owner-scoped `sessions.user_id`.
+
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.

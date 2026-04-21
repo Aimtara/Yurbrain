@@ -92,6 +92,16 @@ N5 is scaffolded when these are true:
 4. Backfill script exists to populate missing profiles from known owner IDs without destructive rewrites.
 5. Validation tests cover profile upsert + backfill-selection behavior.
 
+## N6 implementation baseline (current progress)
+
+N6 is in progress when these are true:
+
+1. `packages/client` provides GraphQL CRUD wrappers for web-cutover target entities (brain items, threads/messages, tasks/sessions, preferences).
+2. GraphQL wrappers remain owner-scoped and depend on authenticated identity (`x-hasura-user-id`) with no UI transport leakage.
+3. Domain client selects GraphQL CRUD wrappers only when Hasura GraphQL is configured; otherwise REST parity path remains intact.
+4. Session list GraphQL path uses owner-backed `sessions.user_id` scoping, aligned to N5 ownership scaffolding.
+5. CRUD wrapper behavior is covered by targeted client tests proving GraphQL routing and fallback parity.
+
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

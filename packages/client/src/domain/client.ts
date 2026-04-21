@@ -41,6 +41,7 @@ import {
   updateUserPreferenceMe
 } from "../hooks/useMutations";
 import {
+  createBrainItemGraphql,
   createTaskGraphql,
   createThreadGraphql,
   getBrainItemGraphql,
@@ -296,6 +297,7 @@ function createGraphqlCrudOverrides(restClient: YurbrainDomainClient): Partial<Y
   return {
     listBrainItems: () => (useGraphql() ? listBrainItemsGraphql() : restClient.listBrainItems()),
     getBrainItem: (itemId) => (useGraphql() ? getBrainItemGraphql(itemId) : restClient.getBrainItem(itemId)),
+    createBrainItem: (payload) => (useGraphql() ? createBrainItemGraphql(payload) : restClient.createBrainItem(payload)),
     updateBrainItem: (itemId, payload) =>
       useGraphql() ? updateBrainItemGraphql(itemId, payload) : restClient.updateBrainItem(itemId, payload),
     listBrainItemArtifacts: (itemId, type) =>

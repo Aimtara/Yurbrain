@@ -56,6 +56,14 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Required vs optional backfill phases and demo/founder mapping notes documented (`docs/nhost-hasura-permission-scaffold.md`).
 - [x] Owner-scoped Hasura rule + insert preset scaffolding documented, including stricter treatment for `item_artifacts` and `events`.
 
+### N6: GraphQL CRUD Wrappers in Client
+
+- [x] Domain client exposes transport-safe GraphQL CRUD wrappers for core CRUD surfaces (brain items, threads/messages, tasks/sessions, preferences) without changing UI call sites.
+- [x] `createBrainItem` supports GraphQL CRUD path under Hasura configuration (N6 wrapper completeness for core CRUD).
+- [x] Session list GraphQL path scopes by `sessions.user_id` (leveraging N5 ownership scaffolding) instead of legacy task-join fallback.
+- [x] GraphQL CRUD wrappers continue to enforce owner scoping and preserve REST fallback when Hasura is not configured.
+- [x] Targeted client tests cover N6 GraphQL wrapper behavior.
+
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
