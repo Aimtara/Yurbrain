@@ -30,11 +30,10 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ### N3: Nhost Foundation Scaffolding
 
-- [x] Nhost runtime config resolver supports Next/Expo env keys and shared `YURBRAIN_*` keys.
-- [x] Nhost service URLs can be derived from subdomain/region when explicit URLs are absent.
-- [x] Nhost bootstrap hydrates GraphQL endpoint config for downstream Hasura client usage.
-- [x] Nhost bootstrap keeps runtime behavior parity-preserving (REST default unchanged when no Nhost config).
-- [x] Nhost foundation has targeted unit coverage for resolver + bootstrap defaults.
+- [x] Explicit Nhost/Hasura environment-key contract documented (required vs optional keys, precedence, sample values) in `docs/nhost-env-contract.md` and linked from runbook.
+- [ ] Example `.env` files for web/mobile are aligned with the N3 env contract.
+- [ ] Nhost bootstrap smoke check confirmed (`bootstrapNhostSession` returns `configured: true` when keys are present).
+- [ ] Hasura GraphQL smoke check confirmed (`isHasuraGraphqlConfigured()` true and one read query succeeds in Nhost mode).
 
 ## Web cutover checklist (must complete before mobile cutover)
 

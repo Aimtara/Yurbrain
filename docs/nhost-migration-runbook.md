@@ -62,6 +62,14 @@ N3 is considered established when these are true:
 4. Bootstrap remains non-invasive to product behavior (REST-backed domain paths unchanged).
 5. Runtime-config and bootstrap behavior are covered by targeted tests.
 
+## N3 environment/config contract (explicit)
+
+N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and referenced by checklist evidence.
+
+Contract source of truth:
+
+- `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
+
 ## Cutover rules
 
 - No big-bang rewrite.
