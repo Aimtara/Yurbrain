@@ -18,6 +18,8 @@ export type AppState = {
   repo: DbRepository;
 };
 
+let testDatabaseInstance = 0;
+
 function resolveWorkspaceRoot(): string {
   if (process.env.YURBRAIN_WORKSPACE_ROOT) {
     return process.env.YURBRAIN_WORKSPACE_ROOT;
@@ -46,7 +48,7 @@ function defaultDatabasePath(): string {
     process.execArgv.includes("--test") ||
     process.argv.some((arg) => arg.includes("--test") || arg.includes(".test."));
   if (isTestRun) {
-    return path.resolve(workspaceRoot, ".yurbrain-data", `test-${process.pid}`);
+    return path.resolve(workspaceRoot, ".yurbrain-data", `test-${process.pid}-${++testDatabaseInstance}`);
   }
   return path.resolve(workspaceRoot, ".yurbrain-data", "runtime");
 }
@@ -56,10 +58,12 @@ function defaultMigrationsPath(): string {
 }
 
 export function createState(options: CreateRepositoryOptions = {}): AppState {
+  const resolvedDatabasePath = options.databasePath ?? defaultDatabasePath();
+  const resolvedMigrationsPath = options.migrationsPath ?? defaultMigrationsPath();
   return {
     repo: createDbRepository({
-      databasePath: options.databasePath ?? defaultDatabasePath(),
-      migrationsPath: options.migrationsPath ?? defaultMigrationsPath()
+      databasePath: resolvedDatabasePath,
+      migrationsPath: resolvedMigrationsPath
     })
   };
 }

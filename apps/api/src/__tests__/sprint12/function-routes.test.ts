@@ -7,7 +7,7 @@ test.after(async () => {
   await app.close();
 });
 
-test("GET /functions/feed and /functions/feed/rank return the same ranked cards", async () => {
+test("GET /functions/feed returns ranked cards with whyShown quality", async () => {
   const userId = "14141414-1414-4414-8414-141414141414";
   const captures = [
     "Draft migration review notes with continuity checkpoints.",
@@ -34,22 +34,10 @@ test("GET /functions/feed and /functions/feed/rank return the same ranked cards"
     url: "/functions/feed?lens=all&limit=2",
     headers: { "x-yurbrain-user-id": userId }
   });
-  const alias = await app.inject({
-    method: "GET",
-    url: "/functions/feed/rank?lens=all&limit=2",
-    headers: { "x-yurbrain-user-id": userId }
-  });
-
   assert.equal(direct.statusCode, 200);
-  assert.equal(alias.statusCode, 200);
   const directCards = direct.json<Array<{ id: string; whyShown: { summary: string }; availableActions: string[] }>>();
-  const aliasCards = alias.json<Array<{ id: string }>>();
   assert.ok(directCards.length >= 1);
   assert.ok(directCards.length <= 2);
-  assert.deepEqual(
-    directCards.map((card) => card.id),
-    aliasCards.map((card) => card.id)
-  );
   assert.ok(directCards.every((card) => card.whyShown.summary.length > 0));
   assert.ok(directCards.every((card) => card.availableActions.includes("dismiss")));
 });
@@ -58,7 +46,7 @@ test("feed function actions require owner identity and preserve behavior", async
   const userId = "15151515-1515-4515-8515-151515151515";
   const createResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Function action target card",
@@ -101,7 +89,7 @@ test("feed function actions require owner identity and preserve behavior", async
   assert.equal(unauthorizedRefresh.statusCode, 404);
 });
 
-test("next-step function route alias matches canonical route response", async () => {
+test("next-step function route returns deterministic next action response", async () => {
   const userId = "17171717-1717-4717-8717-171717171717";
   const captures = await Promise.all(
     [
@@ -129,19 +117,10 @@ test("next-step function route alias matches canonical route response", async ()
     headers: { "x-yurbrain-user-id": userId },
     payload: { itemIds }
   });
-  const alias = await app.inject({
-    method: "POST",
-    url: "/functions/next-step",
-    headers: { "x-yurbrain-user-id": userId },
-    payload: { itemIds }
-  });
-
   assert.equal(canonical.statusCode, 201);
-  assert.equal(alias.statusCode, 201);
-  assert.deepEqual(
-    alias.json<{ suggestedNextAction: string; reason: string }>(),
-    canonical.json<{ suggestedNextAction: string; reason: string }>()
-  );
+  const body = canonical.json<{ suggestedNextAction: string; reason: string }>();
+  assert.ok(body.suggestedNextAction.length > 0);
+  assert.ok(body.reason.length > 0);
 });
 
 test("summarize-progress returns 404 for non-owner item access", async () => {

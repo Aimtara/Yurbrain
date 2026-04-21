@@ -62,7 +62,7 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
 
   const summarizeResponse = await app.inject({
     method: "POST",
-    url: "/ai/summarize",
+    url: "/functions/summarize",
     payload: {
       itemId: createdItem.id,
       rawContent: createdItem.rawContent
@@ -77,7 +77,7 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
 
   const convertResponse = await app.inject({
     method: "POST",
-    url: "/ai/convert",
+    url: "/functions/convert",
     payload: {
       userId,
       sourceItemId: createdItem.id,

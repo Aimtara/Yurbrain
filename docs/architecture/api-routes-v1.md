@@ -25,11 +25,11 @@ Preferences:
 - PUT /preferences/:userId
 
 AI:
-- POST /ai/summarize
-- POST /ai/classify
-- POST /ai/query
-- POST /ai/convert
-- POST /ai/feed/generate-card
+- POST /functions/summarize
+- POST /functions/classify
+- POST /functions/query
+- POST /functions/convert
+- POST /functions/feed/generate-card
 
 Tasks:
 - POST /tasks

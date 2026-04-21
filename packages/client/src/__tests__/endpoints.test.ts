@@ -20,12 +20,13 @@ test("endpoints cover the documented core loop surface", () => {
     "tasks",
     "sessions",
     "manualConvertTask",
-    "aiSummarize",
-    "aiSummarizeCluster",
-    "aiClassify",
-    "aiQuery",
-    "aiNextStep",
-    "aiConvert"
+    "functionSummarizeItem",
+    "functionSummarizeProgress",
+    "functionClassifyItem",
+    "functionQueryItem",
+    "functionNextStep",
+    "functionConvert",
+    "functionFeedGenerateCard"
   ] as const;
 
   for (const key of required) {
@@ -35,8 +36,9 @@ test("endpoints cover the documented core loop surface", () => {
 
 test("function endpoint aliases resolve to canonical paths", () => {
   assert.equal(endpoints.functionFeed, "/functions/feed");
-  assert.equal(endpoints.functionFeedRank, endpoints.functionFeed);
   assert.equal(endpoints.functionNextStep, "/functions/what-should-i-do-next");
+  assert.equal(endpoints.functionFounderReview, "/functions/founder-review");
+  assert.equal(endpoints.functionFounderReviewDiagnostics, "/functions/founder-review/diagnostics");
   assert.equal(endpoints.functionSummarizeItem, "/functions/summarize");
   assert.equal(endpoints.functionClassifyItem, "/functions/classify");
   assert.equal(endpoints.functionQueryItem, "/functions/query");

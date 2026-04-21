@@ -320,8 +320,10 @@ export default function Page() {
   );
   const {
     founderReview,
+    founderReviewDiagnostics,
     founderReviewLoading,
     founderReviewAiReadoutLoading,
+    founderReviewDiagnosticsLoading,
     founderReviewError,
     founderReviewActionNotice,
     founderReviewUnauthorized,
@@ -549,8 +551,10 @@ export default function Page() {
       {activeSurface === "founder_review" && !founderReviewUnauthorized ? (
         <FounderReviewSurface
           review={founderReview}
+          diagnostics={founderReviewDiagnostics}
           loading={founderReviewLoading}
           loadingAiReadout={founderReviewAiReadoutLoading}
+          loadingDiagnostics={founderReviewDiagnosticsLoading}
           error={founderReviewError}
           actionNotice={founderReviewActionNotice}
           onRefresh={() => void loadFounderReview(false)}

@@ -38,14 +38,14 @@ test("full loop: capture -> feed -> comment/query -> convert -> act", async () =
 
   const query = await app.inject({
     method: "POST",
-    url: "/ai/query",
+    url: "/functions/query",
     payload: { threadId: threadData.id, question: "What should I do first?" }
   });
   assert.equal(query.statusCode, 201);
 
   const convert = await app.inject({
     method: "POST",
-    url: "/ai/convert",
+    url: "/functions/convert",
     payload: {
       userId,
       sourceItemId: item.id,

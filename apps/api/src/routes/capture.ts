@@ -12,6 +12,10 @@ import {
 import { enrichCapture } from "../services/capture/enrichment";
 import { getRelatedItems } from "../services/capture/related-items";
 import { generateCardFromItem } from "../services/feed/generate-card";
+import {
+  normalizeEventPayload,
+  type EventPayloadByType
+} from "../services/events/policy";
 import type { FeedCardMeta, FeedWhyShown, StoredFeedCard } from "../services/feed/static-feed";
 import { toFeedCardResponse } from "../services/feed/static-feed";
 import { requireCurrentUser } from "../middleware/current-user";
@@ -170,16 +174,17 @@ export async function registerCaptureRoutes(app: FastifyInstance, state: AppStat
       }
     }
 
+    const payloadForEvent: EventPayloadByType["brain_item_created"] = {
+      id: item.id,
+      type: item.type,
+      contentType: item.contentType,
+      topicGuess: item.topicGuess
+    };
     await state.repo.appendEvent({
       id: randomUUID(),
       userId: item.userId,
       eventType: EventTypeSchema.parse("brain_item_created"),
-      payload: {
-        id: item.id,
-        type: item.type,
-        contentType: item.contentType,
-        topicGuess: item.topicGuess
-      },
+      payload: normalizeEventPayload("brain_item_created", payloadForEvent),
       occurredAt: now
     });
 

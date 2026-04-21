@@ -64,6 +64,35 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Session list GraphQL path scopes by `sessions.user_id` (leveraging N5 ownership scaffolding) instead of legacy task-join fallback.
 - [x] GraphQL CRUD wrappers continue to enforce owner scoping and preserve REST fallback when Hasura is not configured.
 - [x] Targeted client tests cover N6 GraphQL wrapper behavior and function/REST boundaries.
+
+### N10: Founder Review Functions + Web Integration
+
+- [x] Founder review canonical route uses `/functions/founder-review`.
+- [x] Founder diagnostics payload is actionable at item level (`summary`, `focusItems`, `focusActions`) with typed contract validation.
+- [x] Founder Review web surface renders diagnostics and routes both item-level and feed-level follow-up actions through domain actions.
+- [x] Founder diagnostics remains behind `packages/client` (`getFounderDiagnostics`) with no direct function/GraphQL leakage in UI surfaces.
+- [x] Targeted API/client tests and manual walkthrough validate founder diagnostics actionability flow.
+
+### N11: Event Safety Pass
+
+- [x] Raw event access policy is explicit (`GET /events` remains disabled with explicit message).
+- [x] Event write-path safety audit is completed for owner scoping and exposure boundaries across capture + brain-item routes.
+- [x] Event policy hardening is implemented: event payloads are allowlisted/minimized and do not carry raw content.
+- [x] Event safety parity evidence is captured across capture/feed/session/founder-review surfaces (strict-auth core loop + founder diagnostics + event-safety tests).
+
+### N12: Mobile Cutover
+
+- [x] Mobile provider/bootstrap cutover uses authenticated Nhost transport with no demo-user fallback.
+- [x] Mobile loop surfaces (capture/feed/item/comments/plan/session) run through shared `packages/client` domain methods with parity checks.
+- [x] N12 parity evidence captured before any mobile-specific transport divergence.
+
+### N13: Legacy REST Strangler Cleanup
+
+- [x] Dead compatibility aliases with no active callers are removed (`/functions/feed/rank`, `/functions/next-step`).
+- [x] Duplicate/unused function session endpoints are removed in favor of canonical `/functions/session-helper`.
+- [x] Legacy founder-review compatibility route (`/founder-review`) is removed; canonical `/functions/founder-review` remains.
+- [x] Remaining legacy REST AI routes (`/ai/*`) are removed; canonical `/functions/*` routes are now the only in-repo AI endpoints.
+- [x] Route deletion map and parity evidence are updated after each N13 cleanup slice.
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user
@@ -86,6 +115,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Summarize/classify/query/convert thin-slice routes are function-backed.
 - [x] Function ownership failures return graceful `404` responses (no internal-error leak).
 - [x] Founder review and diagnostics are function-backed.
+- [x] Founder review strict-auth loop validation uses canonical `/functions/founder-review` route.
 
 ### Validation
 
@@ -98,19 +128,19 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 
 ## Mobile cutover checklist (after web stability)
 
-- [ ] Mobile bootstrap uses same authenticated client initialization.
-- [ ] Capture uses shared domain client methods.
-- [ ] Feed uses shared domain client methods.
-- [ ] Item detail/comments use shared domain client methods.
-- [ ] Plan/session path uses shared domain client methods.
-- [ ] Founder-mode/founder-review integration remains coherent where applicable.
-- [ ] No mobile-specific transport fork created.
+- [x] Mobile bootstrap uses same authenticated client initialization.
+- [x] Capture uses shared domain client methods.
+- [x] Feed uses shared domain client methods.
+- [x] Item detail/comments use shared domain client methods.
+- [x] Plan/session path uses shared domain client methods.
+- [x] Founder-mode/founder-review integration remains coherent where applicable.
+- [x] No mobile-specific transport fork created.
 
 ## Post-cutover cleanup checklist
 
-- [ ] Dead REST routes identified with no remaining callers.
-- [ ] Temporary compatibility routes reviewed and either retained with rationale or removed.
+- [x] Dead REST routes identified with no remaining callers.
+- [x] Temporary compatibility routes reviewed and either retained with rationale or removed.
 - [ ] Legacy REST logic removed only after parity evidence.
-- [ ] Public raw events route remains disabled/removed.
-- [ ] Docs updated (`backend-migration-status`, runbook, transport policy).
-- [ ] Final risk pass confirms no product-loop regression.
+- [x] Public raw events route remains disabled/removed.
+- [x] Docs updated (`backend-migration-status`, runbook, transport policy).
+- [x] Final risk pass confirms no product-loop regression.

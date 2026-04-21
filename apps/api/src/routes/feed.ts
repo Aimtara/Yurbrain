@@ -235,7 +235,7 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
     return sliced;
   });
 
-  app.post("/ai/feed/generate-card", async (request, reply) => {
+  app.post("/functions/feed/generate-card", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
     const { title, body } = GenerateFeedCardRequestSchema.parse(request.body);

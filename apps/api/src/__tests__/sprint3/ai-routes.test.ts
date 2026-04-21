@@ -7,7 +7,7 @@ test.after(async () => {
   await app.close();
 });
 
-test("/ai/summarize returns validated output", async () => {
+test("/functions/summarize returns validated output", async () => {
   const userId = "22222222-2222-4222-8222-222222222222";
   const itemResp = await app.inject({
     method: "POST",
@@ -24,7 +24,7 @@ test("/ai/summarize returns validated output", async () => {
 
   const resp = await app.inject({
     method: "POST",
-    url: "/ai/summarize",
+    url: "/functions/summarize",
     headers: { "x-yurbrain-user-id": userId },
     payload: {
       itemId: item.id,
@@ -39,7 +39,7 @@ test("/ai/summarize returns validated output", async () => {
   assert.match(body.ai.content, /Next:/);
 });
 
-test("/ai/summarize uses fallback on invalid output", async () => {
+test("/functions/summarize uses fallback on invalid output", async () => {
   const userId = "22222222-2222-4222-8222-222222222223";
   const itemResp = await app.inject({
     method: "POST",
@@ -56,7 +56,7 @@ test("/ai/summarize uses fallback on invalid output", async () => {
 
   const resp = await app.inject({
     method: "POST",
-    url: "/ai/summarize",
+    url: "/functions/summarize",
     headers: { "x-yurbrain-user-id": userId },
     payload: {
       itemId: item.id,
@@ -72,7 +72,7 @@ test("/ai/summarize uses fallback on invalid output", async () => {
   assert.match(body.ai.content, /Next:/);
 });
 
-test("/ai/classify returns classification artifact", async () => {
+test("/functions/classify returns classification artifact", async () => {
   const userId = "22222222-2222-4222-8222-222222222224";
   const itemResp = await app.inject({
     method: "POST",
@@ -89,7 +89,7 @@ test("/ai/classify returns classification artifact", async () => {
 
   const resp = await app.inject({
     method: "POST",
-    url: "/ai/classify",
+    url: "/functions/classify",
     headers: { "x-yurbrain-user-id": userId },
     payload: {
       itemId: item.id,
@@ -103,7 +103,7 @@ test("/ai/classify returns classification artifact", async () => {
   assert.match(body.ai.content, /CLASSIFY:/);
 });
 
-test("/ai/query uses fallback on timeout", async () => {
+test("/functions/query uses fallback on timeout", async () => {
   const userId = "22222222-2222-4222-8222-222222222225";
   const itemResp = await app.inject({
     method: "POST",
@@ -132,7 +132,7 @@ test("/ai/query uses fallback on timeout", async () => {
   const thread = threadResp.json<{ id: string }>();
   const resp = await app.inject({
     method: "POST",
-    url: "/ai/query",
+    url: "/functions/query",
     headers: { "x-yurbrain-user-id": userId },
     payload: {
       threadId: thread.id,
@@ -151,7 +151,7 @@ test("/ai/query uses fallback on timeout", async () => {
   assert.match(body.message.content, /Next move:/);
 });
 
-test("/ai/query next-step response reflects linked todo task", async () => {
+test("/functions/query next-step response reflects linked todo task", async () => {
   const userId = "33333333-3333-4333-8333-333333333333";
   const itemResponse = await app.inject({
     method: "POST",
@@ -191,7 +191,7 @@ test("/ai/query next-step response reflects linked todo task", async () => {
   const thread = threadResp.json<{ id: string }>();
   const resp = await app.inject({
     method: "POST",
-    url: "/ai/query",
+    url: "/functions/query",
     headers: { "x-yurbrain-user-id": userId },
     payload: {
       threadId: thread.id,

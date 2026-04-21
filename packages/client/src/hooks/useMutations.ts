@@ -71,7 +71,7 @@ export async function manualConvertTask<T>(payload: unknown) {
 }
 
 export async function convertToTask<T>(payload: unknown) {
-  return postJson<T>(endpoints.aiConvert, payload);
+  return postJson<T>(endpoints.functionConvert, payload);
 }
 
 export async function createTask<T>(payload: unknown) {
@@ -104,23 +104,23 @@ export async function listSessions<T>(query: { taskId?: string; userId?: string;
 }
 
 export async function summarizeItem<T>(payload: unknown) {
-  return postJson<T>(endpoints.aiSummarize, payload);
+  return postJson<T>(endpoints.functionSummarizeItem, payload);
 }
 
 export async function summarizeCluster<T>(payload: unknown) {
-  return postJson<T>(endpoints.aiSummarizeCluster, payload);
+  return postJson<T>(endpoints.functionSummarizeProgress, payload);
 }
 
 export async function classifyItem<T>(payload: unknown) {
-  return postJson<T>(endpoints.aiClassify, payload);
+  return postJson<T>(endpoints.functionClassifyItem, payload);
 }
 
 export async function queryItem<T>(payload: unknown) {
-  return postJson<T>(endpoints.aiQuery, payload);
+  return postJson<T>(endpoints.functionQueryItem, payload);
 }
 
 export async function requestNextStep<T>(payload: unknown) {
-  return postJson<T>(endpoints.aiNextStep, payload);
+  return postJson<T>(endpoints.functionNextStep, payload);
 }
 
 export async function getUserPreference<T>(userId: string) {

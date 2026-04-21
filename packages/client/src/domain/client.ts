@@ -158,6 +158,7 @@ export type YurbrainDomainClient = {
   updateUserPreference: <T>(userId: string, payload: unknown) => Promise<T>;
   updateUserPreferenceMe: <T>(payload: unknown) => Promise<T>;
   getFounderReview: <T>(query?: FounderReviewQuery) => Promise<T>;
+  getFounderDiagnostics: <T>(query?: FounderReviewQuery) => Promise<T>;
   getFeedRanked: <T>(query?: FunctionFeedQuery) => Promise<T>;
   summarizeProgress: <T>(payload: { itemIds: string[] }) => Promise<T>;
   getWhatShouldIDoNext: <T>(payload: { itemIds: string[] }) => Promise<T>;
@@ -216,7 +217,15 @@ function createRestDomainClient(): YurbrainDomainClient {
     updateUserPreferenceMe,
     getFounderReview: (query = {}) =>
       apiClient(
-        `${endpoints.founderReview}${renderQuery({
+        `${endpoints.functionFounderReview}${renderQuery({
+          window: query.window ?? "7d",
+          userId: query.userId,
+          includeAi: query.includeAi ? "1" : undefined
+        })}`
+      ),
+    getFounderDiagnostics: (query = {}) =>
+      apiClient(
+        `${endpoints.functionFounderReviewDiagnostics}${renderQuery({
           window: query.window ?? "7d",
           userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
@@ -227,7 +236,7 @@ function createRestDomainClient(): YurbrainDomainClient {
     getWhatShouldIDoNext: (payload) => requestNextStep(payload),
     getFounderReviewScored: (query = {}) =>
       apiClient(
-        `${endpoints.founderReview}${renderQuery({
+        `${endpoints.functionFounderReview}${renderQuery({
           window: query.window ?? "7d",
           userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
@@ -274,6 +283,14 @@ function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
     getFounderReviewScored: (query = {}) =>
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({
+          window: query.window ?? "7d",
+          userId: query.userId,
+          includeAi: query.includeAi ? "1" : undefined
+        })}`
+      ),
+    getFounderDiagnostics: (query = {}) =>
+      apiClient(
+        `${endpoints.functionFounderReviewDiagnostics}${renderQuery({
           window: query.window ?? "7d",
           userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined

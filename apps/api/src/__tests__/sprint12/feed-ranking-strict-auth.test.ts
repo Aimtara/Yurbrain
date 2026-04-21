@@ -26,7 +26,7 @@ test("feed ranking ergonomics hold under strict auth using function feed actions
 
   const stableResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Stable card",
@@ -38,7 +38,7 @@ test("feed ranking ergonomics hold under strict auth using function feed actions
 
   const postponedResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
     payload: {
       userId,
       title: "Postponed card",
@@ -72,7 +72,7 @@ test("feed ranking ergonomics hold under strict auth using function feed actions
   assert.ok(cards.every((card) => card.whyShown.reasons.length >= 1));
 });
 
-test("function feed aliases work in strict mode and preserve whyShown quality", async () => {
+test("function feed canonical route works in strict mode and preserves whyShown quality", async () => {
   const userId = "19191919-1919-4919-8919-191919191919";
   const headers = strictHeaders(userId);
 
@@ -92,17 +92,8 @@ test("function feed aliases work in strict mode and preserve whyShown quality", 
     url: "/functions/feed?lens=all&limit=1",
     headers
   });
-  const alias = await app.inject({
-    method: "GET",
-    url: "/functions/feed/rank?lens=all&limit=1",
-    headers
-  });
   assert.equal(canonical.statusCode, 200);
-  assert.equal(alias.statusCode, 200);
   const canonicalCards = canonical.json<Array<{ id: string; whyShown: { summary: string } }>>();
-  const aliasCards = alias.json<Array<{ id: string }>>();
   assert.equal(canonicalCards.length, 1);
-  assert.equal(aliasCards.length, 1);
-  assert.equal(canonicalCards[0]?.id, aliasCards[0]?.id);
   assert.ok((canonicalCards[0]?.whyShown.summary.length ?? 0) > 0);
 });
