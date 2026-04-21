@@ -9,7 +9,9 @@
     "test": "tsx --test src/__tests__/*.test.ts"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.0.2",
     "@yurbrain/client": "workspace:*",
+    "@yurbrain/nhost": "workspace:*",
     "@yurbrain/ui": "workspace:*",
     "expo": "^54.0.0",
     "react": "^19.0.0",

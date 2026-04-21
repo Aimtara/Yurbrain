@@ -11,8 +11,6 @@ declare const process:
         NEXT_PUBLIC_YURBRAIN_HASURA_GRAPHQL_URL?: string;
         EXPO_PUBLIC_YURBRAIN_HASURA_GRAPHQL_URL?: string;
         YURBRAIN_HASURA_ADMIN_SECRET?: string;
-        NEXT_PUBLIC_YURBRAIN_HASURA_ADMIN_SECRET?: string;
-        EXPO_PUBLIC_YURBRAIN_HASURA_ADMIN_SECRET?: string;
         YURBRAIN_HASURA_ROLE?: string;
         NEXT_PUBLIC_YURBRAIN_HASURA_ROLE?: string;
         EXPO_PUBLIC_YURBRAIN_HASURA_ROLE?: string;
@@ -62,9 +60,7 @@ function resolveConfiguredHasuraAdminSecret(): string | null {
   }
   if (typeof process !== "undefined" && process.env) {
     return trim(
-      process.env.YURBRAIN_HASURA_ADMIN_SECRET ??
-        process.env.NEXT_PUBLIC_YURBRAIN_HASURA_ADMIN_SECRET ??
-        process.env.EXPO_PUBLIC_YURBRAIN_HASURA_ADMIN_SECRET
+      process.env.YURBRAIN_HASURA_ADMIN_SECRET
     );
   }
   return null;
