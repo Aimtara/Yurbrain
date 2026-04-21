@@ -49,7 +49,18 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 
 - N1 (audit and migration tracking): complete.
 - N2 (domain client stabilization): complete.
-- N3+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
+- N3 (Nhost foundation scaffolding): complete.
+- N4+: in progress / not started per `docs/backend-migration-status.md` and this runbook.
+
+## N3 implementation baseline (now in repo)
+
+N3 is considered established when these are true:
+
+1. Nhost runtime config resolution is centralized in `packages/client/src/auth/nhost.ts`.
+2. Config supports explicit auth/graphql/functions URLs and subdomain/region-derived defaults.
+3. Bootstrap hydrates Hasura GraphQL endpoint config from Nhost runtime config.
+4. Bootstrap remains non-invasive to product behavior (REST-backed domain paths unchanged).
+5. Runtime-config and bootstrap behavior are covered by targeted tests.
 
 ## N3 environment/config contract (explicit)
 
