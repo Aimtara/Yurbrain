@@ -89,17 +89,43 @@ test("GET /functions/founder-review/diagnostics is owner-scoped and returns comp
 
   assert.equal(response.statusCode, 200);
   const body = response.json<{
+    generatedAt: string;
+    window: "7d";
+    summary: {
+      itemCount: number;
+      taskCount: number;
+      sessionCount: number;
+      blockedCount: number;
+      staleCount: number;
+      continuationGapCount: number;
+    };
+    focusItems: Array<{
+      itemId: string;
+      title: string;
+      reason: "blocked" | "stale" | "continuation_gap" | "recent_signal";
+      detail: string;
+      action: { target: "item"; itemId: string; label: string };
+    }>;
+    focusActions: Array<{ id: string; label: string; target: "feed" | "item" }>;
     strongestKeywords: string[];
     latestItemTitles: string[];
-    itemCount: number;
-    taskCount: number;
-    sessionCount: number;
   }>();
+  assert.ok(Array.isArray(body.focusItems));
+  assert.ok(body.focusItems.length <= 12);
+  assert.ok(body.focusItems.every((entry) => entry.action.target === "item"));
+  assert.ok(body.focusItems.every((entry) => entry.action.itemId === entry.itemId));
+  assert.ok(body.focusItems.every((entry) => entry.action.label.length > 0));
+  assert.ok(body.focusItems.every((entry) => entry.detail.length > 0));
+  assert.ok(Array.isArray(body.focusActions));
+  assert.ok(body.focusActions.length >= 1);
   assert.ok(Array.isArray(body.strongestKeywords));
   assert.ok(Array.isArray(body.latestItemTitles));
-  assert.equal(typeof body.itemCount, "number");
-  assert.equal(typeof body.taskCount, "number");
-  assert.equal(typeof body.sessionCount, "number");
+  assert.equal(typeof body.summary.itemCount, "number");
+  assert.equal(typeof body.summary.taskCount, "number");
+  assert.equal(typeof body.summary.sessionCount, "number");
+  assert.equal(typeof body.summary.blockedCount, "number");
+  assert.equal(typeof body.summary.staleCount, "number");
+  assert.equal(typeof body.summary.continuationGapCount, "number");
 });
 
 test("GET /founder-review stays as compatibility route and emits deprecation header", async () => {

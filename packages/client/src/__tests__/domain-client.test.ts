@@ -220,6 +220,63 @@ test("domain client routes founder diagnostics query params", async () => {
   );
 });
 
+test("domain client founder diagnostics in function mode preserves actionable response shape", async () => {
+  const calls = installFetch((call) => {
+    if (call.url === "/functions/founder-review/diagnostics?window=7d") {
+      return new Response(
+        JSON.stringify({
+          generatedAt: "2026-04-21T00:00:00.000Z",
+          window: "7d",
+          summary: {
+            itemCount: 3,
+            taskCount: 2,
+            sessionCount: 1,
+            blockedCount: 1,
+            staleCount: 1,
+            continuationGapCount: 1
+          },
+          focusItems: [
+            {
+              itemId: "11111111-1111-4111-8111-111111111111",
+              title: "Follow up migration thread",
+              reason: "blocked",
+              detail: "Blocked signals accumulating",
+              action: {
+                id: "founder-diagnostics-open-item",
+                label: "Open item detail for focused follow-up",
+                target: "item",
+                itemId: "11111111-1111-4111-8111-111111111111"
+              }
+            }
+          ],
+          focusActions: [
+            {
+              id: "founder-diagnostics-open-loops",
+              label: "Open open loops with founder context",
+              target: "feed",
+              lens: "open_loops"
+            }
+          ],
+          strongestKeywords: ["migration"],
+          latestItemTitles: ["Follow up migration thread"]
+        }),
+        { status: 200 }
+      );
+    }
+    return new Response("{}", { status: 200 });
+  });
+  const client = createYurbrainDomainClient();
+
+  const diagnostics = await client.getFounderDiagnostics<{
+    summary: { blockedCount: number };
+    focusItems: Array<{ action: { target: string } }>;
+  }>({ window: "7d" });
+
+  assert.equal(calls[0]?.url, "/functions/founder-review/diagnostics?window=7d");
+  assert.equal(diagnostics.summary.blockedCount, 1);
+  assert.equal(diagnostics.focusItems[0]?.action.target, "item");
+});
+
 test("domain client keeps CRUD/computed boundary in GraphQL mode", async () => {
   configureHasuraGraphqlUrl("https://hasura.example.com/v1/graphql");
   const calls = installFetch((call) => {

@@ -4,6 +4,7 @@ import {
   AiConvertRequestSchema,
   AiConvertResponseSchema,
   ClassifyItemRequestSchema,
+  FounderReviewDiagnosticsResponseSchema,
   FounderReviewQuerySchema,
   FeedLensSchema,
   FounderReviewResponseSchema,
@@ -280,7 +281,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
       window: parsedQuery.window,
       includeAi: parsedQuery.includeAi
     });
-    return reply.code(200).send(diagnostics);
+    return reply.code(200).send(FounderReviewDiagnosticsResponseSchema.parse(diagnostics));
   });
 
   app.post("/functions/sessions/:id/pause", async (request, reply) => {

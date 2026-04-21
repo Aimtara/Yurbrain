@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import type { YurbrainClient } from "@yurbrain/client";
 
-import type { FounderReviewActionModel, FounderReviewModel } from "./types";
+import type {
+  FounderReviewActionModel,
+  FounderReviewDiagnosticsModel,
+  FounderReviewModel
+} from "./types";
 
 type UseFounderReviewControllerInput = {
   yurbrainClient: YurbrainClient;
@@ -15,8 +19,10 @@ export function useFounderReviewController({
   onRunAction
 }: UseFounderReviewControllerInput) {
   const [review, setReview] = useState<FounderReviewModel | null>(null);
+  const [diagnostics, setDiagnostics] = useState<FounderReviewDiagnosticsModel | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingAiReadout, setLoadingAiReadout] = useState(false);
+  const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
   const [error, setError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string>("");
@@ -29,24 +35,32 @@ export function useFounderReviewController({
   const loadFounderReview = useCallback(async (includeAiReadout = false) => {
     setLoading(true);
     setLoadingAiReadout(includeAiReadout);
+    setLoadingDiagnostics(true);
     setError("");
     try {
-      const data = await yurbrainClient.getFounderReview<FounderReviewModel>({
-        window: "7d",
+      const reviewQuery = {
+        window: "7d" as const,
         userId: currentUserId || undefined,
         includeAi: includeAiReadout
-      });
+      };
+      const [data, diagnosticsData] = await Promise.all([
+        yurbrainClient.getFounderReview<FounderReviewModel>(reviewQuery),
+        yurbrainClient.getFounderDiagnostics<FounderReviewDiagnosticsModel>(reviewQuery)
+      ]);
       setUnauthorized(false);
       setReview(data);
+      setDiagnostics(diagnosticsData);
     } catch (error) {
       if (isUnauthorizedError(error)) {
         setUnauthorized(true);
       }
       setReview(null);
+      setDiagnostics(null);
       setError("Founder Review could not load right now.");
     } finally {
       setLoading(false);
       setLoadingAiReadout(false);
+      setLoadingDiagnostics(false);
     }
   }, [currentUserId]);
 
@@ -86,8 +100,10 @@ export function useFounderReviewController({
 
   return {
     founderReview: review,
+    founderReviewDiagnostics: diagnostics,
     founderReviewLoading: loading,
     founderReviewAiReadoutLoading: loadingAiReadout,
+    founderReviewDiagnosticsLoading: loadingDiagnostics,
     founderReviewError: error,
     founderReviewActionNotice: actionNotice,
     founderReviewUnauthorized: unauthorized,
