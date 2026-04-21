@@ -75,6 +75,7 @@ N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and
 Contract source of truth:
 
 - `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
+- Nhost initialization config for this migration includes `nhost/config.yaml`, with TOML (`nhost/nhost.toml` + overlays) documented as the modern CLI-forward path.
 
 ## N4 implementation baseline (current progress)
 
@@ -143,7 +144,6 @@ N10 is in progress when these are true:
 1. Founder review computed quality and diagnostics are hardened for production-readiness while preserving concise continuity output.
 2. Temporary compatibility pathways retained from N8/N9 are reviewed and either removed or explicitly justified.
 3. Web integration continues to show no UI transport leakage while founder-facing actions remain continuity-first.
-
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

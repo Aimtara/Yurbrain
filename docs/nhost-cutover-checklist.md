@@ -31,6 +31,7 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 ### N3: Nhost Foundation Scaffolding
 
 - [x] Explicit Nhost/Hasura environment-key contract documented (required vs optional keys, precedence, sample values) in `docs/nhost-env-contract.md` and linked from runbook.
+- [x] Nhost initialization config checked in at `nhost/config.yaml` (project/region/postgres/auth/storage) and TOML overlay direction documented for modern CLI workflows.
 - [ ] Example `.env` files for web/mobile are aligned with the N3 env contract.
 - [ ] Nhost bootstrap smoke check confirmed (`bootstrapNhostSession` returns `configured: true` when keys are present).
 - [ ] Hasura GraphQL smoke check confirmed (`isHasuraGraphqlConfigured()` true and one read query succeeds in Nhost mode).
@@ -63,7 +64,6 @@ This checklist gates each migration stage to protect the Yurbrain continuity loo
 - [x] Session list GraphQL path scopes by `sessions.user_id` (leveraging N5 ownership scaffolding) instead of legacy task-join fallback.
 - [x] GraphQL CRUD wrappers continue to enforce owner scoping and preserve REST fallback when Hasura is not configured.
 - [x] Targeted client tests cover N6 GraphQL wrapper behavior and function/REST boundaries.
-
 ## Web cutover checklist (must complete before mobile cutover)
 
 ### Auth and current user

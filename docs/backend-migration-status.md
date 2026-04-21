@@ -192,7 +192,6 @@ N10 begins in this repository state with founder-review completion scope:
 1. Consolidate founder-review web/domain usage on canonical function APIs and trim compatibility debt.
 2. Preserve concise founder readouts and diagnostics quality while tightening owner-scoped access guarantees.
 3. Capture parity evidence for founder review actionability before legacy founder routes are considered for deprecation.
-
 ## Unclassified capabilities
 
 None in current scope. Every meaningful route/capability is classified above.
