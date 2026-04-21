@@ -82,6 +82,39 @@ N4 is in progress when these are true:
 5. Strict-mode requests require bearer-derived identity server-side (header/query/body userId fallbacks are ignored in strict mode).
 6. Authenticated strict-mode smoke tests cover core loop operations (capture, feed, item detail, comments, plan, session, founder review).
 
+## N5 implementation baseline (current scaffolding)
+
+N5 is scaffolded when these are true:
+
+1. Schema includes `profiles` table keyed by auth subject (`id`) with optional display fields and backfill metadata.
+2. Existing owner-bearing tables keep explicit `user_id` columns to preserve parity during transition.
+3. Repository layer supports profile reads/upserts and profile-backfill discovery.
+4. Backfill script exists to populate missing profiles from known owner IDs without destructive rewrites.
+5. Validation tests cover profile upsert + backfill-selection behavior.
+
+## N5 required/optional backfill order
+
+Required for N6/N7 cutover safety:
+
+1. Add ownership scaffold columns and indexes (`item_artifacts.user_id`, `item_threads.user_id`, `thread_messages.user_id`, `sessions.user_id`).
+2. Backfill `sessions.user_id` from task ownership (`sessions.task_id -> tasks.user_id`).
+3. Backfill `item_threads.user_id` from target item ownership (`item_threads.target_item_id -> brain_items.user_id`).
+4. Backfill `thread_messages.user_id` from thread ownership (`thread_messages.thread_id -> item_threads.user_id`).
+5. Backfill `item_artifacts.user_id` from item ownership (`item_artifacts.item_id -> brain_items.user_id`).
+6. Ensure `profiles` exists for all known owner IDs from `brain_items`, `feed_cards`, `tasks`, `events`, and `user_preferences`.
+
+Optional / post-cutover cleanup:
+
+1. Populate `profiles.email` and `profiles.display_name` from authoritative auth metadata once available.
+2. Tighten `NOT NULL` ownership constraints only after parity evidence confirms all writes are owner-scoped.
+3. Remove temporary compatibility pathways once GraphQL/Functions parity is complete.
+
+## Demo/founder identity mapping strategy
+
+- Local seeded founder UUID (`11111111-1111-1111-1111-111111111111`) maps one-to-one to `profiles.id`.
+- On migrated Nhost paths, canonical identity source is auth subject (`x-hasura-user-id`); no demo/runtime fallback on strict web paths.
+- If a seeded local profile lacks auth metadata, keep nullable display fields and track provenance via `backfill_source` / `backfilled_at`.
+
 ## Cutover rules
 
 - No big-bang rewrite.

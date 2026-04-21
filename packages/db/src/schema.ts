@@ -21,6 +21,24 @@ export const feedCardTypeEnum = pgEnum("feed_card_type", ["item", "digest", "clu
 export const taskStatusEnum = pgEnum("task_status", ["todo", "in_progress", "done"]);
 export const sessionStateEnum = pgEnum("session_state", ["running", "paused", "finished"]);
 
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id").primaryKey(),
+    email: text("email"),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    backfillSource: text("backfill_source").default("manual"),
+    backfilledAt: timestamp("backfilled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => ({
+    emailIdx: index("profiles_email_idx").on(t.email),
+    profilesCreatedIdx: index("profiles_created_at_idx").on(t.createdAt)
+  })
+);
+
 export const brainItems = pgTable(
   "brain_items",
   {
@@ -55,6 +73,7 @@ export const brainItems = pgTable(
 export const itemArtifacts = pgTable("item_artifacts", {
   id: uuid("id").defaultRandom().primaryKey(),
   itemId: uuid("item_id").notNull(),
+  userId: uuid("user_id"),
   type: artifactTypeEnum("type").notNull(),
   payload: jsonb("payload").notNull(),
   confidence: text("confidence").notNull(),
@@ -62,7 +81,8 @@ export const itemArtifacts = pgTable("item_artifacts", {
 },
   (t) => ({
     itemCreatedIdx: index("item_artifacts_item_created_idx").on(t.itemId, t.createdAt),
-    itemTypeIdx: index("item_artifacts_item_type_idx").on(t.itemId, t.type)
+    itemTypeIdx: index("item_artifacts_item_type_idx").on(t.itemId, t.type),
+    userCreatedIdx: index("item_artifacts_user_created_idx").on(t.userId, t.createdAt)
   })
 );
 
@@ -71,12 +91,14 @@ export const itemThreads = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     targetItemId: uuid("target_item_id").notNull(),
+    userId: uuid("user_id"),
     kind: threadKindEnum("kind").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
   },
   (t) => ({
-    targetKindIdx: index("item_threads_target_kind_created_idx").on(t.targetItemId, t.kind, t.createdAt)
+    targetKindIdx: index("item_threads_target_kind_created_idx").on(t.targetItemId, t.kind, t.createdAt),
+    userTargetIdx: index("item_threads_user_target_idx").on(t.userId, t.targetItemId)
   })
 );
 
@@ -85,11 +107,15 @@ export const threadMessages = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     threadId: uuid("thread_id").notNull(),
+    userId: uuid("user_id"),
     role: messageRoleEnum("role").notNull(),
     content: text("content").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
   },
-  (t) => ({ threadCreatedIdx: index("thread_messages_thread_created_idx").on(t.threadId, t.createdAt) })
+  (t) => ({
+    threadCreatedIdx: index("thread_messages_thread_created_idx").on(t.threadId, t.createdAt),
+    userThreadCreatedIdx: index("thread_messages_user_thread_created_idx").on(t.userId, t.threadId, t.createdAt)
+  })
 );
 
 export const feedCards = pgTable(
@@ -143,13 +169,15 @@ export const sessions = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     taskId: uuid("task_id").notNull(),
+    userId: uuid("user_id"),
     state: sessionStateEnum("state").default("running").notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true })
   },
   (t) => ({
     taskStateIdx: index("sessions_task_state_idx").on(t.taskId, t.state),
-    taskStartedIdx: index("sessions_task_started_idx").on(t.taskId, t.startedAt)
+    taskStartedIdx: index("sessions_task_started_idx").on(t.taskId, t.startedAt),
+    userStateStartedIdx: index("sessions_user_state_started_idx").on(t.userId, t.state, t.startedAt)
   })
 );
 
@@ -184,3 +212,4 @@ export const userPreferences = pgTable(
     userPreferencesUnique: uniqueIndex("user_preferences_user_id_idx").on(t.userId)
   })
 );
+
