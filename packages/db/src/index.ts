@@ -172,6 +172,7 @@ export type DbRepository = {
     >
   ) => Promise<BrainItemRecord | null>;
   appendEvent: (event: EventRecord) => Promise<EventRecord>;
+  listEventsByUser: (userId: string) => Promise<EventRecord[]>;
   createThread: (thread: ThreadRecord) => Promise<ThreadRecord>;
   getThreadById: (id: string) => Promise<ThreadRecord | null>;
   listThreads: (targetItemId?: string) => Promise<ThreadRecord[]>;
@@ -383,6 +384,16 @@ function toUserProfileRecord(row: typeof schema.profiles.$inferSelect): UserProf
   };
 }
 
+function toEventRecord(row: typeof schema.events.$inferSelect): EventRecord {
+  return {
+    id: row.id,
+    userId: row.userId,
+    eventType: row.eventType,
+    payload: row.payload as Record<string, unknown>,
+    occurredAt: row.occurredAt.toISOString()
+  };
+}
+
 async function applyMigrations(client: PGlite, migrationsPath: string) {
   await client.exec(
     `CREATE TABLE IF NOT EXISTS yurbrain_schema_migrations (
@@ -532,6 +543,15 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           occurredAt: toDate(event.occurredAt) ?? undefined
         });
         return event;
+      }),
+    listEventsByUser: (userId) =>
+      withDb(async ({ db }) => {
+        const rows = await db
+          .select()
+          .from(schema.events)
+          .where(eq(schema.events.userId, userId))
+          .orderBy(desc(schema.events.occurredAt), desc(schema.events.id));
+        return rows.map(toEventRecord);
       }),
     createThread: (thread) =>
       withDb(async ({ db }) => {
