@@ -1,5 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { DbRepository } from "@yurbrain/db";
+import { appendFileSync } from "node:fs";
 import { z } from "zod";
 import { invokeLlm, LlmProviderError } from "../ai/provider";
 import { synthesizeFromItems } from "../ai/synthesis";
@@ -120,7 +121,8 @@ async function buildPromptGrounding(
       .map((task) => ({
         title: clamp(task.title, 140),
         status: task.status,
-        updatedAt: task.updatedAt
+        updatedAt: task.updatedAt,
+        sourceItemId: task.sourceItemId ?? null
       })),
     linkedSessions: sessions
       .slice(0, 6)
@@ -137,6 +139,9 @@ async function buildPromptGrounding(
       .filter((value): value is string => Boolean(value))
       .slice(0, 6)
       .map((signal) => clamp(signal, 160))
+    ,
+    deterministicSuggestion: clamp(deterministic.suggestedNextAction, 220),
+    deterministicReason: clamp(deterministic.reason, 220)
   };
 }
 
@@ -163,6 +168,22 @@ function toFallbackReason(code: LlmProviderError["code"]): WhatShouldIDoNextResu
   return "provider_error";
 }
 
+function writeDebugLog(
+  hypothesisId: string,
+  location: string,
+  message: string,
+  data: Record<string, unknown>
+): void {
+  try {
+    appendFileSync(
+      "/opt/cursor/logs/debug.log",
+      `${JSON.stringify({ hypothesisId, location, message, data, timestamp: Date.now() })}\n`
+    );
+  } catch {
+    // no-op; debug logs must not affect runtime behavior
+  }
+}
+
 export async function buildWhatShouldIDoNextWithLlm(
   repo: DbRepository,
   itemIds: string[],
@@ -173,10 +194,28 @@ export async function buildWhatShouldIDoNextWithLlm(
   } = {}
 ): Promise<WhatShouldIDoNextResult> {
   const startedAt = Date.now();
+  // #region agent log
+  writeDebugLog("H3", "what-should-i-do-next-llm.ts:190", "buildWhatShouldIDoNextWithLlm entry", {
+    itemIdsCount: itemIds.length,
+    timeoutMs: options.timeoutMs ?? null
+  });
+  // #endregion
   const deterministic = await synthesizeFromItems(repo, itemIds, "next_step");
 
   try {
     const grounding = await buildPromptGrounding(repo, itemIds, deterministic);
+    // #region agent log
+    writeDebugLog("H1", "what-should-i-do-next-llm.ts:200", "grounding built", {
+      groundingKeys: Object.keys(grounding),
+      sourceSignalsCount: grounding.sourceSignals.length
+    });
+    // #endregion
+    // #region agent log
+    writeDebugLog("H1", "what-should-i-do-next-llm.ts:206", "pre prompt required fields", {
+      hasDeterministicSuggestion: "deterministicSuggestion" in (grounding as Record<string, unknown>),
+      hasDeterministicReason: "deterministicReason" in (grounding as Record<string, unknown>)
+    });
+    // #endregion
     const prompt = buildWhatShouldIDoNextPrompt(grounding);
     options.log?.info(
       {
@@ -193,6 +232,12 @@ export async function buildWhatShouldIDoNextWithLlm(
       context: prompt.groundedContext,
       timeoutMs: options.timeoutMs
     });
+    // #region agent log
+    writeDebugLog("H5", "what-should-i-do-next-llm.ts:226", "provider invocation succeeded", {
+      provider: llm.provider,
+      model: llm.model
+    });
+    // #endregion
     const parsed = parseModelNextStep(llm.text);
     if (!parsed) {
       options.log?.warn(
@@ -229,6 +274,14 @@ export async function buildWhatShouldIDoNextWithLlm(
     };
   } catch (error) {
     let fallbackReason: WhatShouldIDoNextResult["fallbackReason"] = "provider_error";
+    // #region agent log
+    writeDebugLog("H2", "what-should-i-do-next-llm.ts:264", "caught error before fallback mapping", {
+      errorName: error instanceof Error ? error.name : typeof error,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      isLlmProviderError: error instanceof LlmProviderError,
+      providerCode: error instanceof LlmProviderError ? error.code : null
+    });
+    // #endregion
     if (error instanceof LlmProviderError) {
       fallbackReason = toFallbackReason(error.code);
     }
