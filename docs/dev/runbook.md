@@ -216,7 +216,7 @@ When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
   - what-should-i-do-next: single-line summary + one immediate action
 - Next-step output confidence is always bounded and present:
   - provider success: validated model confidence (`0..1`)
-  - deterministic fallback: stable default confidence (`0.65`)
+  - deterministic fallback: stable default confidence (`0.35`)
 
 ### Anti-staleness checks for this slice
 
