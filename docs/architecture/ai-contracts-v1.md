@@ -128,3 +128,4 @@ The route falls back to existing deterministic synthesis if provider path is una
 Additional groundedness guardrail:
 
 - successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
+- provider responses also include `confidence` (`0..1`) for the single next action recommendation.

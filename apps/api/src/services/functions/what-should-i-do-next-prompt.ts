@@ -76,12 +76,13 @@ export function buildWhatShouldIDoNextPrompt(
     "Do not invent tasks, blockers, timelines, or project history.",
     "Output must be concise and operational, not chatty.",
     "Return EXACTLY one JSON object with this schema:",
-    '{"summary":"string","suggestedNextStep":"string","sourceSignals":["string"],"reason":"string"}',
+    '{"summary":"string","suggestedNextStep":"string","sourceSignals":["string"],"reason":"string","confidence":0.0}',
     "Constraints:",
     "- summary: one short sentence, <= 220 chars",
     "- suggestedNextStep: one immediate concrete action, <= 220 chars",
     "- sourceSignals: 1-4 grounded signals, each <= 160 chars",
     "- reason: one concise justification, <= 220 chars",
+    "- confidence: number in [0,1], calibrated to groundedness of this exact next step",
     "- suggestedNextStep must stay single-step (no multi-step plan)",
     "No markdown, no code fences, no extra keys."
   ].join("\n");

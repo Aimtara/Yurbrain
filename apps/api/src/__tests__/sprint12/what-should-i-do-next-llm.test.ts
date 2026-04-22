@@ -169,7 +169,8 @@ test("what-should-i-do-next uses provider output when configured", async () => {
                 summary: "Migration rollout is active with one paused execution point.",
                 suggestedNextStep: "Get final sign-off and resume the migration checklist task immediately.",
                 reason: "Sign-off is the single blocker to restart execution.",
-                sourceSignals: ["Paused session on migration checklist", "Recent user note: waiting on final sign-off"]
+                sourceSignals: ["Paused session on migration checklist", "Recent user note: waiting on final sign-off"],
+                confidence: 0.78
               })
             }
           }
@@ -182,6 +183,7 @@ test("what-should-i-do-next uses provider output when configured", async () => {
     assert.equal(result.usedFallback, false);
     assert.match(result.summary, /migration/i);
     assert.match(result.suggestedNextAction, /resume/i);
+    assert.equal(result.confidence, 0.78);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -196,6 +198,7 @@ test("what-should-i-do-next falls back when provider is not configured", async (
   const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
   assert.equal(result.usedFallback, true);
   assert.equal(result.fallbackReason, "not_configured");
+  assert.equal(result.confidence, 0.35);
   assert.ok(result.suggestedNextAction.length > 0);
 });
 
@@ -225,6 +228,7 @@ test("what-should-i-do-next falls back on timeout", async () => {
     const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id], { timeoutMs: 10 });
     assert.equal(result.usedFallback, true);
     assert.equal(result.fallbackReason, "timeout");
+    assert.equal(result.confidence, 0.35);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -254,6 +258,7 @@ test("what-should-i-do-next falls back on provider error", async () => {
     const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
     assert.equal(result.usedFallback, true);
     assert.equal(result.fallbackReason, "provider_error");
+    assert.equal(result.confidence, 0.35);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -285,6 +290,7 @@ test("what-should-i-do-next falls back on parse failure", async () => {
     const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
     assert.equal(result.usedFallback, true);
     assert.equal(result.fallbackReason, "parse_failed");
+    assert.equal(result.confidence, 0.35);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -327,6 +333,7 @@ test("what-should-i-do-next falls back when model omits source signals", async (
     const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
     assert.equal(result.usedFallback, true);
     assert.equal(result.fallbackReason, "parse_failed");
+    assert.equal(result.confidence, 0.35);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -353,5 +360,6 @@ test("what-should-i-do-next falls back when grounding fails", async () => {
   const result = await buildWhatShouldIDoNextWithLlm(repo, [createBaseData().item.id]);
   assert.equal(result.usedFallback, true);
   assert.equal(result.fallbackReason, "provider_error");
+  assert.equal(result.confidence, 0.35);
   assert.ok(result.suggestedNextAction.length > 0);
 });

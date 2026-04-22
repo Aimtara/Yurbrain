@@ -10,7 +10,8 @@ const NextStepResponseSchema = z
     summary: z.string().min(1),
     suggestedNextStep: z.string().min(1),
     sourceSignals: z.array(z.string().min(1)).min(1).max(4),
-    reason: z.string().min(1)
+    reason: z.string().min(1),
+    confidence: z.number().min(0).max(1)
   })
   .strict();
 
@@ -20,6 +21,7 @@ export type WhatShouldIDoNextResult = SynthesisFallback & {
   sourceSignals?: string[];
   usedFallback?: boolean;
   fallbackReason?: "not_configured" | "timeout" | "provider_error" | "parse_failed";
+  confidence?: number;
 };
 
 function compact(input: string): string {
@@ -52,7 +54,8 @@ function parseModelNextStep(raw: string): z.infer<typeof NextStepResponseSchema>
       summary: clamp(validated.summary, 220),
       suggestedNextStep: clamp(validated.suggestedNextStep, 220),
       sourceSignals: validated.sourceSignals.map((signal) => clamp(signal, 160)).slice(0, 4),
-      reason: clamp(validated.reason, 220)
+      reason: clamp(validated.reason, 220),
+      confidence: Math.max(0, Math.min(1, validated.confidence))
     };
   } catch {
     return null;
@@ -156,7 +159,8 @@ function buildFallbackResponse(
       .slice(0, 4)
       .map((value) => clamp(value, 160)),
     usedFallback: true,
-    fallbackReason: reason
+    fallbackReason: reason,
+    confidence: 0.35
   };
 }
 
@@ -228,7 +232,8 @@ export async function buildWhatShouldIDoNextWithLlm(
       suggestedNextAction: parsed.suggestedNextStep,
       reason: parsed.reason,
       sourceSignals: parsed.sourceSignals,
-      usedFallback: false
+      usedFallback: false,
+      confidence: parsed.confidence
     };
   } catch (error) {
     let fallbackReason: WhatShouldIDoNextResult["fallbackReason"] = "provider_error";

@@ -257,6 +257,7 @@ export const AiSynthesisResponseSchema = z
     repeatedIdeas: z.array(z.string().min(1).max(180)).max(5).optional(),
     suggestedNextAction: z.string().min(1).max(240),
     reason: z.string().min(1).max(240),
+    confidence: z.number().min(0).max(1).optional(),
     blockers: z.array(z.string().min(1).max(140)).max(3).optional(),
     sourceSignals: z.array(z.string().min(1).max(160)).max(4).optional(),
     usedFallback: z.boolean().optional(),

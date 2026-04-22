@@ -209,11 +209,14 @@ When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
   - prompt-grounding assembly failure
 - Successful provider output must include grounded `sourceSignals`:
   - summarize-progress: `1-4` required
-  - what-should-i-do-next: `1-3` required
+  - what-should-i-do-next: `1-4` required
   - empty arrays are treated as parse failure and fallback is used.
 - Successful provider output must stay concise and non-chatty:
   - summarize-progress: concise operational summary + one concrete next step
   - what-should-i-do-next: single-line summary + one immediate action
+- Next-step output confidence is always bounded and present:
+  - provider success: validated model confidence (`0..1`)
+  - deterministic fallback: stable default confidence (`0.65`)
 
 ### Anti-staleness checks for this slice
 
