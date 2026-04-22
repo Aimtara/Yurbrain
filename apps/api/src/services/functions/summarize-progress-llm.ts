@@ -4,7 +4,11 @@ import { z } from "zod";
 import { invokeLlm } from "../ai/provider";
 import { synthesizeFromItems } from "../ai/synthesis";
 import { buildSummarizeProgressPrompt } from "./summarize-progress-prompt";
-import { classifyLlmFallbackReason } from "./llm-fallback";
+import {
+  classifyLlmFallback,
+  FALLBACK_REASON_ORDER,
+  type LlmFallbackReason
+} from "./llm-fallback";
 
 const SummaryResponseSchema = z
   .object({
@@ -22,7 +26,7 @@ export type SummarizeProgressResult = SynthesisFallback & {
   blockers?: string[];
   sourceSignals?: string[];
   usedFallback?: boolean;
-  fallbackReason?: "not_configured" | "timeout" | "provider_error" | "parse_failed";
+  fallbackReason?: LlmFallbackReason;
 };
 
 function compact(input: string): string {
@@ -219,6 +223,9 @@ export async function buildSummarizeProgressWithLlm(
           event: "summarize_progress_llm_fallback",
           correlationId: options.correlationId,
           fallbackReason: "parse_failed",
+          fallbackStage: "parse",
+          fallbackOrder: FALLBACK_REASON_ORDER.parse_failed,
+          errorCode: "invalid_response",
           durationMs: Date.now() - startedAt
         },
         "summarize progress llm parse failed"
@@ -248,13 +255,18 @@ export async function buildSummarizeProgressWithLlm(
       usedFallback: false
     };
   } catch (error) {
-    const fallbackReason = classifyLlmFallbackReason(error);
+    const classified = classifyLlmFallback(error);
+    const fallbackReason = classified.fallbackReason;
 
     options.log?.warn(
       {
         event: "summarize_progress_llm_fallback",
         correlationId: options.correlationId,
         fallbackReason,
+        fallbackStage: "invoke_or_grounding",
+        fallbackOrder: FALLBACK_REASON_ORDER[fallbackReason],
+        errorCode: classified.providerErrorCode ?? "unknown",
+        errorName: classified.errorName,
         durationMs: Date.now() - startedAt
       },
       "summarize progress llm fallback used"
