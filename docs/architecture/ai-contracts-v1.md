@@ -87,6 +87,11 @@ The route falls back to existing deterministic synthesis if provider path is una
 - timeout (`timeout`)
 - provider error (`provider_error`)
 - response parse failure (`parse_failed`)
+- prompt-grounding assembly failure before provider invocation (`provider_error`)
+
+Additional groundedness guardrail:
+
+- successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
 
 Returned shape remains backward-compatible and adds optional diagnostics:
 

@@ -53,7 +53,8 @@
   - `sourceSignals`
   - `usedFallback`
   - `fallbackReason`
-- Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, or returns invalid/parse-failed output.
+- Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
+- Successful provider output must include at least one grounded `sourceSignals` entry; otherwise the route treats the response as parse-failed and returns deterministic fallback.
 
 ## LLM provider foundation (L1)
 

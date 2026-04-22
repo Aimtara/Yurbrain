@@ -304,3 +304,70 @@ test("summarize-progress falls back on parse failure", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("summarize-progress falls back when model omits source signals", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: "Progress is blocked on one dependency.",
+                blockers: ["Waiting for final sign-off"],
+                suggestedNextStep: "Get sign-off and continue implementation.",
+                sourceSignals: [],
+                reason: "No sign-off means no safe next execution step."
+              })
+            }
+          }
+        ]
+      })
+    }) as Response;
+
+  try {
+    const result = await buildSummarizeProgressWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "parse_failed");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("summarize-progress falls back when grounding fails", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const repo = buildMockRepo({
+    listArtifactsByItem: async () => {
+      throw new Error("artifact read failed");
+    }
+  });
+
+  const result = await buildSummarizeProgressWithLlm(repo, [createBaseData().item.id]);
+  assert.equal(result.usedFallback, true);
+  assert.equal(result.fallbackReason, "provider_error");
+  assert.ok(result.summary.length > 0);
+});

@@ -10,7 +10,7 @@ const SummaryResponseSchema = z
     summary: z.string().min(1),
     blockers: z.array(z.string().min(1)).max(3).default([]),
     suggestedNextStep: z.string().min(1),
-    sourceSignals: z.array(z.string().min(1)).max(4).default([]),
+    sourceSignals: z.array(z.string().min(1)).min(1).max(4),
     reason: z.string().min(1)
   })
   .strict();
@@ -198,10 +198,10 @@ export async function buildSummarizeProgressWithLlm(
 ): Promise<SummarizeProgressResult> {
   const startedAt = Date.now();
   const deterministic = await synthesizeFromItems(repo, itemIds, "cluster_summary");
-  const grounding = await buildPromptGrounding(repo, itemIds, deterministic);
-  const prompt = buildSummarizeProgressPrompt(grounding);
 
   try {
+    const grounding = await buildPromptGrounding(repo, itemIds, deterministic);
+    const prompt = buildSummarizeProgressPrompt(grounding);
     options.log?.info(
       {
         event: "summarize_progress_llm_started",
