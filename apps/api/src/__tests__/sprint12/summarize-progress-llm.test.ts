@@ -361,8 +361,8 @@ test("summarize-progress falls back when grounding fails", async () => {
   }));
 
   const repo = buildMockRepo({
-    listArtifactsByItem: async () => {
-      throw new Error("artifact read failed");
+    listTasks: async () => {
+      throw new Error("task read failed");
     }
   });
 
