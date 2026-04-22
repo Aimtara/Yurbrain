@@ -168,7 +168,62 @@ pnpm reseed
 ```
 - Reliable baseline setup for local demos and end-to-end manual checks.
 
-## 7) Reality checks
+## 7) AI provider foundation (L1)
+
+The API now includes an isolated provider foundation at:
+
+- `apps/api/src/services/ai/provider/config.ts`
+- `apps/api/src/services/ai/provider/client.ts`
+- `apps/api/src/services/ai/provider/index.ts`
+
+Current behavior is unchanged: user-facing AI routes still use deterministic/fallback logic.
+
+### Provider env keys (future feature wiring)
+
+- `YURBRAIN_LLM_ENABLED` (`true`/`false`, default `true`)
+- `YURBRAIN_LLM_PROVIDER` (currently `openai`)
+- `YURBRAIN_LLM_API_KEY` (required to enable real provider path)
+- `YURBRAIN_LLM_BASE_URL` (optional, defaults to `https://api.openai.com/v1`)
+- `YURBRAIN_LLM_MODEL` (optional, defaults to `gpt-4o-mini`)
+- `YURBRAIN_LLM_TIMEOUT_MS` (optional, defaults to `1800`)
+- `YURBRAIN_LLM_MAX_OUTPUT_TOKENS` (optional, defaults to `220`)
+- `YURBRAIN_LLM_TEMPERATURE` (optional, defaults to `0.2`)
+
+### Integration rule
+
+When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
+`apps/api/src/services/ai/provider/index.ts` and keep deterministic fallback behavior in the calling service.
+
+## 8) Summarize-progress real-provider baseline (L2)
+
+`POST /functions/summarize-progress` is now a thin real-provider slice with strict fallback safety.
+
+### Operational guarantees
+
+- Deterministic synthesis is always computed first.
+- Any provider-path failure returns deterministic fallback (never blocks the route):
+  - provider not configured
+  - provider timeout
+  - provider HTTP/transport error
+  - model output parse/validation failure
+  - prompt-grounding assembly failure
+- Successful provider output must include grounded `sourceSignals` (1-4); empty arrays are treated as parse failure and fallback is used.
+- `what-should-i-do-next` remains deterministic in L2.
+
+### Anti-staleness checks for this slice
+
+When changing summarize-progress prompt/orchestration/contracts:
+
+1. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/summarize-progress-llm.test.ts`
+2. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/ai-synthesis.test.ts`
+3. Confirm docs stay aligned in:
+   - `docs/architecture/ai-contracts-v1.md`
+   - `docs/api/README.md`
+   - this runbook section
+
+If any one of these drifts from behavior, update docs in the same change.
+
+## 9) Reality checks
 
 - API runtime state is DB-backed and survives API restart when using the same DB path.
 - `@yurbrain/db` includes first-class `db:reset` and `db:seed` scripts.
@@ -203,7 +258,7 @@ pnpm reseed
   - pause and finish controls wired to real session routes
   - context peek from the linked source item with quick-open back to item detail
 
-## 8) Fast sanity loop
+## 10) Fast sanity loop
 
 ```bash
 pnpm install
@@ -217,7 +272,7 @@ pnpm build
 pnpm test:e2e
 ```
 
-## 9) Optional reliability improvement for cloud agents
+## 11) Optional reliability improvement for cloud agents
 
 If agents repeatedly spend time reinstalling dependencies, run a dedicated environment setup agent at [cursor.com/onboard](https://cursor.com/onboard) with this prompt:
 

@@ -41,6 +41,36 @@
 - `POST /functions/query` validates model envelope, appends both the user question and assistant reply to a thread, and falls back deterministically on timeout/invalid output.
 - AI responses include `fallbackUsed` and optional `fallbackReason` (`timeout` or `invalid_or_runner_error`).
 
+## Summarize Progress (L2 real-provider thin slice)
+
+- `POST /functions/summarize-progress` now attempts one provider-backed call when LLM provider config is available.
+- Prompt + grounding are isolated in:
+  - `apps/api/src/services/functions/summarize-progress-prompt.ts`
+  - `apps/api/src/services/functions/summarize-progress-llm.ts`
+- Grounding includes item content, recent continuation messages, latest summary artifacts, linked task/session state, and blocker/source signals.
+- The response remains contract-compatible (`summary`, `repeatedIdeas`, `suggestedNextAction`, `reason`) with optional extras:
+  - `blockers`
+  - `sourceSignals`
+  - `usedFallback`
+  - `fallbackReason`
+- Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
+- Successful provider output must include at least one grounded `sourceSignals` entry; otherwise the route treats the response as parse-failed and returns deterministic fallback.
+
+## LLM provider foundation (L1)
+
+- Provider foundation lives at `apps/api/src/services/ai/provider/`.
+- It adds one normalized invocation path (`invokeLlm`) that future thin-slice features can call.
+- Current item-level AI routes (`/functions/summarize`, `/functions/classify`, `/functions/query`) remain deterministic/fallback as before.
+- Config is env-driven:
+  - `YURBRAIN_LLM_ENABLED` (`true`/`false`, default `true`)
+  - `YURBRAIN_LLM_PROVIDER` (`openai`)
+  - `YURBRAIN_LLM_API_KEY`
+  - `YURBRAIN_LLM_BASE_URL` (optional, default `https://api.openai.com/v1`)
+  - `YURBRAIN_LLM_MODEL` (optional, default `gpt-4o-mini`)
+  - `YURBRAIN_LLM_TIMEOUT_MS` (optional, default `1800`)
+  - `YURBRAIN_LLM_MAX_OUTPUT_TOKENS` (optional, default `220`)
+  - `YURBRAIN_LLM_TEMPERATURE` (optional, default `0.2`)
+
 ## Validation and error mapping
 
 - Request payloads are validated with Zod.
