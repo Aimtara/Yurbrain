@@ -1,3 +1,6 @@
+import { NhostProvider } from '@nhost/nextjs';
+import { NhostClient } from '@nhost/nhost-js';
+
 import type { ReactNode } from "react";
 import { YurbrainClientProvider } from "@yurbrain/client";
 
