@@ -421,7 +421,7 @@ test("summarize-progress logs fallback classification with stage", async () => {
     assert.ok(warnEntries.length >= 1);
     const latest = warnEntries.at(-1);
     assert.equal(latest?.payload.fallbackReason, "parse_failed");
-    assert.equal(latest?.payload.fallbackStage, "parse_model_output");
+    assert.equal(latest?.payload.fallbackStage, "parse");
     assert.equal(typeof latest?.payload.durationMs, "number");
   } finally {
     globalThis.fetch = originalFetch;

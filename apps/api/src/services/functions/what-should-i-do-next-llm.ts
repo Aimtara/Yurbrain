@@ -233,7 +233,13 @@ export async function buildWhatShouldIDoNextWithLlm(
 
     return toProviderResponse(parsed, deterministic);
   } catch (error) {
-    const classified = classifyLlmFallback(error);
+    const fallbackStage =
+      error instanceof LlmProviderError
+        ? error.code === "invalid_response"
+          ? "parse"
+          : "invoke"
+        : "grounding";
+    const classified = classifyLlmFallback(error, fallbackStage);
     const fallbackReason = classified.fallbackReason;
 
     options.log?.warn(

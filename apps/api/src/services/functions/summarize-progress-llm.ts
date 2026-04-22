@@ -223,7 +223,7 @@ export async function buildSummarizeProgressWithLlm(
           event: "summarize_progress_llm_fallback",
           correlationId: options.correlationId,
           fallbackReason: "parse_failed",
-          fallbackStage: "parse_model_output",
+          fallbackStage: "parse",
           fallbackOrder: FALLBACK_REASON_ORDER.parse_failed,
           errorCode: "invalid_response",
           errorName: "ParseError",
@@ -256,7 +256,12 @@ export async function buildSummarizeProgressWithLlm(
       usedFallback: false
     };
   } catch (error) {
-    const fallbackStage = error instanceof LlmProviderError ? "invoke" : "grounding";
+    const fallbackStage =
+      error instanceof LlmProviderError
+        ? error.code === "invalid_response"
+          ? "parse"
+          : "invoke"
+        : "grounding";
     const classified = classifyLlmFallback(error, fallbackStage);
     const fallbackReason = classified.fallbackReason;
 

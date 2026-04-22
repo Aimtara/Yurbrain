@@ -220,7 +220,7 @@ When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
 - L4 hardening baseline:
   - shared fallback classification normalizes provider + parse failures to stable fallback reasons
   - fallback logs include `fallbackStage`, `fallbackOrder`, `errorCode`, and `errorName`
-  - grounding, invoke, and parse fallbacks are attributed explicitly for both summarize-progress and next-step
+  - grounding, invoke, and parse fallbacks are attributed explicitly for both summarize-progress and next-step (`fallbackStage`: `grounding` | `invoke` | `parse`)
   - both summarize-progress and next-step emit consistent LLM lifecycle events
 
 ### Anti-staleness checks for this slice
