@@ -156,6 +156,23 @@ test.afterEach(() => {
   setLlmProviderConfigResolverForTests(null);
 });
 
+function createLoggerCapture() {
+  const infoEntries: Array<{ payload: Record<string, unknown>; message: string }> = [];
+  const warnEntries: Array<{ payload: Record<string, unknown>; message: string }> = [];
+  return {
+    logger: {
+      info(payload: Record<string, unknown>, message: string) {
+        infoEntries.push({ payload, message });
+      },
+      warn(payload: Record<string, unknown>, message: string) {
+        warnEntries.push({ payload, message });
+      }
+    },
+    infoEntries,
+    warnEntries
+  };
+}
+
 test("summarize-progress uses provider output when configured", async () => {
   setLlmProviderConfigResolverForTests(() => ({
     enabled: true,
@@ -370,4 +387,43 @@ test("summarize-progress falls back when grounding fails", async () => {
   assert.equal(result.usedFallback, true);
   assert.equal(result.fallbackReason, "provider_error");
   assert.ok(result.summary.length > 0);
+});
+
+test("summarize-progress logs fallback classification with stage", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "not-json" } }]
+      })
+    }) as Response;
+
+  const { logger, warnEntries } = createLoggerCapture();
+  try {
+    const result = await buildSummarizeProgressWithLlm(buildMockRepo(), [createBaseData().item.id], {
+      log: logger as unknown as import("fastify").FastifyBaseLogger
+    });
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "parse_failed");
+    assert.ok(warnEntries.length >= 1);
+    const latest = warnEntries.at(-1);
+    assert.equal(latest?.payload.fallbackReason, "parse_failed");
+    assert.equal(latest?.payload.fallbackStage, "parse");
+    assert.equal(typeof latest?.payload.durationMs, "number");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

@@ -71,6 +71,17 @@
 - Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
 - Successful provider output must include at least one grounded `sourceSignals` entry and bounded `confidence` (`0..1`); otherwise the route treats the response as parse-failed and returns deterministic fallback.
 
+## L4 safety/logging hardening
+
+- Both real-provider synthesis slices now use shared fallback classification utilities in:
+  - `apps/api/src/services/functions/llm-fallback.ts`
+- Unknown provider/parse/grounding failures are normalized to deterministic fallback with explicit reason mapping.
+- Structured fallback logs now include:
+  - `fallbackReason`
+  - `errorCode` (when provider error class is available)
+  - `errorName`
+  - `durationMs`
+
 ## LLM provider foundation (L1)
 
 - Provider foundation lives at `apps/api/src/services/ai/provider/`.

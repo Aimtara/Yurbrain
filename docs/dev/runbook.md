@@ -194,7 +194,7 @@ Current behavior is unchanged: user-facing AI routes still use deterministic/fal
 When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
 `apps/api/src/services/ai/provider/index.ts` and keep deterministic fallback behavior in the calling service.
 
-## 8) Thin real-provider synthesis baselines (L2 + L3)
+## 8) Thin real-provider synthesis baselines (L2 + L3 + L4 hardening)
 
 `POST /functions/summarize-progress` and `POST /functions/what-should-i-do-next` are now thin real-provider slices with strict fallback safety.
 
@@ -217,6 +217,10 @@ When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
 - Next-step output confidence is always bounded and present:
   - provider success: validated model confidence (`0..1`)
   - deterministic fallback: stable default confidence (`0.35`)
+- L4 hardening baseline:
+  - shared fallback-reason classification normalizes provider/parse/grounding failures
+  - fallback logs include `errorCode` + stable `failureSource` (`provider_invoke`, `provider_parse`, `prompt_grounding`, `unknown`)
+  - both summarize-progress and next-step emit consistent LLM lifecycle events
 
 ### Anti-staleness checks for this slice
 
@@ -225,7 +229,8 @@ When changing summarize-progress or next-step prompt/orchestration/contracts:
 1. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/summarize-progress-llm.test.ts`
 2. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/what-should-i-do-next-llm.test.ts`
 3. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/ai-synthesis.test.ts`
-4. Confirm docs stay aligned in:
+4. Run `pnpm --filter @yurbrain/contracts test`
+5. Confirm docs stay aligned in:
    - `docs/architecture/ai-contracts-v1.md`
    - `docs/api/README.md`
    - this runbook section

@@ -130,3 +130,29 @@ Additional groundedness guardrail:
 - successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
 - provider responses also include `confidence` (`0..1`) for the single next action recommendation.
 - deterministic fallback responses include stable default `confidence` (`0.35`) when provider path is unavailable or unsafe.
+
+## LLM safety/logging/failure handling hardening (L4)
+
+L2 + L3 slices now share common fallback classification and normalized logging metadata via:
+
+- `apps/api/src/services/functions/llm-fallback.ts`
+
+### Shared failure classification
+
+Provider and parse failures are now normalized through one helper:
+
+- `toCommonFallbackReason(code)` maps:
+  - `not_configured` -> `not_configured`
+  - `timeout` -> `timeout`
+  - `provider_error` / `invalid_response` -> `provider_error`
+  - `parse_failed` -> `parse_failed`
+
+### Structured logging fields
+
+Both summarize-progress and next-step now log the same core fields for fallback events:
+
+- `event`
+- `correlationId`
+- `fallbackReason`
+- `failureCode` (when available from `LlmProviderError`)
+- `durationMs`

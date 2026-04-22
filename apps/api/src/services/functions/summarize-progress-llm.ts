@@ -1,9 +1,10 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { DbRepository } from "@yurbrain/db";
 import { z } from "zod";
-import { invokeLlm, LlmProviderError } from "../ai/provider";
+import { invokeLlm } from "../ai/provider";
 import { synthesizeFromItems } from "../ai/synthesis";
 import { buildSummarizeProgressPrompt } from "./summarize-progress-prompt";
+import { classifyLlmFallbackReason } from "./llm-fallback";
 
 const SummaryResponseSchema = z
   .object({
@@ -181,12 +182,6 @@ function buildFallbackResponse(
   };
 }
 
-function toFallbackReason(code: LlmProviderError["code"]): SummarizeProgressResult["fallbackReason"] {
-  if (code === "not_configured") return "not_configured";
-  if (code === "timeout") return "timeout";
-  return "provider_error";
-}
-
 export async function buildSummarizeProgressWithLlm(
   repo: DbRepository,
   itemIds: string[],
@@ -253,10 +248,7 @@ export async function buildSummarizeProgressWithLlm(
       usedFallback: false
     };
   } catch (error) {
-    let fallbackReason: SummarizeProgressResult["fallbackReason"] = "provider_error";
-    if (error instanceof LlmProviderError) {
-      fallbackReason = toFallbackReason(error.code);
-    }
+    const fallbackReason = classifyLlmFallbackReason(error);
 
     options.log?.warn(
       {

@@ -144,6 +144,36 @@ test.afterEach(() => {
   setLlmProviderConfigResolverForTests(null);
 });
 
+test("what-should-i-do-next maps invalid provider responses to parse_failed fallback", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [] })
+    }) as Response;
+
+  try {
+    const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "parse_failed");
+    assert.equal(result.confidence, 0.35);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("what-should-i-do-next uses provider output when configured", async () => {
   setLlmProviderConfigResolverForTests(() => ({
     enabled: true,
