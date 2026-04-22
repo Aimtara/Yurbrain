@@ -63,3 +63,34 @@ and handle typed provider errors:
 - `invalid_response`
 
 Current deterministic runner + fallback flows remain canonical until feature-level integrations land.
+
+## Summarize-progress real-provider slice (L2)
+
+`POST /functions/summarize-progress` now uses a thin provider-backed path when provider config is available.
+
+- Grounding source:
+  - selected item ids (`itemIds`)
+  - item title/content/topic and recency
+  - latest summary artifacts
+  - latest continuation/comment messages
+  - linked task and session state signals
+- Prompt location:
+  - `apps/api/src/services/functions/summarize-progress-prompt.ts`
+- Orchestration location:
+  - `apps/api/src/services/functions/summarize-progress-llm.ts`
+
+### Fallback policy (L2 summarize-progress only)
+
+The route falls back to existing deterministic synthesis if provider path is unavailable or unsafe:
+
+- provider not configured (`not_configured`)
+- timeout (`timeout`)
+- provider error (`provider_error`)
+- response parse failure (`parse_failed`)
+
+Returned shape remains backward-compatible and adds optional diagnostics:
+
+- `blockers?: string[]`
+- `sourceSignals?: string[]`
+- `usedFallback?: boolean`
+- `fallbackReason?: "not_configured" | "timeout" | "provider_error" | "parse_failed"`
