@@ -139,13 +139,13 @@ L2 + L3 slices now share common fallback classification and normalized logging m
 
 ### Shared failure classification
 
-Provider and parse failures are now normalized through one helper:
+Provider/invoke/grounding/parse failures are normalized through one helper:
 
-- `toCommonFallbackReason(code)` maps:
+- `toFallbackReason(code)` maps:
   - `not_configured` -> `not_configured`
   - `timeout` -> `timeout`
-  - `provider_error` / `invalid_response` -> `provider_error`
-  - `parse_failed` -> `parse_failed`
+  - `provider_error` -> `provider_error`
+  - `invalid_response` -> `parse_failed`
 
 ### Structured logging fields
 
@@ -154,5 +154,8 @@ Both summarize-progress and next-step now log the same core fields for fallback 
 - `event`
 - `correlationId`
 - `fallbackReason`
-- `failureCode` (when available from `LlmProviderError`)
+- `fallbackStage` (`grounding` | `invoke` | `parse`)
+- `fallbackOrder` (stable ordinal for dashboards)
+- `errorCode` (when available from `LlmProviderError`)
+- `errorName`
 - `durationMs`

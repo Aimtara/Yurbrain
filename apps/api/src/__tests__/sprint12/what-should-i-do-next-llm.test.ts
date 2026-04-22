@@ -393,3 +393,55 @@ test("what-should-i-do-next falls back when grounding fails", async () => {
   assert.equal(result.confidence, 0.35);
   assert.ok(result.suggestedNextAction.length > 0);
 });
+
+test("what-should-i-do-next sanitizes overlong provider output", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const longSummary = "S".repeat(250);
+  const longStep = "N".repeat(250);
+  const longReason = "R".repeat(250);
+  const longSignal = "G".repeat(170);
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: longSummary,
+                suggestedNextStep: longStep,
+                reason: longReason,
+                sourceSignals: [longSignal, "signal 2", "signal 3", "signal 4"],
+                confidence: 0.91
+              })
+            }
+          }
+        ]
+      })
+    }) as Response;
+
+  try {
+    const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, false);
+    assert.ok(result.summary.length <= 220);
+    assert.ok(result.suggestedNextAction.length <= 220);
+    assert.ok(result.reason.length <= 220);
+    assert.ok((result.sourceSignals ?? [])[0]?.length <= 160);
+    assert.ok((result.sourceSignals ?? []).length <= 4);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

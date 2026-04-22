@@ -421,8 +421,133 @@ test("summarize-progress logs fallback classification with stage", async () => {
     assert.ok(warnEntries.length >= 1);
     const latest = warnEntries.at(-1);
     assert.equal(latest?.payload.fallbackReason, "parse_failed");
-    assert.equal(latest?.payload.fallbackStage, "parse");
+    assert.equal(latest?.payload.fallbackStage, "parse_model_output");
     assert.equal(typeof latest?.payload.durationMs, "number");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("summarize-progress maps invalid provider response to parse_failed", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [] })
+    }) as Response;
+
+  try {
+    const result = await buildSummarizeProgressWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "parse_failed");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("summarize-progress sanitizes overlong provider output fields", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const summaryLong = "s".repeat(500);
+  const nextStepLong = "n".repeat(240);
+  const reasonLong = "r".repeat(240);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: summaryLong,
+                blockers: ["ok"],
+                suggestedNextStep: nextStepLong,
+                sourceSignals: ["sig"],
+                reason: reasonLong
+              })
+            }
+          }
+        ]
+      })
+    }) as Response;
+
+  try {
+    const result = await buildSummarizeProgressWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, false);
+    assert.ok(result.summary.length <= 420);
+    assert.ok((result.suggestedNextAction ?? "").length <= 220);
+    assert.ok((result.reason ?? "").length <= 220);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("summarize-progress sanitizes overlong blocker and source signal entries", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const blockerLong = "b".repeat(180);
+  const signalLong = "g".repeat(200);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: "Short summary",
+                blockers: [blockerLong],
+                suggestedNextStep: "Short next step",
+                sourceSignals: [signalLong],
+                reason: "Short reason"
+              })
+            }
+          }
+        ]
+      })
+    }) as Response;
+
+  try {
+    const result = await buildSummarizeProgressWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, false);
+    assert.ok((result.blockers ?? []).every((entry) => entry.length <= 140));
+    assert.ok((result.sourceSignals ?? []).every((entry) => entry.length <= 160));
+    assert.ok((result.blockers ?? []).length <= 3);
+    assert.ok((result.sourceSignals ?? []).length <= 4);
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -1,7 +1,7 @@
 import { LlmProviderError, type LlmProviderErrorCode } from "../ai/provider";
 
 export type LlmFallbackReason = "not_configured" | "timeout" | "provider_error" | "parse_failed";
-export type LlmFallbackStage = "invoke_or_grounding" | "parse";
+export type LlmFallbackStage = "grounding" | "invoke" | "parse";
 
 export const FALLBACK_REASON_ORDER: Record<LlmFallbackReason, number> = {
   not_configured: 1,
@@ -30,7 +30,7 @@ export function normalizeFallbackReason(reason: LlmFallbackReason | null | undef
 
 export function classifyLlmFallback(
   error: unknown,
-  fallbackStage: LlmFallbackStage = "invoke_or_grounding"
+  fallbackStage: LlmFallbackStage = "invoke"
 ): ClassifiedLlmFallback {
   if (error instanceof LlmProviderError) {
     return {

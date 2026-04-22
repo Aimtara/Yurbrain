@@ -218,8 +218,9 @@ When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
   - provider success: validated model confidence (`0..1`)
   - deterministic fallback: stable default confidence (`0.35`)
 - L4 hardening baseline:
-  - shared fallback-reason classification normalizes provider/parse/grounding failures
-  - fallback logs include `errorCode` + stable `failureSource` (`provider_invoke`, `provider_parse`, `prompt_grounding`, `unknown`)
+  - shared fallback classification normalizes provider + parse failures to stable fallback reasons
+  - fallback logs include `fallbackStage`, `fallbackOrder`, `errorCode`, and `errorName`
+  - grounding, invoke, and parse fallbacks are attributed explicitly for both summarize-progress and next-step
   - both summarize-progress and next-step emit consistent LLM lifecycle events
 
 ### Anti-staleness checks for this slice

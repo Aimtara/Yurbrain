@@ -78,6 +78,8 @@
 - Unknown provider/parse/grounding failures are normalized to deterministic fallback with explicit reason mapping.
 - Structured fallback logs now include:
   - `fallbackReason`
+  - `fallbackStage` (`grounding` | `invoke` | `parse`)
+  - `fallbackOrder`
   - `errorCode` (when provider error class is available)
   - `errorName`
   - `durationMs`

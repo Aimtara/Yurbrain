@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import type { DbRepository } from "@yurbrain/db";
 import { z } from "zod";
-import { invokeLlm } from "../ai/provider";
+import { invokeLlm, LlmProviderError } from "../ai/provider";
 import { synthesizeFromItems } from "../ai/synthesis";
 import { buildSummarizeProgressPrompt } from "./summarize-progress-prompt";
 import {
@@ -223,9 +223,10 @@ export async function buildSummarizeProgressWithLlm(
           event: "summarize_progress_llm_fallback",
           correlationId: options.correlationId,
           fallbackReason: "parse_failed",
-          fallbackStage: "parse",
+          fallbackStage: "parse_model_output",
           fallbackOrder: FALLBACK_REASON_ORDER.parse_failed,
           errorCode: "invalid_response",
+          errorName: "ParseError",
           durationMs: Date.now() - startedAt
         },
         "summarize progress llm parse failed"
@@ -255,7 +256,8 @@ export async function buildSummarizeProgressWithLlm(
       usedFallback: false
     };
   } catch (error) {
-    const classified = classifyLlmFallback(error);
+    const fallbackStage = error instanceof LlmProviderError ? "invoke" : "grounding";
+    const classified = classifyLlmFallback(error, fallbackStage);
     const fallbackReason = classified.fallbackReason;
 
     options.log?.warn(
@@ -263,7 +265,7 @@ export async function buildSummarizeProgressWithLlm(
         event: "summarize_progress_llm_fallback",
         correlationId: options.correlationId,
         fallbackReason,
-        fallbackStage: "invoke_or_grounding",
+        fallbackStage: classified.fallbackStage,
         fallbackOrder: FALLBACK_REASON_ORDER[fallbackReason],
         errorCode: classified.providerErrorCode ?? "unknown",
         errorName: classified.errorName,

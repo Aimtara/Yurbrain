@@ -5,9 +5,9 @@ import { invokeLlm, LlmProviderError } from "../ai/provider";
 import { synthesizeFromItems } from "../ai/synthesis";
 import { buildWhatShouldIDoNextPrompt } from "./what-should-i-do-next-prompt";
 import {
+  classifyLlmFallback,
   type LlmFallbackReason,
   FALLBACK_REASON_ORDER,
-  normalizeFallbackReason,
   toFallbackReason
 } from "./llm-fallback";
 
@@ -67,6 +67,8 @@ function parseModelNextStep(raw: string): z.infer<typeof NextStepResponseSchema>
     return null;
   }
 }
+
+type ParsedNextStep = NonNullable<ReturnType<typeof parseModelNextStep>>;
 
 async function buildPromptGrounding(
   repo: DbRepository,
@@ -181,8 +183,6 @@ export async function buildWhatShouldIDoNextWithLlm(
 ): Promise<WhatShouldIDoNextResult> {
   const startedAt = Date.now();
   const deterministic = await synthesizeFromItems(repo, itemIds, "next_step");
-  let fallbackReason: LlmFallbackReason | null = null;
-
   try {
     const grounding = await buildPromptGrounding(repo, itemIds, deterministic);
     const prompt = buildWhatShouldIDoNextPrompt(grounding);
@@ -203,19 +203,20 @@ export async function buildWhatShouldIDoNextWithLlm(
     });
     const parsed = parseModelNextStep(llm.text);
     if (!parsed) {
-      fallbackReason = "parse_failed";
+      const parseFallbackReason = toFallbackReason("invalid_response");
       options.log?.warn(
         {
           event: "what_should_i_do_next_llm_fallback",
           correlationId: options.correlationId,
-          fallbackReason,
+          fallbackReason: parseFallbackReason,
           fallbackStage: "parse",
-          fallbackOrder: FALLBACK_REASON_ORDER[fallbackReason],
+          fallbackOrder: FALLBACK_REASON_ORDER[parseFallbackReason],
+          errorCode: "invalid_response",
           durationMs: Date.now() - startedAt
         },
         "what should i do next llm parse failed"
       );
-      return buildFallbackResponse(deterministic, fallbackReason);
+      return buildFallbackResponse(deterministic, parseFallbackReason);
     }
 
     options.log?.info(
@@ -230,33 +231,39 @@ export async function buildWhatShouldIDoNextWithLlm(
       "what should i do next llm completed"
     );
 
-    return {
-      summary: parsed.summary,
-      repeatedIdeas: deterministic.repeatedIdeas,
-      suggestedNextAction: parsed.suggestedNextStep,
-      reason: parsed.reason,
-      sourceSignals: parsed.sourceSignals,
-      usedFallback: false,
-      confidence: parsed.confidence
-    };
+    return toProviderResponse(parsed, deterministic);
   } catch (error) {
-    if (error instanceof LlmProviderError) {
-      fallbackReason = toFallbackReason(error.code);
-    }
-    fallbackReason = normalizeFallbackReason(fallbackReason);
+    const classified = classifyLlmFallback(error);
+    const fallbackReason = classified.fallbackReason;
 
     options.log?.warn(
       {
         event: "what_should_i_do_next_llm_fallback",
         correlationId: options.correlationId,
         fallbackReason,
-        fallbackStage: "invoke_or_grounding",
+        fallbackStage: classified.fallbackStage,
         fallbackOrder: FALLBACK_REASON_ORDER[fallbackReason],
-        errorCode: error instanceof LlmProviderError ? error.code : "unknown",
+        errorCode: classified.providerErrorCode ?? "unknown",
+        errorName: classified.errorName,
         durationMs: Date.now() - startedAt
       },
       "what should i do next llm fallback used"
     );
     return buildFallbackResponse(deterministic, fallbackReason);
   }
+}
+
+function toProviderResponse(
+  parsed: ParsedNextStep,
+  deterministic: SynthesisFallback
+): WhatShouldIDoNextResult {
+  return {
+    summary: parsed.summary,
+    repeatedIdeas: deterministic.repeatedIdeas,
+    suggestedNextAction: parsed.suggestedNextStep,
+    reason: parsed.reason,
+    sourceSignals: parsed.sourceSignals,
+    usedFallback: false,
+    confidence: parsed.confidence
+  };
 }
