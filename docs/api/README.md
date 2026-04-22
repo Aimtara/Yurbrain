@@ -41,6 +41,21 @@
 - `POST /functions/query` validates model envelope, appends both the user question and assistant reply to a thread, and falls back deterministically on timeout/invalid output.
 - AI responses include `fallbackUsed` and optional `fallbackReason` (`timeout` or `invalid_or_runner_error`).
 
+## LLM provider foundation (L1, non-user-facing)
+
+- Provider foundation lives at `apps/api/src/services/ai/provider/`.
+- It adds one normalized invocation path (`invokeLlm`) that future thin-slice features can call.
+- Current routes do not yet use this provider path; summarize/classify/query and synthesis remain deterministic/fallback as before.
+- Config is env-driven:
+  - `YURBRAIN_LLM_ENABLED` (`true`/`false`, default `true`)
+  - `YURBRAIN_LLM_PROVIDER` (`openai`)
+  - `YURBRAIN_LLM_API_KEY`
+  - `YURBRAIN_LLM_BASE_URL` (optional, default `https://api.openai.com/v1`)
+  - `YURBRAIN_LLM_MODEL` (optional, default `gpt-4o-mini`)
+  - `YURBRAIN_LLM_TIMEOUT_MS` (optional, default `1800`)
+  - `YURBRAIN_LLM_MAX_OUTPUT_TOKENS` (optional, default `220`)
+  - `YURBRAIN_LLM_TEMPERATURE` (optional, default `0.2`)
+
 ## Validation and error mapping
 
 - Request payloads are validated with Zod.
