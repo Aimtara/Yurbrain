@@ -25,7 +25,6 @@ export function useFounderReviewController({
   const [loadingDiagnostics, setLoadingDiagnostics] = useState(false);
   const [error, setError] = useState("");
   const [actionNotice, setActionNotice] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [unauthorized, setUnauthorized] = useState(false);
 
   function isUnauthorizedError(error: unknown): boolean {
@@ -61,33 +60,12 @@ export function useFounderReviewController({
       setLoadingAiReadout(false);
       setLoadingDiagnostics(false);
     }
-  }, [currentUserId]);
-
-  useEffect(() => {
-    let mounted = true;
-    void (async () => {
-      try {
-        const currentUser = await yurbrainClient.getCurrentUser<{ id: string }>();
-        if (!mounted) return;
-        setUnauthorized(false);
-        setCurrentUserId(currentUser.id);
-      } catch (error) {
-        if (!mounted) return;
-        if (isUnauthorizedError(error)) {
-          setUnauthorized(true);
-        }
-        setCurrentUserId("");
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
   }, [yurbrainClient]);
 
   useEffect(() => {
     if (activeSurface !== "founder_review") return;
     void loadFounderReview();
-  }, [activeSurface, currentUserId, loadFounderReview]);
+  }, [activeSurface, loadFounderReview]);
 
   const applyAction = useCallback(
     async (action: FounderReviewActionModel) => {
