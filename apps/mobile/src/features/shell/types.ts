@@ -16,6 +16,9 @@ import type {
 export type MobilePrimarySurface = "feed" | "time" | "session" | "me";
 
 export type MobileLoopController = {
+  hydrated: boolean;
+  bootstrapLoading: boolean;
+  bootstrapError: string;
   tasks: TaskDto[];
   activeSession: SessionDto | null;
   activeSurface: MobileSurface;

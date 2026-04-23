@@ -33,6 +33,21 @@ test("mobile app roots UI under local Yurbrain client provider wrapper", () => {
     )
   );
   assert.ok(appSource.includes("<YurbrainClientProvider>"));
+  assert.ok(!appSource.includes("NhostProvider"));
+  assert.ok(!appSource.includes("NhostClient"));
+});
+
+test("mobile loop controller enforces verified-current-user bootstrap gate", () => {
+  const controllerSourcePath = path.resolve(
+    process.cwd(),
+    "src/features/shell/useMobileLoopController.ts"
+  );
+  const controllerSource = fs.readFileSync(controllerSourcePath, "utf8");
+
+  assert.ok(controllerSource.includes("const [bootstrapLoading, setBootstrapLoading] = useState(true);"));
+  assert.ok(controllerSource.includes("const [bootstrapError, setBootstrapError] = useState(\"\");"));
+  assert.ok(controllerSource.includes("await yurbrainClient.getCurrentUser<{ id: string }>();"));
+  assert.ok(controllerSource.includes("if (!hydrated || bootstrapLoading || bootstrapError) return;"));
 });
 
 test("mobile storage helpers round-trip persisted values", () => {

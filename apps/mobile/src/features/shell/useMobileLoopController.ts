@@ -85,6 +85,8 @@ function sortByNewest<T extends { updatedAt?: string; createdAt?: string }>(valu
 
 export function useMobileLoopController(): MobileLoopController {
   const yurbrainClient = useYurbrainClient();
+  const [bootstrapLoading, setBootstrapLoading] = useState(true);
+  const [bootstrapError, setBootstrapError] = useState("");
   const [hydrated, setHydrated] = useState(false);
   const [activeSurface, setActiveSurface] = useState<MobileSurface>("feed");
   const [activeLens, setActiveLens] = useState<FeedCardDto["lens"]>("all");
@@ -851,29 +853,42 @@ export function useMobileLoopController(): MobileLoopController {
 
   useEffect(() => {
     void (async () => {
+      setBootstrapLoading(true);
+      setBootstrapError("");
+      try {
+        await yurbrainClient.getCurrentUser<{ id: string }>();
+      } catch {
+        setBootstrapError("Sign in required. Authenticate with your current Yurbrain account and reopen mobile.");
+        setBootstrapLoading(false);
+        return;
+      }
+
       try {
         const preferences = await yurbrainClient.getCurrentUserPreference<UserPreferenceDto>();
+        const initialLens = preferences.defaultLens;
         setFounderMode(preferences.founderMode);
-        setActiveLens(preferences.defaultLens);
+        setActiveLens(initialLens);
+        await Promise.all([loadItems(), loadTasks(), loadSessionsForUser(), loadFeed(initialLens)]);
+        setHydrated(true);
       } catch {
-        // Keep local defaults.
+        setBootstrapError("Signed in, but mobile workspace failed to load. Retry after checking API connectivity.");
+      } finally {
+        setBootstrapLoading(false);
       }
-      await Promise.all([loadItems(), loadTasks(), loadSessionsForUser(), loadFeed(activeLens)]);
-      setHydrated(true);
     })();
     // initial bootstrap only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!hydrated || !selectedItemId) return;
+    if (!hydrated || bootstrapLoading || bootstrapError || !selectedItemId) return;
     void loadItemContext(selectedItemId);
-  }, [hydrated, loadItemContext, selectedItemId]);
+  }, [bootstrapError, bootstrapLoading, hydrated, loadItemContext, selectedItemId]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || bootstrapLoading || bootstrapError) return;
     void loadFeed(activeLens);
-  }, [activeLens, hydrated, loadFeed]);
+  }, [activeLens, bootstrapError, bootstrapLoading, hydrated, loadFeed]);
 
   useEffect(() => {
     if (!stateRehydrated) return;
@@ -911,6 +926,8 @@ export function useMobileLoopController(): MobileLoopController {
   }, [selectedTaskId, stateRehydrated]);
 
   const controller: MobileLoopController = {
+    bootstrapLoading,
+    bootstrapError,
     activeSurface,
     activeLens,
     founderMode,
