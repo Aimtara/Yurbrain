@@ -37,6 +37,8 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
   app.get("/preferences/:userId", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
+    // Preserve legacy route shape but enforce current-user scoping.
+    void request.params;
     const stored = await state.repo.getUserPreference(currentUser.id);
 
     const response = UserPreferenceResponseSchema.parse(
@@ -59,6 +61,8 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
   app.put("/preferences/:userId", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
+    // Preserve legacy route shape but enforce current-user scoping.
+    void request.params;
     const payload = UpdateUserPreferenceRequestSchema.parse(request.body);
     const updated = await state.repo.upsertUserPreference(currentUser.id, payload);
     return reply.code(200).send(UserPreferenceResponseSchema.parse(updated));
