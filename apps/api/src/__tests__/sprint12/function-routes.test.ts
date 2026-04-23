@@ -9,6 +9,7 @@ test.after(async () => {
 
 test("GET /functions/feed returns ranked cards with whyShown quality", async () => {
   const userId = "14141414-1414-4414-8414-141414141414";
+  const headers = { "x-yurbrain-user-id": userId };
   const captures = [
     "Draft migration review notes with continuity checkpoints.",
     "Follow up on function routing alignment for feed and founder review.",
@@ -19,8 +20,8 @@ test("GET /functions/feed returns ranked cards with whyShown quality", async () 
     const response = await app.inject({
       method: "POST",
       url: "/capture/intake",
+      headers,
       payload: {
-        userId,
         type: "text",
         content,
         topicGuess: "Nhost migration"
@@ -44,11 +45,12 @@ test("GET /functions/feed returns ranked cards with whyShown quality", async () 
 
 test("feed function actions require owner identity and preserve behavior", async () => {
   const userId = "15151515-1515-4515-8515-151515151515";
+  const headers = { "x-yurbrain-user-id": userId };
   const createResp = await app.inject({
     method: "POST",
     url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Function action target card",
       body: "Card used to validate feed function actions."
     }
@@ -59,7 +61,7 @@ test("feed function actions require owner identity and preserve behavior", async
   const snooze = await app.inject({
     method: "POST",
     url: `/functions/feed/${cardId}/snooze`,
-    headers: { "x-yurbrain-user-id": userId },
+    headers,
     payload: { minutes: 45 }
   });
   assert.equal(snooze.statusCode, 200);
@@ -67,7 +69,7 @@ test("feed function actions require owner identity and preserve behavior", async
   const refresh = await app.inject({
     method: "POST",
     url: `/functions/feed/${cardId}/refresh`,
-    headers: { "x-yurbrain-user-id": userId },
+    headers,
     payload: {}
   });
   assert.equal(refresh.statusCode, 200);
@@ -75,7 +77,7 @@ test("feed function actions require owner identity and preserve behavior", async
   const dismiss = await app.inject({
     method: "POST",
     url: `/functions/feed/${cardId}/dismiss`,
-    headers: { "x-yurbrain-user-id": userId },
+    headers,
     payload: {}
   });
   assert.equal(dismiss.statusCode, 200);
@@ -91,6 +93,7 @@ test("feed function actions require owner identity and preserve behavior", async
 
 test("next-step function route returns deterministic next action response", async () => {
   const userId = "17171717-1717-4717-8717-171717171717";
+  const headers = { "x-yurbrain-user-id": userId };
   const captures = await Promise.all(
     [
       "Prepare one concrete next action for migration docs.",
@@ -100,8 +103,8 @@ test("next-step function route returns deterministic next action response", asyn
       app.inject({
         method: "POST",
         url: "/capture/intake",
+        headers,
         payload: {
-          userId,
           type: "text",
           content
         }
@@ -114,7 +117,7 @@ test("next-step function route returns deterministic next action response", asyn
   const canonical = await app.inject({
     method: "POST",
     url: "/functions/what-should-i-do-next",
-    headers: { "x-yurbrain-user-id": userId },
+    headers,
     payload: { itemIds }
   });
   assert.equal(canonical.statusCode, 201);
@@ -129,8 +132,8 @@ test("summarize-progress returns 404 for non-owner item access", async () => {
   const created = await app.inject({
     method: "POST",
     url: "/capture/intake",
+    headers: { "x-yurbrain-user-id": ownerId },
     payload: {
-      userId: ownerId,
       type: "text",
       content: "Owner-only synthesis item."
     }
