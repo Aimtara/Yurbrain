@@ -215,7 +215,10 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
-    const result = await buildSummarizeProgress(state.repo, itemIds);
+    const result = await buildSummarizeProgress(state.repo, itemIds, {
+      log: request.log,
+      correlationId: (request as { correlationId?: string }).correlationId
+    });
     return reply.code(201).send(result);
   });
 
@@ -237,7 +240,10 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
-    const result = await buildWhatShouldIDoNext(state.repo, itemIds);
+    const result = await buildWhatShouldIDoNext(state.repo, itemIds, {
+      log: request.log,
+      correlationId: (request as { correlationId?: string }).correlationId
+    });
     return reply.code(201).send(result);
   };
   app.post("/functions/what-should-i-do-next", handleWhatShouldIDoNext);

@@ -63,3 +63,99 @@ and handle typed provider errors:
 - `invalid_response`
 
 Current deterministic runner + fallback flows remain canonical until feature-level integrations land.
+
+## Summarize-progress real-provider slice (L2)
+
+`POST /functions/summarize-progress` now uses a thin provider-backed path when provider config is available.
+
+- Grounding source:
+  - selected item ids (`itemIds`)
+  - item title/content/topic and recency
+  - latest summary artifacts
+  - latest continuation/comment messages
+  - linked task and session state signals
+- Prompt location:
+  - `apps/api/src/services/functions/summarize-progress-prompt.ts`
+- Orchestration location:
+  - `apps/api/src/services/functions/summarize-progress-llm.ts`
+
+### Fallback policy (L2 summarize-progress only)
+
+The route falls back to existing deterministic synthesis if provider path is unavailable or unsafe:
+
+- provider not configured (`not_configured`)
+- timeout (`timeout`)
+- provider error (`provider_error`)
+- response parse failure (`parse_failed`)
+- prompt-grounding assembly failure before provider invocation (`provider_error`)
+
+Additional groundedness guardrail:
+
+- successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
+
+Returned shape remains backward-compatible and adds optional diagnostics:
+
+- `blockers?: string[]`
+- `sourceSignals?: string[]`
+- `usedFallback?: boolean`
+- `fallbackReason?: "not_configured" | "timeout" | "provider_error" | "parse_failed"`
+
+## What-should-i-do-next real-provider slice (L3)
+
+`POST /functions/what-should-i-do-next` now uses a thin provider-backed path when provider config is available.
+
+- Grounding source:
+  - selected item ids (`itemIds`)
+  - item title/content/topic and recency
+  - latest summary artifacts
+  - latest continuation/comment messages
+  - linked task and session state signals
+- Prompt location:
+  - `apps/api/src/services/functions/what-should-i-do-next-prompt.ts`
+- Orchestration location:
+  - `apps/api/src/services/functions/what-should-i-do-next-llm.ts`
+
+### Fallback policy (L3 what-should-i-do-next only)
+
+The route falls back to existing deterministic synthesis if provider path is unavailable or unsafe:
+
+- provider not configured (`not_configured`)
+- timeout (`timeout`)
+- provider error (`provider_error`)
+- response parse failure (`parse_failed`)
+- prompt-grounding assembly failure before provider invocation (`provider_error`)
+
+Additional groundedness guardrail:
+
+- successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
+- provider responses also include `confidence` (`0..1`) for the single next action recommendation.
+- deterministic fallback responses include stable default `confidence` (`0.35`) when provider path is unavailable or unsafe.
+
+## LLM safety/logging/failure handling hardening (L4)
+
+L2 + L3 slices now share common fallback classification and normalized logging metadata via:
+
+- `apps/api/src/services/functions/llm-fallback.ts`
+
+### Shared failure classification
+
+Provider/invoke/grounding/parse failures are normalized through one helper:
+
+- `toFallbackReason(code)` maps:
+  - `not_configured` -> `not_configured`
+  - `timeout` -> `timeout`
+  - `provider_error` -> `provider_error`
+  - `invalid_response` -> `parse_failed`
+
+### Structured logging fields
+
+Both summarize-progress and next-step now log the same core fields for fallback events:
+
+- `event`
+- `correlationId`
+- `fallbackReason`
+- `fallbackStage` (`grounding` | `invoke` | `parse`)
+- `fallbackOrder` (stable ordinal for dashboards)
+- `errorCode` (when available from `LlmProviderError`)
+- `errorName`
+- `durationMs`

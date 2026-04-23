@@ -41,11 +41,54 @@
 - `POST /functions/query` validates model envelope, appends both the user question and assistant reply to a thread, and falls back deterministically on timeout/invalid output.
 - AI responses include `fallbackUsed` and optional `fallbackReason` (`timeout` or `invalid_or_runner_error`).
 
-## LLM provider foundation (L1, non-user-facing)
+## Summarize Progress (L2 real-provider thin slice)
+
+- `POST /functions/summarize-progress` now attempts one provider-backed call when LLM provider config is available.
+- Prompt + grounding are isolated in:
+  - `apps/api/src/services/functions/summarize-progress-prompt.ts`
+  - `apps/api/src/services/functions/summarize-progress-llm.ts`
+- Grounding includes item content, recent continuation messages, latest summary artifacts, linked task/session state, and blocker/source signals.
+- The response remains contract-compatible (`summary`, `repeatedIdeas`, `suggestedNextAction`, `reason`) with optional extras:
+  - `blockers`
+  - `sourceSignals`
+  - `usedFallback`
+  - `fallbackReason`
+- Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
+- Successful provider output must include at least one grounded `sourceSignals` entry; otherwise the route treats the response as parse-failed and returns deterministic fallback.
+
+## What Should I Do Next? (L3 real-provider thin slice)
+
+- `POST /functions/what-should-i-do-next` now attempts one provider-backed call when LLM provider config is available.
+- Prompt + grounding are isolated in:
+  - `apps/api/src/services/functions/what-should-i-do-next-prompt.ts`
+  - `apps/api/src/services/functions/what-should-i-do-next-llm.ts`
+- Grounding includes item content, recent continuation messages, latest summary artifacts, linked task/session state, and the deterministic reason/repeated-idea signals.
+- The response remains contract-compatible (`summary`, `repeatedIdeas`, `suggestedNextAction`, `reason`) with optional extras:
+  - `sourceSignals`
+  - `confidence`
+  - `usedFallback`
+  - `fallbackReason`
+- Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
+- Successful provider output must include at least one grounded `sourceSignals` entry and bounded `confidence` (`0..1`); otherwise the route treats the response as parse-failed and returns deterministic fallback.
+
+## L4 safety/logging hardening
+
+- Both real-provider synthesis slices now use shared fallback classification utilities in:
+  - `apps/api/src/services/functions/llm-fallback.ts`
+- Unknown provider/parse/grounding failures are normalized to deterministic fallback with explicit reason mapping.
+- Structured fallback logs now include:
+  - `fallbackReason`
+  - `fallbackStage` (`grounding` | `invoke` | `parse`)
+  - `fallbackOrder`
+  - `errorCode` (when provider error class is available)
+  - `errorName`
+  - `durationMs`
+
+## LLM provider foundation (L1)
 
 - Provider foundation lives at `apps/api/src/services/ai/provider/`.
 - It adds one normalized invocation path (`invokeLlm`) that future thin-slice features can call.
-- Current routes do not yet use this provider path; summarize/classify/query and synthesis remain deterministic/fallback as before.
+- Current item-level AI routes (`/functions/summarize`, `/functions/classify`, `/functions/query`) remain deterministic/fallback as before.
 - Config is env-driven:
   - `YURBRAIN_LLM_ENABLED` (`true`/`false`, default `true`)
   - `YURBRAIN_LLM_PROVIDER` (`openai`)
