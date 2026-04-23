@@ -552,3 +552,46 @@ test("summarize-progress sanitizes overlong blocker and source signal entries", 
     globalThis.fetch = originalFetch;
   }
 });
+
+test("summarize-progress falls back when provider output is generic/non-grounded", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: "Keep making progress and stay focused.",
+                blockers: [],
+                suggestedNextStep: "Continue improving things.",
+                sourceSignals: ["Keep going"],
+                reason: "This is generally good practice."
+              })
+            }
+          }
+        ]
+      })
+    }) as Response;
+
+  try {
+    const result = await buildSummarizeProgressWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "parse_failed");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

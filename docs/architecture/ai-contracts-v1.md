@@ -92,6 +92,10 @@ The route falls back to existing deterministic synthesis if provider path is una
 Additional groundedness guardrail:
 
 - successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
+- provider responses are quality-screened before acceptance:
+  - summary must overlap grounded item/task/session signal vocabulary
+  - suggested action must be concise and avoid multi-step orchestration language
+  - low-signal or generic-looking responses are treated as parse failure and deterministic fallback is returned (`parse_failed`).
 
 Returned shape remains backward-compatible and adds optional diagnostics:
 
@@ -128,6 +132,10 @@ The route falls back to existing deterministic synthesis if provider path is una
 Additional groundedness guardrail:
 
 - successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
+- provider responses are quality-screened before acceptance:
+  - summary must overlap grounded item/task/session signal vocabulary
+  - suggested action must be concise and single-step (multi-step connectors trigger fallback)
+  - low-signal or generic-looking responses are treated as parse failure and deterministic fallback is returned (`parse_failed`).
 - provider responses also include `confidence` (`0..1`) for the single next action recommendation.
 - deterministic fallback responses include stable default `confidence` (`0.35`) when provider path is unavailable or unsafe.
 

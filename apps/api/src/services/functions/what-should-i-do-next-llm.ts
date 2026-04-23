@@ -10,6 +10,7 @@ import {
   FALLBACK_REASON_ORDER,
   toFallbackReason
 } from "./llm-fallback";
+import { validateSingleActionNextStepOutput, validateGroundedSignalQuality } from "./llm-output-quality";
 
 const NextStepResponseSchema = z
   .object({
@@ -66,6 +67,20 @@ function parseModelNextStep(raw: string): z.infer<typeof NextStepResponseSchema>
   } catch {
     return null;
   }
+}
+
+function parseProviderNextStepWithQuality(raw: string): ParsedNextStep | null {
+  const parsed = parseModelNextStep(raw);
+  if (!parsed) return null;
+  const hasGroundedSignals = validateGroundedSignalQuality(parsed.sourceSignals, {
+    minSignals: 1,
+    maxSignals: 4,
+    maxSignalLength: 160
+  });
+  if (!hasGroundedSignals) return null;
+  const hasSingleActionStep = validateSingleActionNextStepOutput(parsed.suggestedNextStep, 220);
+  if (!hasSingleActionStep) return null;
+  return parsed;
 }
 
 type ParsedNextStep = NonNullable<ReturnType<typeof parseModelNextStep>>;
@@ -201,7 +216,7 @@ export async function buildWhatShouldIDoNextWithLlm(
       context: prompt.groundedContext,
       timeoutMs: options.timeoutMs
     });
-    const parsed = parseModelNextStep(llm.text);
+    const parsed = parseProviderNextStepWithQuality(llm.text);
     if (!parsed) {
       const parseFallbackReason = toFallbackReason("invalid_response");
       options.log?.warn(
