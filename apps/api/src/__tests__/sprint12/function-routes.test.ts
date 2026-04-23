@@ -169,7 +169,7 @@ test("synthesis function routes use provider path when configured", async () => 
     const content = isNextStep
       ? JSON.stringify({
           summary: "Migration work is waiting on one approval edge.",
-          suggestedNextStep: "Request final sign-off now and resume the paused migration task.",
+          suggestedNextStep: "Request final sign-off now.",
           sourceSignals: ["Paused migration execution thread", "Recent continuation mentions pending sign-off"],
           reason: "Sign-off is the only blocker before immediate execution can continue.",
           confidence: 0.76
@@ -177,7 +177,7 @@ test("synthesis function routes use provider path when configured", async () => 
       : JSON.stringify({
           summary: "Migration progress is coherent but blocked by final release sign-off.",
           blockers: ["Final release sign-off pending"],
-          suggestedNextStep: "Get release sign-off and restart the paused migration task.",
+          suggestedNextStep: "Get final release sign-off now.",
           sourceSignals: ["Paused migration task in progress", "Latest continuation cites pending sign-off"],
           reason: "All evidence points to sign-off as the gating blocker."
         });

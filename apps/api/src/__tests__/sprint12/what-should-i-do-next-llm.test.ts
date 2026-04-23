@@ -214,7 +214,7 @@ test("what-should-i-do-next uses provider output when configured", async () => {
             message: {
               content: JSON.stringify({
                 summary: "Migration rollout is active with one paused execution point.",
-                suggestedNextStep: "Get final sign-off and resume the migration checklist task immediately.",
+                suggestedNextStep: "Request final sign-off for the migration checklist task immediately.",
                 reason: "Sign-off is the single blocker to restart execution.",
                 sourceSignals: ["Paused session on migration checklist", "Recent user note: waiting on final sign-off"],
                 confidence: 0.78
@@ -229,7 +229,7 @@ test("what-should-i-do-next uses provider output when configured", async () => {
     const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
     assert.equal(result.usedFallback, false);
     assert.match(result.summary, /migration/i);
-    assert.match(result.suggestedNextAction, /resume/i);
+    assert.match(result.suggestedNextAction, /sign-off/i);
     assert.equal(result.confidence, 0.78);
   } finally {
     globalThis.fetch = originalFetch;

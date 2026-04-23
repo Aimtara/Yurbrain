@@ -1,75 +1,10 @@
-type GroundingItem = {
-  title: string;
-  snippet: string;
-  latestSummary?: string | null;
-  latestContinuation?: string | null;
-};
-
-type GroundingTask = {
-  title: string;
-};
-
-type GroundingSession = {
-  taskTitle: string;
-};
+import type { LlmFallbackReason } from "./llm-fallback";
 
 export type OutputQualityIssue =
-  | "summary_not_grounded"
-  | "reason_not_grounded"
-  | "next_step_not_grounded"
+  | "signals_not_grounded"
+  | "summary_generic"
   | "next_step_not_single_action"
-  | "next_step_generic"
-  | "summary_too_many_sentences";
-
-type QualityCheckResult = {
-  ok: boolean;
-  issues: OutputQualityIssue[];
-};
-
-type SharedGrounding = {
-  items: GroundingItem[];
-  linkedTasks: GroundingTask[];
-  linkedSessions: GroundingSession[];
-  sourceSignals: string[];
-  deterministicSuggestion?: string;
-  deterministicReason?: string;
-};
-
-const STOP_WORDS = new Set([
-  "about",
-  "after",
-  "again",
-  "also",
-  "because",
-  "before",
-  "between",
-  "could",
-  "from",
-  "have",
-  "just",
-  "maybe",
-  "more",
-  "most",
-  "only",
-  "over",
-  "same",
-  "some",
-  "that",
-  "their",
-  "there",
-  "these",
-  "this",
-  "those",
-  "through",
-  "until",
-  "very",
-  "when",
-  "where",
-  "which",
-  "while",
-  "with",
-  "would"
-]);
+  | "next_step_generic";
 
 const GENERIC_NEXT_STEP_PATTERNS = [
   /\bkeep going\b/i,
@@ -78,132 +13,93 @@ const GENERIC_NEXT_STEP_PATTERNS = [
   /\bmake progress\b/i,
   /\bwork on it\b/i,
   /\bmove forward\b/i,
-  /\bcontinue working\b/i
+  /\bcontinue working\b/i,
+  /\bcontinue improving\b/i
+];
+
+const GENERIC_SUMMARY_PATTERNS = [
+  /\bkeep making progress\b/i,
+  /\bthings are going well\b/i,
+  /\bdoing great\b/i,
+  /\bgenerally on track\b/i,
+  /\bcontinue to improve\b/i,
+  /\bhigh level\b/i
 ];
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function tokenize(value: string): string[] {
-  return normalizeWhitespace(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((token) => token.length >= 4 && !STOP_WORDS.has(token));
+export function isGenericOrHallucinatorySummary(text: string): boolean {
+  return GENERIC_SUMMARY_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-function sentenceCount(value: string): number {
-  const matches = normalizeWhitespace(value).match(/[.!?](\s|$)/g);
-  if (!matches || matches.length === 0) return 1;
-  return matches.length;
+export function isGenericNextStep(text: string): boolean {
+  return GENERIC_NEXT_STEP_PATTERNS.some((pattern) => pattern.test(text));
 }
 
-function buildGroundingVocabulary(grounding: SharedGrounding): Set<string> {
-  const values = [
-    ...grounding.items.flatMap((item) => [
-      item.title,
-      item.snippet,
-      item.latestSummary ?? "",
-      item.latestContinuation ?? ""
-    ]),
-    ...grounding.linkedTasks.map((task) => task.title),
-    ...grounding.linkedSessions.map((session) => session.taskTitle),
-    ...grounding.sourceSignals,
-    grounding.deterministicSuggestion ?? "",
-    grounding.deterministicReason ?? ""
-  ];
-  const tokens = values.flatMap((value) => tokenize(value));
-  return new Set(tokens);
+export function validateSingleActionNextStepOutput(text: string, maxLength = 220): boolean {
+  const normalized = normalizeWhitespace(text);
+  if (normalized.length === 0) return false;
+  if (normalized.length > maxLength) return false;
+  if (/[;\n]/.test(normalized)) return false;
+  if (/\b(and|then|after that)\b/i.test(normalized)) return false;
+  if (/\b(first|second|third|finally)\b/i.test(normalized)) return false;
+  if (isGenericNextStep(normalized)) return false;
+  return true;
 }
 
-function hasGroundingOverlap(text: string, groundingVocabulary: Set<string>): boolean {
-  const tokens = tokenize(text);
-  return tokens.some((token) => groundingVocabulary.has(token));
+export function validateGroundedSignalQuality(
+  signals: string[],
+  options: {
+    minSignals: number;
+    maxSignals: number;
+    maxSignalLength: number;
+  }
+): boolean {
+  if (signals.length < options.minSignals) return false;
+  if (signals.length > options.maxSignals) return false;
+
+  const normalized = signals
+    .map((signal) => normalizeWhitespace(signal))
+    .filter((signal) => signal.length > 0 && signal.length <= options.maxSignalLength);
+
+  if (normalized.length < options.minSignals) return false;
+  if (normalized.length > options.maxSignals) return false;
+
+  // Reject all-generic signal lists; at least one specific signal is required.
+  const meaningfulSignals = normalized.filter((signal) => !isGenericNextStep(signal));
+  return meaningfulSignals.length >= options.minSignals;
 }
 
-function isSingleAction(text: string): boolean {
+export function summarizeProgressQualityIssue(output: {
+  summary: string;
+  suggestedNextStep: string;
+  sourceSignals: string[];
+}): OutputQualityIssue | null {
+  if (!validateGroundedSignalQuality(output.sourceSignals, { minSignals: 1, maxSignals: 4, maxSignalLength: 160 })) {
+    return "signals_not_grounded";
+  }
+  if (isGenericOrHallucinatorySummary(output.summary)) {
+    return "summary_generic";
+  }
+  if (isGenericNextStep(output.suggestedNextStep)) {
+    return "next_step_generic";
+  }
+  if (!validateSingleActionNextStepOutput(output.suggestedNextStep)) {
+    return "next_step_not_single_action";
+  }
+  return null;
+}
+
+export function toQualityIssueFallbackReason(_issue: OutputQualityIssue): LlmFallbackReason {
+  return "parse_failed";
+}
+
+export function isSingleActionLike(text: string): boolean {
   const normalized = normalizeWhitespace(text);
   if (normalized.length === 0) return false;
   if (/[;\n]/.test(normalized)) return false;
   if (/\b(first|second|third|finally)\b/i.test(normalized)) return false;
-  if (/\bthen\b/i.test(normalized)) return false;
-  if (/\bafter that\b/i.test(normalized)) return false;
   return true;
-}
-
-function isGenericNextStep(text: string): boolean {
-  return GENERIC_NEXT_STEP_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-export function assessSummarizeProgressOutputQuality(
-  output: {
-    summary: string;
-    suggestedNextStep: string;
-    reason: string;
-  },
-  grounding: SharedGrounding
-): QualityCheckResult {
-  const vocabulary = buildGroundingVocabulary(grounding);
-  const issues: OutputQualityIssue[] = [];
-
-  if (sentenceCount(output.summary) > 3) {
-    issues.push("summary_too_many_sentences");
-  }
-  if (!hasGroundingOverlap(output.summary, vocabulary)) {
-    issues.push("summary_not_grounded");
-  }
-  if (!hasGroundingOverlap(output.reason, vocabulary)) {
-    issues.push("reason_not_grounded");
-  }
-  if (!hasGroundingOverlap(output.suggestedNextStep, vocabulary)) {
-    issues.push("next_step_not_grounded");
-  }
-  if (!isSingleAction(output.suggestedNextStep)) {
-    issues.push("next_step_not_single_action");
-  }
-  if (isGenericNextStep(output.suggestedNextStep)) {
-    issues.push("next_step_generic");
-  }
-
-  return {
-    ok: issues.length === 0,
-    issues
-  };
-}
-
-export function assessWhatShouldIDoNextOutputQuality(
-  output: {
-    summary: string;
-    suggestedNextStep: string;
-    reason: string;
-  },
-  grounding: SharedGrounding
-): QualityCheckResult {
-  const vocabulary = buildGroundingVocabulary(grounding);
-  const issues: OutputQualityIssue[] = [];
-
-  if (sentenceCount(output.summary) > 1) {
-    issues.push("summary_too_many_sentences");
-  }
-  if (!hasGroundingOverlap(output.summary, vocabulary)) {
-    issues.push("summary_not_grounded");
-  }
-  if (!hasGroundingOverlap(output.reason, vocabulary)) {
-    issues.push("reason_not_grounded");
-  }
-  if (!hasGroundingOverlap(output.suggestedNextStep, vocabulary)) {
-    issues.push("next_step_not_grounded");
-  }
-  if (!isSingleAction(output.suggestedNextStep)) {
-    issues.push("next_step_not_single_action");
-  }
-  if (isGenericNextStep(output.suggestedNextStep)) {
-    issues.push("next_step_generic");
-  }
-
-  return {
-    ok: issues.length === 0,
-    issues
-  };
 }

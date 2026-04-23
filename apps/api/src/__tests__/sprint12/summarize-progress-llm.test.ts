@@ -197,7 +197,7 @@ test("summarize-progress uses provider output when configured", async () => {
               content: JSON.stringify({
                 summary: "Progress centers on migration checklist completion and paused execution.",
                 blockers: ["Waiting for release approval"],
-                suggestedNextStep: "Get release approval, then resume the paused migration session.",
+                suggestedNextStep: "Resume the paused migration session now.",
                 sourceSignals: ["Paused session on Finalize migration review", "Recent note: blocked until approval lands"],
                 reason: "Approval is the single blocker preventing immediate forward motion."
               })

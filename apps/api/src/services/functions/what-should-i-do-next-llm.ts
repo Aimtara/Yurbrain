@@ -10,7 +10,11 @@ import {
   FALLBACK_REASON_ORDER,
   toFallbackReason
 } from "./llm-fallback";
-import { validateSingleActionNextStepOutput, validateGroundedSignalQuality } from "./llm-output-quality";
+import {
+  isGenericOrHallucinatorySummary,
+  validateGroundedSignalQuality,
+  validateSingleActionNextStepOutput
+} from "./llm-output-quality";
 
 const NextStepResponseSchema = z
   .object({
@@ -72,6 +76,7 @@ function parseModelNextStep(raw: string): z.infer<typeof NextStepResponseSchema>
 function parseProviderNextStepWithQuality(raw: string): ParsedNextStep | null {
   const parsed = parseModelNextStep(raw);
   if (!parsed) return null;
+  if (isGenericOrHallucinatorySummary(parsed.summary)) return null;
   const hasGroundedSignals = validateGroundedSignalQuality(parsed.sourceSignals, {
     minSignals: 1,
     maxSignals: 4,
