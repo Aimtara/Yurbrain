@@ -56,6 +56,21 @@
 - Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
 - Successful provider output must include at least one grounded `sourceSignals` entry; otherwise the route treats the response as parse-failed and returns deterministic fallback.
 
+## What Should I Do Next? (L3 real-provider thin slice)
+
+- `POST /functions/what-should-i-do-next` now attempts one provider-backed call when LLM provider config is available.
+- Prompt + grounding are isolated in:
+  - `apps/api/src/services/functions/what-should-i-do-next-prompt.ts`
+  - `apps/api/src/services/functions/what-should-i-do-next-llm.ts`
+- Grounding includes item content, recent continuation messages, latest summary artifacts, linked task/session state, and the deterministic reason/repeated-idea signals.
+- The response remains contract-compatible (`summary`, `repeatedIdeas`, `suggestedNextAction`, `reason`) with optional extras:
+  - `sourceSignals`
+  - `confidence`
+  - `usedFallback`
+  - `fallbackReason`
+- Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
+- Successful provider output must include at least one grounded `sourceSignals` entry and bounded `confidence` (`0..1`); otherwise the route treats the response as parse-failed and returns deterministic fallback.
+
 ## LLM provider foundation (L1)
 
 - Provider foundation lives at `apps/api/src/services/ai/provider/`.

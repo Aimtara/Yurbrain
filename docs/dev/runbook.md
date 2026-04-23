@@ -194,9 +194,9 @@ Current behavior is unchanged: user-facing AI routes still use deterministic/fal
 When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
 `apps/api/src/services/ai/provider/index.ts` and keep deterministic fallback behavior in the calling service.
 
-## 8) Summarize-progress real-provider baseline (L2)
+## 8) Thin real-provider synthesis baselines (L2 + L3)
 
-`POST /functions/summarize-progress` is now a thin real-provider slice with strict fallback safety.
+`POST /functions/summarize-progress` and `POST /functions/what-should-i-do-next` are now thin real-provider slices with strict fallback safety.
 
 ### Operational guarantees
 
@@ -207,16 +207,25 @@ When adding real-LLM behavior in a feature slice, call `invokeLlm(...)` from
   - provider HTTP/transport error
   - model output parse/validation failure
   - prompt-grounding assembly failure
-- Successful provider output must include grounded `sourceSignals` (1-4); empty arrays are treated as parse failure and fallback is used.
-- `what-should-i-do-next` remains deterministic in L2.
+- Successful provider output must include grounded `sourceSignals`:
+  - summarize-progress: `1-4` required
+  - what-should-i-do-next: `1-4` required
+  - empty arrays are treated as parse failure and fallback is used.
+- Successful provider output must stay concise and non-chatty:
+  - summarize-progress: concise operational summary + one concrete next step
+  - what-should-i-do-next: single-line summary + one immediate action
+- Next-step output confidence is always bounded and present:
+  - provider success: validated model confidence (`0..1`)
+  - deterministic fallback: stable default confidence (`0.35`)
 
 ### Anti-staleness checks for this slice
 
-When changing summarize-progress prompt/orchestration/contracts:
+When changing summarize-progress or next-step prompt/orchestration/contracts:
 
 1. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/summarize-progress-llm.test.ts`
-2. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/ai-synthesis.test.ts`
-3. Confirm docs stay aligned in:
+2. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/what-should-i-do-next-llm.test.ts`
+3. Run `pnpm --filter api exec tsx --test src/__tests__/sprint12/ai-synthesis.test.ts`
+4. Confirm docs stay aligned in:
    - `docs/architecture/ai-contracts-v1.md`
    - `docs/api/README.md`
    - this runbook section

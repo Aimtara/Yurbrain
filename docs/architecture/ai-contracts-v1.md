@@ -99,3 +99,34 @@ Returned shape remains backward-compatible and adds optional diagnostics:
 - `sourceSignals?: string[]`
 - `usedFallback?: boolean`
 - `fallbackReason?: "not_configured" | "timeout" | "provider_error" | "parse_failed"`
+
+## What-should-i-do-next real-provider slice (L3)
+
+`POST /functions/what-should-i-do-next` now uses a thin provider-backed path when provider config is available.
+
+- Grounding source:
+  - selected item ids (`itemIds`)
+  - item title/content/topic and recency
+  - latest summary artifacts
+  - latest continuation/comment messages
+  - linked task and session state signals
+- Prompt location:
+  - `apps/api/src/services/functions/what-should-i-do-next-prompt.ts`
+- Orchestration location:
+  - `apps/api/src/services/functions/what-should-i-do-next-llm.ts`
+
+### Fallback policy (L3 what-should-i-do-next only)
+
+The route falls back to existing deterministic synthesis if provider path is unavailable or unsafe:
+
+- provider not configured (`not_configured`)
+- timeout (`timeout`)
+- provider error (`provider_error`)
+- response parse failure (`parse_failed`)
+- prompt-grounding assembly failure before provider invocation (`provider_error`)
+
+Additional groundedness guardrail:
+
+- successful provider responses must include at least one `sourceSignals` entry; otherwise the response is treated as parse failure and deterministic fallback is returned (`parse_failed`).
+- provider responses also include `confidence` (`0..1`) for the single next action recommendation.
+- deterministic fallback responses include stable default `confidence` (`0.35`) when provider path is unavailable or unsafe.
