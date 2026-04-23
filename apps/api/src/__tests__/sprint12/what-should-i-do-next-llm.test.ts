@@ -214,7 +214,7 @@ test("what-should-i-do-next uses provider output when configured", async () => {
             message: {
               content: JSON.stringify({
                 summary: "Migration rollout is active with one paused execution point.",
-                suggestedNextStep: "Get final sign-off and resume the migration checklist task immediately.",
+                suggestedNextStep: "Request final sign-off for the migration checklist task immediately.",
                 reason: "Sign-off is the single blocker to restart execution.",
                 sourceSignals: ["Paused session on migration checklist", "Recent user note: waiting on final sign-off"],
                 confidence: 0.78
@@ -229,7 +229,7 @@ test("what-should-i-do-next uses provider output when configured", async () => {
     const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
     assert.equal(result.usedFallback, false);
     assert.match(result.summary, /migration/i);
-    assert.match(result.suggestedNextAction, /resume/i);
+    assert.match(result.suggestedNextAction, /sign-off/i);
     assert.equal(result.confidence, 0.78);
   } finally {
     globalThis.fetch = originalFetch;
@@ -369,6 +369,50 @@ test("what-should-i-do-next falls back when model omits source signals", async (
                 suggestedNextStep: "Ask for final sign-off and then continue.",
                 reason: "Execution cannot proceed without approval.",
                 sourceSignals: []
+              })
+            }
+          }
+        ]
+      })
+    }) as Response;
+
+  try {
+    const result = await buildWhatShouldIDoNextWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "parse_failed");
+    assert.equal(result.confidence, 0.35);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("what-should-i-do-next falls back when provider next-step is multi-action", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: "Do two things to move this forward.",
+                suggestedNextStep: "Email the approver and update the checklist in the same pass.",
+                reason: "Both actions are required immediately.",
+                sourceSignals: ["Paused migration task pending sign-off"],
+                confidence: 0.81
               })
             }
           }

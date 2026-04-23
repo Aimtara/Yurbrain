@@ -38,6 +38,55 @@ test("founder diagnostics response excludes raw event payloads", async () => {
   assert.equal("events" in body, false);
   assert.ok(Array.isArray(body.focusItems));
   assert.ok(Array.isArray(body.focusActions));
+  assert.ok((body.focusItems as Array<Record<string, unknown>>).every((entry) => !("payload" in entry)));
+  assert.ok((body.focusActions as Array<Record<string, unknown>>).every((entry) => !("payload" in entry)));
+});
+
+test("founder review analytics ignore spoofed query userId and remain derived-only", async () => {
+  const ownerId = founderReviewUserId;
+  const spoofedQueryUserId = "99999999-9999-4999-8999-999999999999";
+  const headers = { "x-yurbrain-user-id": ownerId };
+
+  const baselineReviewResponse = await app.inject({
+    method: "GET",
+    url: "/functions/founder-review?window=7d",
+    headers
+  });
+  assert.equal(baselineReviewResponse.statusCode, 200);
+  const baselineReview = baselineReviewResponse.json<Record<string, unknown>>();
+
+  const spoofedReviewResponse = await app.inject({
+    method: "GET",
+    url: `/functions/founder-review?window=7d&userId=${spoofedQueryUserId}`,
+    headers
+  });
+  assert.equal(spoofedReviewResponse.statusCode, 200);
+  const spoofedReview = spoofedReviewResponse.json<Record<string, unknown>>();
+  assert.equal(spoofedReview.window, baselineReview.window);
+  assert.equal("events" in spoofedReview, false);
+  assert.equal("rawEvents" in spoofedReview, false);
+
+  const baselineDiagnosticsResponse = await app.inject({
+    method: "GET",
+    url: "/functions/founder-review/diagnostics?window=7d",
+    headers
+  });
+  assert.equal(baselineDiagnosticsResponse.statusCode, 200);
+  const baselineDiagnostics = baselineDiagnosticsResponse.json<Record<string, unknown>>();
+
+  const spoofedDiagnosticsResponse = await app.inject({
+    method: "GET",
+    url: `/functions/founder-review/diagnostics?window=7d&userId=${spoofedQueryUserId}`,
+    headers
+  });
+  assert.equal(spoofedDiagnosticsResponse.statusCode, 200);
+  const spoofedDiagnostics = spoofedDiagnosticsResponse.json<Record<string, unknown>>();
+
+  assert.deepEqual(spoofedDiagnostics.summary, baselineDiagnostics.summary);
+  assert.equal("events" in spoofedDiagnostics, false);
+  assert.equal("rawEvents" in spoofedDiagnostics, false);
+  assert.ok(Array.isArray(spoofedDiagnostics.focusItems));
+  assert.ok((spoofedDiagnostics.focusItems as Array<Record<string, unknown>>).every((entry) => !("payload" in entry)));
 });
 
 test("capture and update write only allowlisted event payload fields", async () => {

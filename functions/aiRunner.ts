@@ -4,7 +4,7 @@ import {
   buildClassificationFallback,
   buildQueryFallback,
   buildSummaryFallback
-} from "../packages/ai/src/fallbacks";
+} from "@yurbrain/ai";
 
 export type AiRunnerInput = {
   mode: "rankFeed" | "summarize" | "classify" | "query";

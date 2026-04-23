@@ -24,6 +24,18 @@
       ],
       "@yurbrain/client/*": [
         "packages/client/src/*"
+      ],
+      "@yurbrain/ai": [
+        "packages/ai/src/index.ts"
+      ],
+      "@yurbrain/ai/*": [
+        "packages/ai/src/*"
+      ],
+      "@yurbrain/db": [
+        "packages/db/src/index.ts"
+      ],
+      "@yurbrain/db/*": [
+        "packages/db/src/*"
       ]
     }
   }

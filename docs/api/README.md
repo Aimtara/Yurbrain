@@ -70,6 +70,10 @@
   - `fallbackReason`
 - Deterministic fallback remains first-class and is used when provider is not configured, times out, errors, when grounding assembly fails, or when provider output is invalid/parse-failed.
 - Successful provider output must include at least one grounded `sourceSignals` entry and bounded `confidence` (`0..1`); otherwise the route treats the response as parse-failed and returns deterministic fallback.
+- Output quality guardrails are enforced before accepting provider output:
+  - summary and suggested next step must reference grounded item/task/session language from context
+  - suggested next step must stay single-action oriented (rejects multi-step sequencing language)
+  - provider responses that fail groundedness/one-action checks are classified as parse-failed and fallback deterministically
 
 ## L4 safety/logging hardening
 
@@ -83,12 +87,20 @@
   - `errorCode` (when provider error class is available)
   - `errorName`
   - `durationMs`
+- Fallback logs intentionally avoid raw prompt/context dumps and secret-bearing request metadata.
 
 ## LLM provider foundation (L1)
 
 - Provider foundation lives at `apps/api/src/services/ai/provider/`.
 - It adds one normalized invocation path (`invokeLlm`) that future thin-slice features can call.
 - Current item-level AI routes (`/functions/summarize`, `/functions/classify`, `/functions/query`) remain deterministic/fallback as before.
+- Current real-provider routes:
+  - `POST /functions/summarize-progress`
+  - `POST /functions/what-should-i-do-next`
+- Deterministic-first routes (no live provider path):
+  - `POST /functions/summarize`
+  - `POST /functions/classify`
+  - `POST /functions/query`
 - Config is env-driven:
   - `YURBRAIN_LLM_ENABLED` (`true`/`false`, default `true`)
   - `YURBRAIN_LLM_PROVIDER` (`openai`)

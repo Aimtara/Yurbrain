@@ -9,6 +9,7 @@ import {
   FALLBACK_REASON_ORDER,
   type LlmFallbackReason
 } from "./llm-fallback";
+import { summarizeProgressQualityIssue, toQualityIssueFallbackReason } from "./llm-output-quality";
 
 const SummaryResponseSchema = z
   .object({
@@ -232,6 +233,24 @@ export async function buildSummarizeProgressWithLlm(
         "summarize progress llm parse failed"
       );
       return buildFallbackResponse(deterministic, "parse_failed");
+    }
+    const qualityIssue = summarizeProgressQualityIssue(parsed);
+    if (qualityIssue) {
+      const qualityFallbackReason = toQualityIssueFallbackReason(qualityIssue);
+      options.log?.warn(
+        {
+          event: "summarize_progress_llm_fallback",
+          correlationId: options.correlationId,
+          fallbackReason: qualityFallbackReason,
+          fallbackStage: "parse",
+          fallbackOrder: FALLBACK_REASON_ORDER[qualityFallbackReason],
+          errorCode: qualityIssue,
+          errorName: "QualityGuardError",
+          durationMs: Date.now() - startedAt
+        },
+        "summarize progress llm output quality guard fallback"
+      );
+      return buildFallbackResponse(deterministic, qualityFallbackReason);
     }
 
     options.log?.info(

@@ -197,7 +197,7 @@ test("summarize-progress uses provider output when configured", async () => {
               content: JSON.stringify({
                 summary: "Progress centers on migration checklist completion and paused execution.",
                 blockers: ["Waiting for release approval"],
-                suggestedNextStep: "Get release approval, then resume the paused migration session.",
+                suggestedNextStep: "Resume the paused migration session now.",
                 sourceSignals: ["Paused session on Finalize migration review", "Recent note: blocked until approval lands"],
                 reason: "Approval is the single blocker preventing immediate forward motion."
               })
@@ -548,6 +548,49 @@ test("summarize-progress sanitizes overlong blocker and source signal entries", 
     assert.ok((result.sourceSignals ?? []).every((entry) => entry.length <= 160));
     assert.ok((result.blockers ?? []).length <= 3);
     assert.ok((result.sourceSignals ?? []).length <= 4);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("summarize-progress falls back when provider output is generic/non-grounded", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () =>
+    ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: "Keep making progress and stay focused.",
+                blockers: [],
+                suggestedNextStep: "Continue improving things.",
+                sourceSignals: ["Keep going"],
+                reason: "This is generally good practice."
+              })
+            }
+          }
+        ]
+      })
+    }) as Response;
+
+  try {
+    const result = await buildSummarizeProgressWithLlm(buildMockRepo(), [createBaseData().item.id]);
+    assert.equal(result.usedFallback, true);
+    assert.equal(result.fallbackReason, "parse_failed");
   } finally {
     globalThis.fetch = originalFetch;
   }
