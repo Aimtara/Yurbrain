@@ -73,7 +73,6 @@ type TaskListQuery = {
 
 type FounderReviewQuery = {
   window?: "7d";
-  userId?: string;
   includeAi?: boolean;
 };
 
@@ -219,7 +218,6 @@ function createRestDomainClient(): YurbrainDomainClient {
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({
           window: query.window ?? "7d",
-          userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),
@@ -227,7 +225,6 @@ function createRestDomainClient(): YurbrainDomainClient {
       apiClient(
         `${endpoints.functionFounderReviewDiagnostics}${renderQuery({
           window: query.window ?? "7d",
-          userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),
@@ -238,7 +235,6 @@ function createRestDomainClient(): YurbrainDomainClient {
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({
           window: query.window ?? "7d",
-          userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),
@@ -284,7 +280,6 @@ function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({
           window: query.window ?? "7d",
-          userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),
@@ -292,7 +287,6 @@ function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
       apiClient(
         `${endpoints.functionFounderReviewDiagnostics}${renderQuery({
           window: query.window ?? "7d",
-          userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),
@@ -323,7 +317,6 @@ function createFunctionLogicOverrides(): Partial<YurbrainDomainClient> {
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({
           window: query.window ?? "7d",
-          userId: query.userId,
           includeAi: query.includeAi ? "1" : undefined
         })}`
       ),

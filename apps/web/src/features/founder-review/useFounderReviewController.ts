@@ -40,7 +40,6 @@ export function useFounderReviewController({
     try {
       const reviewQuery = {
         window: "7d" as const,
-        userId: currentUserId || undefined,
         includeAi: includeAiReadout
       };
       const [data, diagnosticsData] = await Promise.all([
