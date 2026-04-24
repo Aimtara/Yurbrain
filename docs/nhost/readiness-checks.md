@@ -7,6 +7,7 @@ This document defines the high-signal readiness commands for MVP/Alpha and how t
 Run from repository root:
 
 - `pnpm install`
+- `pnpm check:secrets`
 - `pnpm check:alpha`
 - `pnpm check:production-safety`
 
@@ -14,6 +15,8 @@ Run from repository root:
 
 - `pnpm install`
   - dependency install / lockfile consistency.
+- `pnpm check:secrets`
+  - compatibility alias for `check:secret-leaks` used by operator runbooks.
 - `pnpm check:alpha`
   - secret leak guard (`check:secret-leaks`)
   - Nhost env/secret hygiene guard (`check:nhost-safety`)

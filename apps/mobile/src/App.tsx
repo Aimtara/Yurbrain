@@ -14,8 +14,26 @@ import { useMobileLoopController } from "./features/shell/useMobileLoopControlle
 import { useNhostAuth } from "./nhost/useNhostAuth";
 import { YurbrainClientProvider } from "./providers/YurbrainClientProvider";
 
-if (typeof window !== "undefined") {
-  configureApiBaseUrl(`${window.location.protocol}//${window.location.hostname}:3001`);
+function resolveMobileApiBaseUrl(): string | null {
+  const configuredApiBaseUrl =
+    process.env.EXPO_PUBLIC_YURBRAIN_API_URL?.trim() ??
+    process.env.NEXT_PUBLIC_YURBRAIN_API_URL?.trim();
+
+  if (configuredApiBaseUrl) {
+    return configuredApiBaseUrl;
+  }
+
+  if (typeof window !== "undefined") {
+    return `${window.location.protocol}//${window.location.hostname}:3001`;
+  }
+
+  return null;
+}
+
+const mobileApiBaseUrl = resolveMobileApiBaseUrl();
+
+if (mobileApiBaseUrl) {
+  configureApiBaseUrl(mobileApiBaseUrl);
 }
 
 function MobileAuthedApp() {
