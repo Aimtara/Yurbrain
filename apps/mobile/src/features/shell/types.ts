@@ -1,8 +1,7 @@
-import type { CaptureSubmitIntent } from "@yurbrain/ui";
-
 import type {
   BrainItemDto,
   CaptureDraft,
+  CaptureSubmitIntent,
   ExecutionLens,
   FeedCardDto,
   FeedCardModel,

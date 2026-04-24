@@ -96,10 +96,13 @@ export function useCaptureController({
         }
 
         if (intent === "save_and_remind") {
-          setCaptureStatusNotice("Saved for deferred resurfacing. Yurbrain will bring this back with related context.");
+          setCaptureStatusNotice("Saved. Reminder scheduling is post-alpha and currently disabled.");
         }
 
-        const successMessage = captureSuccessMessages[intent];
+        const successMessage =
+          intent === "save_and_remind"
+            ? captureSuccessMessages.save
+            : captureSuccessMessages[intent];
         setCaptureSuccessNotice(successMessage);
         window.setTimeout(() => {
           setCaptureSheetOpen(false);
@@ -139,13 +142,8 @@ export function useCaptureController({
     setCaptureSheetOpen(true);
   }, [resetCaptureDraft, setCaptureError, setCaptureSheetOpen, setCaptureStatusNotice, setCaptureSuccessNotice]);
 
-  const handleVoiceCaptureStub = useCallback(() => {
-    setCaptureStatusNotice("Voice capture is a placeholder for now. Type your thought and save.");
-  }, [setCaptureStatusNotice]);
-
   return {
     captureItem,
-    openCaptureSheet,
-    handleVoiceCaptureStub
+    openCaptureSheet
   };
 }

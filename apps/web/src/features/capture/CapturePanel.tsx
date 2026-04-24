@@ -14,7 +14,6 @@ type CapturePanelProps = {
   onCaptureDraftChange: (value: CaptureComposerValue) => void;
   onCaptureSubmit: (intent: CaptureSubmitIntent) => void;
   onCaptureClose: () => void;
-  onVoiceCaptureStub: () => void;
 };
 
 export function CapturePanel({
@@ -30,8 +29,7 @@ export function CapturePanel({
   onOpenCaptureSheet,
   onCaptureDraftChange,
   onCaptureSubmit,
-  onCaptureClose,
-  onVoiceCaptureStub
+  onCaptureClose
 }: CapturePanelProps) {
   return (
     <div style={{ display: "grid", gap: "12px" }}>
@@ -52,7 +50,9 @@ export function CapturePanel({
           </button>
         </div>
       </div>
-      <p style={{ margin: 0, color: "#475569" }}>Capture first, then choose Save, Save + Plan, or Save + Remind Later.</p>
+      <p style={{ margin: 0, color: "#475569" }}>
+        Capture first, then choose Save or Save + Plan.
+      </p>
       {captureLoading ? <p style={{ margin: 0 }}>Saving capture...</p> : null}
       {captureStatusNotice ? <p style={{ margin: 0 }}>{captureStatusNotice}</p> : null}
       <CaptureComposer
@@ -65,7 +65,6 @@ export function CapturePanel({
         errorMessage={captureError}
         statusMessage={captureStatusNotice}
         successMessage={captureSuccessNotice}
-        onVoiceStub={onVoiceCaptureStub}
       />
     </div>
   );

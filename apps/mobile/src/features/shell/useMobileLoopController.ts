@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useYurbrainClient } from "@yurbrain/client";
-import type { CaptureSubmitIntent } from "@yurbrain/ui";
 
 import { mobileStorageKeys } from "../shared/constants";
 import { getStoredState, setStoredState } from "../shared/storage";
 import { buildFounderSummary } from "../shared/founder";
 import { buildFeedCardModel } from "../shared/continuity";
 import { formatIsoRelative, formatSessionDuration } from "../shared/time";
-import type { BrainItemDto, CaptureDraft, ContinuityContext, FeedCardDto, FeedLens, ItemArtifactDto, MessageDto, MobileSurface, SessionDto, TaskDto, UserPreferenceDto } from "../shared/types";
+import type { BrainItemDto, CaptureDraft, CaptureSubmitIntent, ContinuityContext, FeedCardDto, FeedLens, ItemArtifactDto, MessageDto, MobileSurface, SessionDto, TaskDto, UserPreferenceDto } from "../shared/types";
 import type { MobileLoopController } from "./types";
 
 type CaptureIntakeResponse = {
@@ -386,7 +385,7 @@ export function useMobileLoopController(): MobileLoopController {
   );
 
   const captureItem = useCallback(
-    async (intent: CaptureSubmitIntent) => {
+    async (intent: CaptureSubmitIntent = "save") => {
       const normalized = captureDraft.content.trim();
       if (!normalized) return;
       setCaptureLoading(true);
@@ -412,7 +411,11 @@ export function useMobileLoopController(): MobileLoopController {
           lastTouched: "just now",
           sourceItemId: created.id
         });
-        setCaptureSuccessNotice(intent === "save" ? "Saved." : intent === "save_and_plan" ? "Saved and planning next step." : "Saved for gentle resurfacing.");
+        setCaptureSuccessNotice(
+          intent === "save"
+            ? "Saved."
+            : "Saved and planning next step."
+        );
         if (intent === "save_and_plan") {
           await yurbrainClient.planThis({
             sourceItemId: created.id,

@@ -388,7 +388,7 @@ export default function Page() {
     setSelectedItemId
   });
 
-  const { captureItem, openCaptureSheet, handleVoiceCaptureStub } = useCaptureController({
+  const { captureItem, openCaptureSheet } = useCaptureController({
     yurbrainClient,
     captureDraft,
     activeLens,
@@ -670,7 +670,6 @@ export default function Page() {
                 setCaptureError("");
                 setCaptureSuccessNotice("");
               }}
-              onVoiceCaptureStub={handleVoiceCaptureStub}
             />
           }
           founderStats={founderStats}

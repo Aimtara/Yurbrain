@@ -1,9 +1,7 @@
 import { useMemo, useState } from "react";
 import { Modal, Pressable, Text, TextInput, View } from "react-native";
 
-import type { CaptureSubmitIntent } from "@yurbrain/ui";
-
-import type { CaptureDraft } from "../shared/types";
+import type { CaptureDraft, CaptureSubmitIntent } from "../shared/types";
 
 type AppCaptureSheetProps = {
   open: boolean;
@@ -22,13 +20,13 @@ const captureTypeOptions: Array<CaptureDraft["type"]> = ["text", "link", "image"
 const captureTypeLabels: Record<CaptureDraft["type"], string> = {
   text: "Text",
   link: "Link",
-  image: "Image"
+  image: "Image ref"
 };
 
 const captureContentPlaceholders: Record<CaptureDraft["type"], string> = {
   text: "Capture in your own words...",
   link: "https://example.com/article-you-want-to-remember",
-  image: "Image URL or quick visual note"
+  image: "Paste image URL or file reference (uploads are post-alpha)"
 };
 
 export function AppCaptureSheet({
@@ -187,6 +185,24 @@ export function AppCaptureSheet({
                   color: "#0f172a"
                 }}
               />
+              <View
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#d8dce8",
+                  borderRadius: 10,
+                  backgroundColor: "#f8fafc",
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  gap: 4
+                }}
+              >
+                <Text style={{ color: "#334155", fontWeight: "600" }}>
+                  Not yet in MVP:
+                </Text>
+                <Text style={{ color: "#64748b" }}>
+                  Native file uploads, voice capture, and reminder scheduling are post-alpha.
+                </Text>
+              </View>
             </View>
           ) : null}
 
@@ -200,7 +216,6 @@ export function AppCaptureSheet({
             {advancedOpen ? (
               <>
                 <CaptureActionButton disabled={loading || !canSubmit} label="Save + Plan" onPress={() => void onSubmit("save_and_plan")} />
-                <CaptureActionButton disabled={loading || !canSubmit} label="Save + Remind" onPress={() => void onSubmit("save_and_remind")} />
               </>
             ) : null}
           </View>
