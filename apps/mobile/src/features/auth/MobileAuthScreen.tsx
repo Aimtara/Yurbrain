@@ -267,8 +267,20 @@ export function MobileAuthScreen({ auth }: Props) {
           />
         ) : null}
 
-        {notice ? <Text style={{ color: "#0f766e" }}>{notice}</Text> : null}
-        {auth.error ? <Text style={{ color: "#991b1b" }}>{auth.error}</Text> : null}
+        {notice || auth.error ? (
+          <View style={{ width: "100%", gap: 6, paddingBottom: 2 }}>
+            {notice ? (
+              <Text style={{ color: "#0f766e", lineHeight: 22, flexShrink: 1, paddingBottom: 2 }}>
+                {notice}
+              </Text>
+            ) : null}
+            {auth.error ? (
+              <Text style={{ color: "#991b1b", lineHeight: 22, flexShrink: 1, paddingBottom: 2 }}>
+                {auth.error}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );

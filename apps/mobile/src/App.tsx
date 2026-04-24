@@ -167,8 +167,16 @@ function MobileAuthenticatedShell({
             </Pressable>
           </View>
         ) : null}
-        {authNotice ? <Text style={{ color: "#0f766e" }}>{authNotice}</Text> : null}
-        {authError ? <Text style={{ color: "#991b1b" }}>{authError}</Text> : null}
+        {authNotice ? (
+          <Text style={{ color: "#0f766e", flexShrink: 1, lineHeight: 20, paddingBottom: 2 }}>
+            {authNotice}
+          </Text>
+        ) : null}
+        {authError ? (
+          <Text style={{ color: "#991b1b", flexShrink: 1, lineHeight: 20, paddingBottom: 2 }}>
+            {authError}
+          </Text>
+        ) : null}
       </View>
       <View style={{ flex: 1 }}>
         {controller.activeSurface === "feed" ? <FocusFeedSurface controller={controller} /> : null}
