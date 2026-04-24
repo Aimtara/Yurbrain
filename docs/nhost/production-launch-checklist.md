@@ -253,4 +253,9 @@ Use this checklist as the final release gate for Yurbrain's Nhost-backed product
 - `docs/nhost/production-safety-checks.md`
 - `docs/nhost/observability.md`
 - `docs/nhost/launch-day-command-clickbook.md`
+- `docs/qa/alpha-smoke-execution-report-template.md`
+- `docs/nhost/staging-production-smoke-report-template.md`
+- `docs/nhost/backup-restore-drill-runbook.md`
+- `docs/nhost/secret-rotation-validation-runbook.md`
+- `docs/nhost/incident-response-readiness-runbook.md`
 - `docs/qa/alpha-smoke-test.md`
