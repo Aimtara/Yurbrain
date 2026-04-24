@@ -61,7 +61,6 @@ function parseQueryNumber(value: unknown): number | undefined {
 function parseFounderReviewQuery(raw: Record<string, unknown>): FounderReviewQuery {
   return FounderReviewQuerySchema.parse({
     window: raw.window,
-    userId: raw.userId,
     includeAi: raw.includeAi
   });
 }
@@ -215,7 +214,10 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
-    const result = await buildSummarizeProgress(state.repo, itemIds);
+    const result = await buildSummarizeProgress(state.repo, itemIds, {
+      log: request.log,
+      correlationId: (request as { correlationId?: string }).correlationId
+    });
     return reply.code(201).send(result);
   });
 
@@ -237,7 +239,10 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
       return reply.code(404).send({ message: "Brain item not found" });
     }
-    const result = await buildWhatShouldIDoNext(state.repo, itemIds);
+    const result = await buildWhatShouldIDoNext(state.repo, itemIds, {
+      log: request.log,
+      correlationId: (request as { correlationId?: string }).correlationId
+    });
     return reply.code(201).send(result);
   };
   app.post("/functions/what-should-i-do-next", handleWhatShouldIDoNext);
@@ -247,13 +252,9 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!currentUser) return;
 
     const parsedQuery = parseFounderReviewQuery((request.query ?? {}) as Record<string, unknown>);
-    const requestedUserId = parsedQuery.userId ?? currentUser.id;
-    if (!canAccessUser(currentUser, requestedUserId)) {
-      return reply.code(404).send({ message: "Founder review not found" });
-    }
     const review = await buildFounderReviewForFunction({
       repo: state.repo,
-      userId: requestedUserId,
+      userId: currentUser.id,
       window: parsedQuery.window,
       includeAi: parsedQuery.includeAi
     });
@@ -266,13 +267,9 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     if (!currentUser) return;
 
     const parsedQuery = parseFounderReviewQuery((request.query ?? {}) as Record<string, unknown>);
-    const requestedUserId = parsedQuery.userId ?? currentUser.id;
-    if (!canAccessUser(currentUser, requestedUserId)) {
-      return reply.code(404).send({ message: "Founder review not found" });
-    }
     const diagnostics = await buildFounderReviewDiagnostics({
       repo: state.repo,
-      userId: requestedUserId,
+      userId: currentUser.id,
       window: parsedQuery.window,
       includeAi: parsedQuery.includeAi
     });

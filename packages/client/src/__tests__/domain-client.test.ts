@@ -35,11 +35,10 @@ test("domain client routes founder review query params", async () => {
 
   await client.getFounderReview({
     window: "7d",
-    userId: "11111111-1111-1111-1111-111111111111",
     includeAi: true
   });
 
-  assert.equal(calls[0]?.url, "/functions/founder-review?window=7d&userId=11111111-1111-1111-1111-111111111111&includeAi=1");
+  assert.equal(calls[0]?.url, "/functions/founder-review?window=7d&includeAi=1");
 });
 
 test("domain client addComment writes user message payload", async () => {
@@ -210,13 +209,12 @@ test("domain client routes founder diagnostics query params", async () => {
 
   await client.getFounderDiagnostics({
     window: "7d",
-    userId: "11111111-1111-1111-1111-111111111111",
     includeAi: true
   });
 
   assert.equal(
     calls[0]?.url,
-    "/functions/founder-review/diagnostics?window=7d&userId=11111111-1111-1111-1111-111111111111&includeAi=1"
+    "/functions/founder-review/diagnostics?window=7d&includeAi=1"
   );
 });
 

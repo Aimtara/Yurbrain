@@ -96,7 +96,8 @@ export async function registerTaskRoutes(app: FastifyInstance, state: AppState) 
   app.get("/tasks", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
-    const query = ListTasksQuerySchema.parse(request.query ?? {});
+    const rawQuery = (request.query ?? {}) as Record<string, unknown>;
+    const query = ListTasksQuerySchema.parse({ status: rawQuery.status });
     const filtered = await state.repo.listTasks({ ...query, userId: currentUser.id });
 
     return reply.code(200).send(TaskListResponseSchema.parse(filtered));

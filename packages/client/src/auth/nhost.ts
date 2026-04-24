@@ -46,6 +46,42 @@ export function buildNhostRuntimeConfig(): NhostRuntimeConfig | null {
 let bootstrapped = false;
 let cachedConfigured = false;
 
+type BrowserNhostSession = {
+  accessToken?: unknown;
+  user?: { id?: unknown } | null;
+  decodedToken?: { sub?: unknown } | null;
+};
+
+function readStoredBrowserNhostSession(): BrowserNhostSession | null {
+  if (typeof globalThis === "undefined") return null;
+  const storage = (globalThis as { localStorage?: { getItem: (key: string) => string | null } }).localStorage;
+  if (!storage || typeof storage.getItem !== "function") return null;
+  try {
+    const raw = storage.getItem("nhostSession");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed as BrowserNhostSession;
+  } catch {
+    return null;
+  }
+}
+
+function resolveSessionIdentity(session: BrowserNhostSession | null): { accessToken?: string; userId?: string } {
+  if (!session) return {};
+  const accessToken =
+    typeof session.accessToken === "string" && session.accessToken.trim().length > 0
+      ? session.accessToken
+      : undefined;
+  const userId =
+    typeof session.user?.id === "string" && session.user.id.trim().length > 0
+      ? session.user.id
+      : typeof session.decodedToken?.sub === "string" && session.decodedToken.sub.trim().length > 0
+        ? session.decodedToken.sub
+        : undefined;
+  return { accessToken, userId };
+}
+
 export async function bootstrapNhostSession(): Promise<{ configured: boolean; userId?: string }> {
   if (bootstrapped) {
     return { configured: cachedConfigured };
@@ -53,36 +89,48 @@ export async function bootstrapNhostSession(): Promise<{ configured: boolean; us
 
   // N4: once nhost transport is selected, disable demo/runtime identity fallback.
   configureIdentityResolutionMode("strict");
+  // Keep web core-loop calls on the API/domain path; do not auto-enable direct Hasura GraphQL transport from Nhost URLs.
+  configureHasuraGraphqlUrl(null);
+  const storedSessionIdentity = resolveSessionIdentity(readStoredBrowserNhostSession());
+  if (storedSessionIdentity.accessToken) {
+    configureAccessToken(storedSessionIdentity.accessToken);
+  }
+  if (storedSessionIdentity.userId) {
+    configureCurrentUserId(storedSessionIdentity.userId);
+  }
+
   const options = buildNhostRuntimeConfig();
   if (!options) {
-    configureCurrentUserId(null);
-    configureAccessToken(null);
-    cachedConfigured = false;
-    return { configured: false };
+    const hasStoredSessionIdentity = Boolean(storedSessionIdentity.accessToken && storedSessionIdentity.userId);
+    if (!hasStoredSessionIdentity) {
+      configureCurrentUserId(null);
+      configureAccessToken(null);
+      cachedConfigured = false;
+      return { configured: false };
+    }
+    bootstrapped = true;
+    cachedConfigured = true;
+    return { configured: true, userId: storedSessionIdentity.userId };
   }
   cachedConfigured = true;
-  if (options.graphqlUrl) {
-    configureHasuraGraphqlUrl(options.graphqlUrl);
-  }
 
   const nhost = customClientFactory ? customClientFactory(options) : createClient(options);
   const session = nhost.getUserSession();
   if (!session) {
-    configureCurrentUserId(null);
-    configureAccessToken(null);
+    if (!storedSessionIdentity.accessToken || !storedSessionIdentity.userId) {
+      configureCurrentUserId(null);
+      configureAccessToken(null);
+      bootstrapped = true;
+      return { configured: true };
+    }
     bootstrapped = true;
-    return { configured: true };
+    return { configured: true, userId: storedSessionIdentity.userId };
   }
 
-  const userId =
-    typeof session.user?.id === "string" && session.user.id.trim().length > 0
-      ? session.user.id
-      : typeof session.decodedToken?.sub === "string" && session.decodedToken.sub.trim().length > 0
-        ? session.decodedToken.sub
-        : undefined;
+  const { accessToken, userId } = resolveSessionIdentity(session);
 
-  if (typeof session.accessToken === "string" && session.accessToken.trim().length > 0) {
-    configureAccessToken(session.accessToken);
+  if (accessToken) {
+    configureAccessToken(accessToken);
   }
   if (userId) {
     configureCurrentUserId(userId);

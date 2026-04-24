@@ -1,10 +1,7 @@
-import { z } from "zod";
 import type { FastifyInstance } from "fastify";
 import { UpdateUserPreferenceRequestSchema, UserPreferenceResponseSchema, UserPreferenceMeResponseSchema } from "@yurbrain/contracts";
-import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
+import { requireCurrentUser } from "../middleware/current-user";
 import type { AppState } from "../state";
-
-const UserIdParamSchema = z.object({ userId: z.string().uuid() }).strict();
 
 export async function registerPreferenceRoutes(app: FastifyInstance, state: AppState) {
   app.get("/preferences/me", async (request, reply) => {
@@ -40,15 +37,13 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
   app.get("/preferences/:userId", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
-    const { userId } = UserIdParamSchema.parse(request.params);
-    if (!canAccessUser(currentUser, userId)) {
-      return reply.code(403).send({ message: "Cannot access preferences for another user." });
-    }
-    const stored = await state.repo.getUserPreference(userId);
+    // Preserve legacy route shape but enforce current-user scoping.
+    void request.params;
+    const stored = await state.repo.getUserPreference(currentUser.id);
 
     const response = UserPreferenceResponseSchema.parse(
       stored ?? {
-        userId,
+        userId: currentUser.id,
         defaultLens: "all",
         cleanFocusMode: true,
         founderMode: false,
@@ -66,12 +61,10 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
   app.put("/preferences/:userId", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
-    const { userId } = UserIdParamSchema.parse(request.params);
-    if (!canAccessUser(currentUser, userId)) {
-      return reply.code(403).send({ message: "Cannot update preferences for another user." });
-    }
+    // Preserve legacy route shape but enforce current-user scoping.
+    void request.params;
     const payload = UpdateUserPreferenceRequestSchema.parse(request.body);
-    const updated = await state.repo.upsertUserPreference(userId, payload);
+    const updated = await state.repo.upsertUserPreference(currentUser.id, payload);
     return reply.code(200).send(UserPreferenceResponseSchema.parse(updated));
   });
 }

@@ -4,7 +4,6 @@ import { createYurbrainDomainClient, type YurbrainDomainClient } from "./domain/
 
 type FounderReviewQuery = {
   window?: "7d";
-  userId?: string;
   includeAi?: boolean;
 };
 
