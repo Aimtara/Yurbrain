@@ -5,8 +5,10 @@ Use this checklist for MVP/Alpha web auth verification with Nhost.
 ## Preconditions
 
 - `NEXT_PUBLIC_NHOST_*` web environment variables are configured.
+- Web runtime points at the staging API (`YURBRAIN_API_ORIGIN` for Next.js rewrites, or `NEXT_PUBLIC_YURBRAIN_API_URL` when calling the API directly).
 - Nhost Auth is enabled for email/password.
 - Redirect URLs are allowlisted in Nhost dashboard.
+- Use `docs/qa/staging-manual-qa.md` for staging setup before running this checklist.
 
 ## Checklist
 

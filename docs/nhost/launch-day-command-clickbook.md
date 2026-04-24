@@ -8,6 +8,7 @@ Use it with `docs/nhost/production-launch-checklist.md`.
 Run from repo root unless stated otherwise.
 
 1. Install/authenticate the Nhost CLI before the launch window.
+   - `sudo curl -L https://raw.githubusercontent.com/nhost/cli/main/get.sh | bash`
    - `command -v nhost`
    - `nhost login`
 2. Export the production project identifiers used by the exact commands below.
@@ -18,7 +19,7 @@ Run from repo root unless stated otherwise.
    - Hasura/Nhost project config lives in `nhost/config.yaml`.
    - Hasura metadata lives in `nhost/metadata`.
    - SQL migrations live in `packages/db/migrations`.
-   - This repository does **not** contain a top-level `functions/` directory. Canonical `/functions/*` endpoints are implemented in `apps/api/src/routes/functions.ts` and ship with the API artifact, so there is no separate `nhost functions deploy` step for this repo.
+   - The repository contains `functions/aiRunner.ts`, but it is a migration stub rather than a deployable Nhost Functions tree. Canonical `/functions/*` endpoints are implemented in `apps/api/src/routes/functions.ts` and ship with the API artifact, so there is no separate `nhost functions deploy` step for this repo.
 
 ## Roles
 

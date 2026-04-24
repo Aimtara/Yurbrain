@@ -40,6 +40,24 @@ test("mobile app roots UI under local Yurbrain client provider wrapper", () => {
   assert.ok(appSource.includes("Resend verification email"));
 });
 
+test("mobile app honors explicit staged API URL before localhost fallback", () => {
+  const appSourcePath = path.resolve(
+    process.cwd(),
+    "src/App.tsx"
+  );
+  const appSource = fs.readFileSync(appSourcePath, "utf8");
+
+  assert.ok(appSource.includes("function resolveMobileApiBaseUrl(): string | null {"));
+  assert.ok(appSource.includes("process.env.EXPO_PUBLIC_YURBRAIN_API_URL?.trim()"));
+  assert.ok(appSource.includes("process.env.NEXT_PUBLIC_YURBRAIN_API_URL?.trim()"));
+  assert.ok(appSource.includes("if (configuredApiBaseUrl) {"));
+  assert.ok(appSource.includes("return configuredApiBaseUrl;"));
+  assert.ok(appSource.includes("`${window.location.protocol}//${window.location.hostname}:3001`"));
+  assert.ok(appSource.includes("const mobileApiBaseUrl = resolveMobileApiBaseUrl();"));
+  assert.ok(appSource.includes("if (mobileApiBaseUrl) {"));
+  assert.ok(appSource.includes("configureApiBaseUrl(mobileApiBaseUrl);"));
+});
+
 test("mobile loop controller enforces verified-current-user bootstrap gate", () => {
   const controllerSourcePath = path.resolve(
     process.cwd(),

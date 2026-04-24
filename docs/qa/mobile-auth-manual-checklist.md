@@ -5,8 +5,10 @@ Use this checklist for MVP/Alpha mobile auth verification with Nhost.
 ## Preconditions
 
 - `EXPO_PUBLIC_NHOST_*` mobile environment variables are configured.
+- `EXPO_PUBLIC_YURBRAIN_API_URL` points at the same staging API used by web.
 - Nhost Auth is enabled for email/password.
 - Redirect URLs are allowlisted in the Nhost dashboard for local/staging mobile deep links.
+- `docs/qa/staging-manual-qa.md` setup is complete before starting the checklist.
 
 ## Checklist
 

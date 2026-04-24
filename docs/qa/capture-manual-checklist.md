@@ -4,7 +4,8 @@ Use this checklist to validate MVP capture behavior end-to-end without placehold
 
 ## Preconditions
 
-- API is running (`apps/api`) and web/mobile app is connected.
+- API is reachable either locally (`apps/api`) or via the deployed staging API URL, and web/mobile are connected to that same environment.
+- For staging setup, use `docs/qa/staging-manual-qa.md`.
 - Authenticated user session is active.
 - Capture sheet can be opened from the app shell.
 

@@ -7,7 +7,8 @@ This runbook defines repeatable Alpha go/no-go checks across auth, capture, feed
 - Goal: verify that Alpha-critical user journeys work end-to-end, with clear failure triage.
 - Non-goal: build new product features inside QA; this plan tests current behavior.
 - Environment baseline:
-  - API running locally (`apps/api`) with seeded data where needed.
+  - Local mode: API running locally (`apps/api`) with seeded data where needed.
+  - Staging mode: deployed web/mobile builds and the hosted API are configured per `docs/qa/staging-manual-qa.md`.
   - Web and mobile pointed to the same API/Nhost environment for manual checks.
   - Test users available:
     - User A (primary tester)

@@ -184,6 +184,13 @@ Required vars:
 - Same keys as preview/production.
 - Keep staging-specific values separate from production in secret manager.
 
+Yurbrain API + client routing:
+
+- Web staging builds must set `YURBRAIN_API_ORIGIN` to the deployed staging API origin so Next.js rewrites proxy `/auth`, `/capture`, `/brain-items`, `/feed`, `/functions`, `/threads`, `/messages`, `/preferences`, `/tasks`, and `/sessions` to the correct backend.
+- Mobile staging builds should set `EXPO_PUBLIC_YURBRAIN_API_URL` to the same deployed staging API origin when the app is not using same-host web rewrites.
+- Optional `NEXT_PUBLIC_YURBRAIN_API_URL` may be set for browser/client-side direct API calls when same-origin proxying is not used.
+- `API_ALLOWED_ORIGINS` must include the staging web origin and any mobile callback/browser origins used during QA.
+
 Redirect URLs:
 
 - Web redirect URLs should use staging domain(s) only.
@@ -292,14 +299,20 @@ Recommended:
 
 Required baseline:
 
+- `YURBRAIN_API_ORIGIN` for deployed web environments that proxy API routes via Next.js rewrites
 - `NEXT_PUBLIC_NHOST_ANON_KEY`
 - `NEXT_PUBLIC_NHOST_BACKEND_URL` OR (`NEXT_PUBLIC_NHOST_SUBDOMAIN` + `NEXT_PUBLIC_NHOST_REGION`)
 - redirect URLs for sign-in/sign-out/password-reset/email-verification
+
+Optional:
+
+- `NEXT_PUBLIC_YURBRAIN_API_URL` when the browser must call a deployed API origin directly instead of same-origin rewrites
 
 ### Mobile (public vars)
 
 Required baseline:
 
+- `EXPO_PUBLIC_YURBRAIN_API_URL` when mobile should call a deployed staging/production API origin directly
 - `EXPO_PUBLIC_NHOST_ANON_KEY`
 - `EXPO_PUBLIC_NHOST_BACKEND_URL` OR (`EXPO_PUBLIC_NHOST_SUBDOMAIN` + `EXPO_PUBLIC_NHOST_REGION`)
 - `EXPO_PUBLIC_NHOST_MOBILE_DEEP_LINK_BASE_URL`
