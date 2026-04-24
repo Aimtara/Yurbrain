@@ -926,6 +926,7 @@ export function useMobileLoopController(): MobileLoopController {
   }, [selectedTaskId, stateRehydrated]);
 
   const controller: MobileLoopController = {
+    hydrated,
     bootstrapLoading,
     bootstrapError,
     activeSurface,

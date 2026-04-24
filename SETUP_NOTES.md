@@ -1,7 +1,7 @@
 # Nhost integration setup notes
 
 This repository already contained partial Nhost migration scaffolding in `packages/client` and docs.
-The implementation here adds a dedicated `@yurbrain/nhost` package and app-local providers/wrappers without changing the existing shared domain client transport flow.
+The implementation here adds a dedicated `@yurbrain/nhost` package and app-local client wrappers without changing the existing shared domain client transport flow.
 
 ## Ambiguities and least-risk choices
 
@@ -14,7 +14,7 @@ The implementation here adds a dedicated `@yurbrain/nhost` package and app-local
    The new shared package resolves and exposes functions/storage/graphql/auth URLs from either explicit URLs or backend/subdomain+region inputs, but does not force usage where existing code does not require it.
 
 3. Existing shared client package (`@yurbrain/client`) already initializes Nhost bootstrap.
-   To avoid risk, this integration does not replace that flow; it adds app-local Nhost providers to make Nhost access explicit at app roots and introduces reusable env validation helpers in `@yurbrain/nhost`.
+   To avoid risk, this integration does not replace that flow; it adds app-local Nhost client setup and reusable env validation helpers in `@yurbrain/nhost`.
 
 ## Security guardrails in this change
 
@@ -36,3 +36,83 @@ The implementation here adds a dedicated `@yurbrain/nhost` package and app-local
    - web/mobile only get `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*`
    - api gets `NHOST_ADMIN_SECRET` (and optional server `NHOST_*` URLs)
 4. Rotate any previously exposed admin secret if it was ever placed in client/public env vars.
+
+## Auth hardening notes (web + mobile)
+
+The Nhost client integration now includes minimal production-safe auth flow scaffolding:
+
+- sign up
+- sign in (password)
+- sign out
+- password reset email
+- email verification email (resend)
+- explicit session refresh/restore checks
+- auth loading/error state helpers
+- protected-surface fallback when no valid session exists
+
+### Redirect URL strategy
+
+Do not hardcode per-environment URLs in source code. Use env keys:
+
+- Web:
+  - `NEXT_PUBLIC_NHOST_SIGN_IN_REDIRECT_URL`
+  - `NEXT_PUBLIC_NHOST_SIGN_OUT_REDIRECT_URL`
+  - `NEXT_PUBLIC_NHOST_PASSWORD_RESET_REDIRECT_URL`
+  - `NEXT_PUBLIC_NHOST_EMAIL_VERIFICATION_REDIRECT_URL`
+- Mobile:
+  - `EXPO_PUBLIC_NHOST_SIGN_IN_REDIRECT_URL`
+  - `EXPO_PUBLIC_NHOST_PASSWORD_RESET_REDIRECT_URL`
+  - `EXPO_PUBLIC_NHOST_EMAIL_VERIFICATION_REDIRECT_URL`
+  - `EXPO_PUBLIC_NHOST_MOBILE_DEEP_LINK_BASE_URL`
+
+If unset, runtime origin/deep-link defaults are used as safe local fallbacks.
+
+### Nhost dashboard configuration required
+
+In Nhost Auth settings:
+
+1. Enable email/password provider.
+2. Configure email verification behavior to require verification if desired for production.
+3. Configure password reset email template and URL behavior.
+4. Add allowed redirect URLs for each environment:
+   - local web (`http://localhost:3000`)
+   - local mobile callback/deep-link URI (for example `exp://127.0.0.1:19000` or your app scheme)
+   - staging web/mobile callback URIs
+   - production web/mobile callback URIs
+5. Keep admin credentials server-only; never expose admin secret in web/mobile envs.
+
+### Production redirect URL guidance
+
+Do not hardcode local/staging/prod callback URLs in code.
+Set environment variables per deployment target:
+
+- web: `NEXT_PUBLIC_NHOST_*_REDIRECT_URL`
+- mobile: `EXPO_PUBLIC_NHOST_*_REDIRECT_URL`
+- server docs/ops reference: `NHOST_AUTH_REDIRECT_SIGN_IN_URL`, `NHOST_AUTH_REDIRECT_SIGN_OUT_URL`, `NHOST_AUTH_REDIRECT_PASSWORD_RESET_URL`, `NHOST_AUTH_REDIRECT_EMAIL_VERIFICATION_URL`
+
+These should match the exact values allowed in the Nhost dashboard auth settings.
+
+## Storage hardening notes (buckets + ownership + limits)
+
+Storage baseline is now defined for production-safe usage with additive DB + Hasura metadata:
+
+- Buckets: `avatars`, `capture_assets`, `imports`
+- Ownership:
+  - Object keys must be namespaced as `user/{user_id}/...`
+  - DB linkage uses `attachments.user_id`
+  - Hasura `user` role is owner-scoped on `attachments` (`user_id = X-Hasura-User-Id`)
+- Privacy defaults:
+  - `capture_assets` and `imports` are private (signed URL access only)
+  - `avatars` should be private by default; public profile avatars are opt-in only
+- MIME + size policies are documented in `docs/nhost/storage.md` and must be enforced in Nhost bucket settings and upload paths.
+
+### Required Nhost dashboard storage setup
+
+1. Create/configure buckets:
+   - `avatars`
+   - `capture_assets`
+   - `imports`
+2. Apply per-bucket MIME allowlists and max object sizes from `docs/nhost/storage.md`.
+3. Keep `capture_assets` and `imports` non-public.
+4. Only enable public avatar access if product policy explicitly allows it.
+5. Keep upload/delete operations owner-scoped (never grant anonymous write access).

@@ -39,11 +39,13 @@ import type {
   TaskDto,
   UserPreferenceDto
 } from "../src/features/shared/types";
+import { useNhostAuth } from "../src/nhost/useNhostAuth";
 
 export default function Page() {
   const yurbrainClient = useYurbrainClient();
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
   const [bootstrapError, setBootstrapError] = useState("");
+  const { isReady: authReady, isAuthenticated } = useNhostAuth();
   const {
     hydrated,
     activeLens,
@@ -493,6 +495,30 @@ export default function Page() {
       timestamp: formatRelative(entry.createdAt)
     }));
   }, [chatMessages, commentMessages]);
+
+  if (!authReady) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#f1f5f9", padding: "48px 16px" }}>
+        <section style={{ margin: "0 auto", maxWidth: "720px", borderRadius: "16px", border: "1px solid #cbd5e1", background: "#ffffff", padding: "20px", color: "#334155" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Restoring session...</h1>
+          <p style={{ margin: 0 }}>Checking your Nhost auth session before loading Yurbrain.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#f1f5f9", padding: "48px 16px" }}>
+        <section style={{ margin: "0 auto", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
+          <p style={{ margin: 0 }}>
+            Yurbrain requires an authenticated Nhost session. Sign in or sign up, then reload this page.
+          </p>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>

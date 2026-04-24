@@ -1,0 +1,46 @@
+table:
+  schema: public
+  name: item_threads
+select_permissions:
+  - role: user
+    permission:
+      columns:
+        - id
+        - target_item_id
+        - user_id
+        - kind
+        - created_at
+        - updated_at
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+insert_permissions:
+  - role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      set:
+        user_id: X-Hasura-User-Id
+      columns:
+        - id
+        - target_item_id
+        - kind
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - target_item_id
+        - kind
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

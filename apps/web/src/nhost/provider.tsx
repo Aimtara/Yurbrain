@@ -8,19 +8,15 @@ type WebNhostClient = ReturnType<typeof getWebNhostClient>;
 const WebNhostContext = createContext<WebNhostClient | null>(null);
 
 export function WebNhostProvider({ children }: PropsWithChildren) {
-  const [value, setValue] = useState<WebNhostClient | null>(null);
+  const [client, setClient] = useState<WebNhostClient | null>(null);
 
   useEffect(() => {
-    setValue(getWebNhostClient());
+    setClient(getWebNhostClient());
   }, []);
 
-  return <WebNhostContext.Provider value={value}>{children}</WebNhostContext.Provider>;
+  return <WebNhostContext.Provider value={client}>{children}</WebNhostContext.Provider>;
 }
 
-export function useWebNhostClient(): WebNhostClient {
-  const client = useContext(WebNhostContext);
-  if (!client) {
-    throw new Error("useWebNhostClient must be used within WebNhostProvider");
-  }
-  return client;
+export function useWebNhostClient(): WebNhostClient | null {
+  return useContext(WebNhostContext);
 }

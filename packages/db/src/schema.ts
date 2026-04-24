@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -15,6 +16,15 @@ export const brainItemTypeEnum = pgEnum("brain_item_type", ["note", "link", "ide
 export const brainItemStatusEnum = pgEnum("brain_item_status", ["active", "archived"]);
 export const eventTypeEnum = pgEnum("event_type", ["brain_item_created", "brain_item_updated"]);
 export const artifactTypeEnum = pgEnum("artifact_type", ["summary", "classification", "relation", "feed_card"]);
+export const attachmentKindEnum = pgEnum("attachment_kind", [
+  "file",
+  "image",
+  "audio",
+  "video",
+  "pdf",
+  "archive"
+]);
+export const attachmentStatusEnum = pgEnum("attachment_status", ["pending", "uploaded", "failed", "deleted"]);
 export const threadKindEnum = pgEnum("thread_kind", ["item_comment", "item_chat"]);
 export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "system"]);
 export const feedCardTypeEnum = pgEnum("feed_card_type", ["item", "digest", "cluster", "opportunity", "open_loop", "resume"]);
@@ -83,6 +93,32 @@ export const itemArtifacts = pgTable("item_artifacts", {
     itemCreatedIdx: index("item_artifacts_item_created_idx").on(t.itemId, t.createdAt),
     itemTypeIdx: index("item_artifacts_item_type_idx").on(t.itemId, t.type),
     userCreatedIdx: index("item_artifacts_user_created_idx").on(t.userId, t.createdAt)
+  })
+);
+
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    itemId: uuid("item_id").notNull(),
+    bucket: text("bucket").notNull(),
+    objectKey: text("object_key").notNull(),
+    kind: attachmentKindEnum("kind").default("file").notNull(),
+    mimeType: text("mime_type"),
+    sizeBytes: bigint("size_bytes", { mode: "number" }),
+    sha256: text("sha256"),
+    storageEtag: text("storage_etag"),
+    metadata: jsonb("metadata"),
+    status: attachmentStatusEnum("status").default("pending").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+  },
+  (t) => ({
+    bucketObjectKeyUnique: uniqueIndex("attachments_bucket_object_key_uidx").on(t.bucket, t.objectKey),
+    userItemCreatedIdx: index("attachments_user_item_created_idx").on(t.userId, t.itemId, t.createdAt),
+    itemCreatedIdx: index("attachments_item_created_idx").on(t.itemId, t.createdAt),
+    userBucketStatusIdx: index("attachments_user_bucket_status_idx").on(t.userId, t.bucket, t.status, t.createdAt)
   })
 );
 

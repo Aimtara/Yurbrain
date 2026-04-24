@@ -1,40 +1,16 @@
 import { createClient, type NhostClient } from "@nhost/nhost-js";
 import {
+  resolveSharedNhostRuntimeConfig,
+  type SharedNhostRuntimeConfig
+} from "@yurbrain/nhost";
+import {
   configureIdentityResolutionMode,
   configureAccessToken,
   configureCurrentUserId
 } from "../api/client";
 import { configureHasuraGraphqlUrl } from "../graphql/hasura-client";
 
-declare const process:
-  | {
-      env?: {
-        YURBRAIN_NHOST_SUBDOMAIN?: string;
-        YURBRAIN_NHOST_REGION?: string;
-        YURBRAIN_NHOST_AUTH_URL?: string;
-        YURBRAIN_NHOST_GRAPHQL_URL?: string;
-        YURBRAIN_NHOST_FUNCTIONS_URL?: string;
-        NEXT_PUBLIC_NHOST_SUBDOMAIN?: string;
-        NEXT_PUBLIC_NHOST_REGION?: string;
-        NEXT_PUBLIC_NHOST_AUTH_URL?: string;
-        NEXT_PUBLIC_NHOST_GRAPHQL_URL?: string;
-        NEXT_PUBLIC_NHOST_FUNCTIONS_URL?: string;
-        EXPO_PUBLIC_NHOST_SUBDOMAIN?: string;
-        EXPO_PUBLIC_NHOST_REGION?: string;
-        EXPO_PUBLIC_NHOST_AUTH_URL?: string;
-        EXPO_PUBLIC_NHOST_GRAPHQL_URL?: string;
-        EXPO_PUBLIC_NHOST_FUNCTIONS_URL?: string;
-      };
-    }
-  | undefined;
-
-export type NhostRuntimeConfig = {
-  subdomain?: string;
-  region?: string;
-  authUrl?: string;
-  graphqlUrl?: string;
-  functionsUrl?: string;
-};
+export type NhostRuntimeConfig = SharedNhostRuntimeConfig;
 
 type NhostEnv = Record<string, string | undefined>;
 type NhostEnvResolver = () => NhostEnv | undefined;
@@ -60,96 +36,11 @@ function getNhostEnv(): NhostEnv | undefined {
   if (customEnvResolver) {
     return customEnvResolver();
   }
-  if (typeof process === "undefined" || !process.env) {
-    return undefined;
-  }
-  return process.env as NhostEnv;
-}
-
-function resolveEnvValue(keys: string[]): string | undefined {
-  const env = getNhostEnv();
-  if (!env) return undefined;
-  for (const key of keys) {
-    const value = env[key];
-    if (typeof value === "string" && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
   return undefined;
 }
 
-function trimUrl(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  const normalized = url.trim();
-  if (!normalized) return undefined;
-  return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
-}
-
-function deriveNhostServiceUrl(
-  service: "auth" | "graphql" | "functions",
-  subdomain: string | undefined,
-  region: string | undefined
-): string | undefined {
-  if (!subdomain || !region) return undefined;
-  if (service === "auth") {
-    return `https://${subdomain}.auth.${region}.nhost.run/v1`;
-  }
-  if (service === "graphql") {
-    return `https://${subdomain}.graphql.${region}.nhost.run/v1/graphql`;
-  }
-  return `https://${subdomain}.functions.${region}.nhost.run/v1`;
-}
-
 export function buildNhostRuntimeConfig(): NhostRuntimeConfig | null {
-  const subdomain = resolveEnvValue([
-    "YURBRAIN_NHOST_SUBDOMAIN",
-    "NEXT_PUBLIC_NHOST_SUBDOMAIN",
-    "EXPO_PUBLIC_NHOST_SUBDOMAIN"
-  ]);
-  const region = resolveEnvValue([
-    "YURBRAIN_NHOST_REGION",
-    "NEXT_PUBLIC_NHOST_REGION",
-    "EXPO_PUBLIC_NHOST_REGION"
-  ]);
-  const explicitAuthUrl = trimUrl(
-    resolveEnvValue([
-      "YURBRAIN_NHOST_AUTH_URL",
-      "NEXT_PUBLIC_NHOST_AUTH_URL",
-      "EXPO_PUBLIC_NHOST_AUTH_URL"
-    ])
-  );
-  const explicitGraphqlUrl = trimUrl(
-    resolveEnvValue([
-      "YURBRAIN_NHOST_GRAPHQL_URL",
-      "NEXT_PUBLIC_NHOST_GRAPHQL_URL",
-      "EXPO_PUBLIC_NHOST_GRAPHQL_URL"
-    ])
-  );
-  const explicitFunctionsUrl = trimUrl(
-    resolveEnvValue([
-      "YURBRAIN_NHOST_FUNCTIONS_URL",
-      "NEXT_PUBLIC_NHOST_FUNCTIONS_URL",
-      "EXPO_PUBLIC_NHOST_FUNCTIONS_URL"
-    ])
-  );
-
-  const authUrl = explicitAuthUrl ?? deriveNhostServiceUrl("auth", subdomain, region);
-  const graphqlUrl =
-    explicitGraphqlUrl ?? deriveNhostServiceUrl("graphql", subdomain, region);
-  const functionsUrl =
-    explicitFunctionsUrl ?? deriveNhostServiceUrl("functions", subdomain, region);
-
-  if (!subdomain && !authUrl && !graphqlUrl && !functionsUrl) {
-    return null;
-  }
-
-  return {
-    subdomain,
-    region,
-    authUrl,
-    graphqlUrl,
-    functionsUrl
-  };
+  return resolveSharedNhostRuntimeConfig(getNhostEnv());
 }
 
 let bootstrapped = false;
