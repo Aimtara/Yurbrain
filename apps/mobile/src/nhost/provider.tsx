@@ -12,10 +12,6 @@ export function MobileNhostProvider({ children }: PropsWithChildren) {
   return <MobileNhostContext.Provider value={value}>{children}</MobileNhostContext.Provider>;
 }
 
-export function useMobileNhostClient(): MobileNhostClient {
-  const client = useContext(MobileNhostContext);
-  if (!client) {
-    throw new Error("useMobileNhostClient must be used within MobileNhostProvider");
-  }
-  return client;
+export function useMobileNhostClient(): MobileNhostClient | null {
+  return useContext(MobileNhostContext);
 }

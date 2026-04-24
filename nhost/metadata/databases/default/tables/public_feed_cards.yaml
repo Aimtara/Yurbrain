@@ -1,0 +1,60 @@
+table:
+  schema: public
+  name: feed_cards
+select_permissions:
+  - role: user
+    permission:
+      columns: "*"
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+insert_permissions:
+  - role: user
+    permission:
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+      columns:
+        - card_type
+        - lens
+        - item_id
+        - task_id
+        - title
+        - body
+        - dismissed
+        - snoozed_until
+        - refresh_count
+        - postpone_count
+        - related_count
+        - last_postponed_at
+        - last_refreshed_at
+        - last_touched
+      set:
+        user_id: X-Hasura-User-Id
+update_permissions:
+  - role: user
+    permission:
+      columns:
+        - lens
+        - title
+        - body
+        - dismissed
+        - snoozed_until
+        - refresh_count
+        - postpone_count
+        - related_count
+        - last_postponed_at
+        - last_refreshed_at
+        - last_touched
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+      check:
+        user_id:
+          _eq: X-Hasura-User-Id
+delete_permissions:
+  - role: user
+    permission:
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id

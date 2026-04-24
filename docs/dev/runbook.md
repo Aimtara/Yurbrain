@@ -26,6 +26,14 @@ If any command fails, stop and reconcile `docs/product/current-state.md` before 
 
 If you are working on Nhost migration slices, use `docs/dev/nhost-local-setup.md` for a clean from-scratch setup with Docker + Nhost CLI.
 
+Quick Nhost commands:
+
+```bash
+nhost init
+nhost link
+nhost up
+```
+
 ## 1) Prerequisites
 
 - Node.js 22.x (verified with Node `v22.22.2` in this audit run).

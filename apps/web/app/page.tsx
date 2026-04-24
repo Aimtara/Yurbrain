@@ -39,11 +39,11 @@ import type {
   TaskDto,
   UserPreferenceDto
 } from "../src/features/shared/types";
+import { useNhostAuth } from "../src/nhost/useNhostAuth";
 
 export default function Page() {
   const yurbrainClient = useYurbrainClient();
-  const [bootstrapLoading, setBootstrapLoading] = useState(true);
-  const [bootstrapError, setBootstrapError] = useState("");
+  const { isReady: authReady, isAuthenticated } = useNhostAuth();
   const {
     hydrated,
     activeLens,
@@ -420,33 +420,19 @@ export default function Page() {
   useEffect(() => {
     if (!hydrated) return;
     void (async () => {
-      setBootstrapLoading(true);
-      setBootstrapError("");
-      try {
-        await yurbrainClient.getCurrentUser<{ id: string }>();
-      } catch {
-        setBootstrapError("Sign in required. Authenticate with your current Yurbrain account and reload.");
-        return;
-      }
-      try {
-        const preferredLens = await loadUserPreferences();
-        const lensForInitialLoad = preferredLens ?? activeLens;
-        await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
-      } catch {
-        setBootstrapError("Signed in, but the workspace failed to load. Retry after checking API connectivity.");
-      } finally {
-        setBootstrapLoading(false);
-      }
+      const preferredLens = await loadUserPreferences();
+      const lensForInitialLoad = preferredLens ?? activeLens;
+      await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
     })();
-  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadItems, loadTasks, loadUserPreferences, yurbrainClient]);
+  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadItems, loadTasks, loadUserPreferences]);
 
   useEffect(() => {
-    if (!hydrated || bootstrapLoading || bootstrapError) return;
+    if (!hydrated) return;
     void loadFeed(activeLens);
-  }, [activeLens, bootstrapError, bootstrapLoading, feedLimit, hydrated, loadFeed]);
+  }, [activeLens, feedLimit, hydrated, loadFeed]);
 
   useEffect(() => {
-    if (!hydrated || bootstrapLoading || bootstrapError) return;
+    if (!hydrated) return;
     if (!selectedItemId) {
       setCommentThreadId("");
       setChatThreadId("");
@@ -455,15 +441,15 @@ export default function Page() {
       return;
     }
     void loadSelectedItemContext(selectedItemId);
-  }, [bootstrapError, bootstrapLoading, hydrated, loadSelectedItemContext, selectedItemId]);
+  }, [hydrated, loadSelectedItemContext, selectedItemId]);
 
   useEffect(() => {
-    if (!hydrated || bootstrapLoading || bootstrapError || !selectedTaskId) {
+    if (!hydrated || !selectedTaskId) {
       setActiveSession(null);
       return;
     }
     void loadSessionsForTask(selectedTaskId);
-  }, [bootstrapError, bootstrapLoading, hydrated, loadSessionsForTask, selectedTaskId]);
+  }, [hydrated, loadSessionsForTask, selectedTaskId]);
 
   const timelineEntries = useMemo(() => {
     const merged = [
@@ -494,24 +480,32 @@ export default function Page() {
     }));
   }, [chatMessages, commentMessages]);
 
-  return (
-    <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
-      {bootstrapLoading ? (
-        <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #bfdbfe", background: "#eff6ff", padding: "20px", color: "#1e3a8a" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Loading your workspace</h1>
+  if (!authReady) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#f1f5f9", padding: "48px 16px" }}>
+        <section style={{ margin: "0 auto", maxWidth: "720px", borderRadius: "16px", border: "1px solid #cbd5e1", background: "#ffffff", padding: "20px", color: "#334155" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Restoring session...</h1>
+          <p style={{ margin: 0 }}>Checking your Nhost auth session before loading Yurbrain.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main style={{ minHeight: "100vh", background: "#f1f5f9", padding: "48px 16px" }}>
+        <section style={{ margin: "0 auto", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
           <p style={{ margin: 0 }}>
-            Verifying current-user identity before opening your core loop.
+            Yurbrain requires an authenticated Nhost session. Sign in or sign up, then reload this page.
           </p>
         </section>
-      ) : null}
+      </main>
+    );
+  }
 
-      {!bootstrapLoading && bootstrapError ? (
-        <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
-          <p style={{ margin: 0 }}>{bootstrapError}</p>
-        </section>
-      ) : null}
-
+  return (
+    <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
       {founderReviewUnauthorized ? (
         <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
           <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
@@ -521,7 +515,7 @@ export default function Page() {
         </section>
       ) : null}
 
-      {activeSurface === "feed" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
+      {activeSurface === "feed" && !founderReviewUnauthorized ? (
         <FocusFeedSurface
           activeLens={activeLens}
           executionLens={executionLens}
@@ -580,7 +574,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "founder_review" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
+      {activeSurface === "founder_review" && !founderReviewUnauthorized ? (
         <FounderReviewSurface
           review={founderReview}
           diagnostics={founderReviewDiagnostics}
@@ -627,7 +621,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "time" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
+      {activeSurface === "time" && !founderReviewUnauthorized ? (
         <TimeSurface
           timeWindow={timeWindow}
           customWindowMinutes={customWindowMinutes}
@@ -646,7 +640,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "me" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
+      {activeSurface === "me" && !founderReviewUnauthorized ? (
         <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
           <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "14px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -731,7 +725,7 @@ export default function Page() {
         </section>
       ) : null}
 
-      {activeSurface === "item" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
+      {activeSurface === "item" && !founderReviewUnauthorized ? (
         <ItemDetailSurface
           selectedItem={selectedItem}
           continuity={derivedItemContinuity}
@@ -771,7 +765,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "session" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
+      {activeSurface === "session" && !founderReviewUnauthorized ? (
         <SessionSurface
           selectedTask={selectedTask}
           selectedTaskSession={selectedTaskSession}

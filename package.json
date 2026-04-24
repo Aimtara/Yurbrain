@@ -16,9 +16,13 @@
     "seed": "node tooling/scripts/seed-dev-db.mjs",
     "reseed": "pnpm reset && pnpm seed",
     "test:e2e": "NODE_ENV=test pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts",
+    "typecheck": "pnpm --filter api typecheck && pnpm --filter web typecheck && pnpm --filter mobile typecheck",
     "lint": "turbo lint",
     "test": "turbo test",
-    "build": "turbo build"
+    "build": "turbo build",
+    "check:nhost-safety": "node tooling/scripts/nhost-production-safety-check.mjs",
+    "test:nhost-safety": "pnpm --filter @yurbrain/client test && pnpm --filter mobile test && pnpm --filter @yurbrain/db test && pnpm --filter api exec tsx --test src/__tests__/nhost-admin-graphql.test.ts",
+    "build:nhost-safety": "pnpm --filter web build"
   },
   "devDependencies": {
     "turbo": "^2.9.6"
