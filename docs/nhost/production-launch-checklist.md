@@ -172,3 +172,4 @@ Pass criteria:
 - `docs/nhost/storage.md`
 - `docs/nhost/production-safety-checks.md`
 - `docs/nhost/observability.md`
+- `docs/nhost/launch-day-command-clickbook.md`
