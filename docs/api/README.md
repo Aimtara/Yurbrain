@@ -1,5 +1,11 @@
 # API Notes (Sprint 5)
 
+## Auth / current user
+
+- `GET /auth/me` returns the resolved current user context.
+- User-owned routes are scoped from resolved current user identity server-side (Authorization bearer token or `x-yurbrain-user-id` header).
+- Caller-supplied ownership fields (`userId` in query/body/path) are ignored on protected routes.
+
 ## Threads
 
 - `POST /threads` creates an item-comment or item-chat thread.
@@ -13,7 +19,7 @@
 
 ## Feed
 
-- `GET /feed?userId=<uuid>` returns deterministic, non-dismissed stored feed cards ranked by feed logic (not a simple reverse-created listing).
+- `GET /feed?lens=<all|keep_in_mind|open_loops|learning|in_progress|recently_commented>&includeSnoozed=<true|false>&limit=<1-50>` returns deterministic, non-dismissed stored feed cards ranked by feed logic (not a simple reverse-created listing) for the current user.
 - `POST /functions/feed/generate-card` stores a placeholder/generated feed card for deterministic retrieval.
 - `POST /feed/:id/dismiss` marks a feed card as dismissed.
 - `POST /feed/:id/snooze` snoozes a feed card until a future timestamp.
@@ -26,13 +32,20 @@
 - `POST /tasks` creates a task.
 - `GET /tasks/:id` fetches a task.
 - `PATCH /tasks/:id` updates title/status.
-- `GET /tasks?userId=<uuid>&status=<todo|in_progress|done>` lists tasks with optional filters.
+- `GET /tasks?status=<todo|in_progress|done>` lists current-user tasks with optional status filtering.
 
 ## Session lifecycle
 
+- `GET /sessions?taskId=<uuid>&state=<running|paused|finished>` lists current-user sessions with optional filters.
 - `POST /tasks/:id/start` starts a session for a task and moves task status to `in_progress`.
 - `POST /sessions/:id/pause` pauses a running/paused session.
 - `POST /sessions/:id/finish` finishes the session and marks the task as `done`.
+
+## Preferences
+
+- `GET /preferences/me` fetches current-user preferences.
+- `PUT /preferences/me` updates current-user preferences.
+- `GET /preferences/:userId` and `PUT /preferences/:userId` are legacy-compatible route shapes that still resolve to current-user scope.
 
 ## AI endpoints (validation + fallback)
 
