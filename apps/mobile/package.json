@@ -21,6 +21,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@types/node": "^24.9.1",
     "typescript": "^5.8.3",
     "tsx": "^4.21.0"
   }

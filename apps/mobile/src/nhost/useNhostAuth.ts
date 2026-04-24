@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Session } from "@nhost/nhost-js";
 import { toUserSafeNhostAuthMessage } from "@yurbrain/nhost";
 import { useMobileNhostClient } from "./provider";
 import { resolveMobileNhostAuthConfig } from "./auth-config";
 import { hydrateMobileNhostSessionStorage } from "./storage";
+
+type MobileNhostClient = NonNullable<ReturnType<typeof useMobileNhostClient>>;
+type Session = ReturnType<MobileNhostClient["getUserSession"]>;
 
 type AuthState = {
   session: Session | null;
@@ -36,14 +38,19 @@ function toErrorMessage(error: unknown, fallback: string): string {
 }
 
 function assertFetchSuccess(
-  response: { status?: number; body?: { message?: string } } | null | undefined,
+  response: { status?: number; body?: unknown } | null | undefined,
   fallback: string
 ) {
   if (!response) {
     throw new Error(fallback);
   }
   if (typeof response.status === "number" && response.status >= 400) {
-    throw new Error(response.body?.message ?? fallback);
+    const body = response.body;
+    const message =
+      typeof body === "object" && body !== null && "message" in body && typeof body.message === "string"
+        ? body.message
+        : fallback;
+    throw new Error(message);
   }
 }
 

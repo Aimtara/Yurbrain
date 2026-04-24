@@ -1,12 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { createMobileNhostClientFromEnv } from "@yurbrain/nhost";
 
 type SessionValue = Record<string, unknown>;
-
-type SessionStorageBackend = {
-  get: () => SessionValue | null;
-  set: (value: SessionValue) => void;
-  remove: () => void;
-};
+type SessionStorageBackend = NonNullable<
+  NonNullable<Parameters<typeof createMobileNhostClientFromEnv>[1]>["storage"]
+>;
 
 const SESSION_STORAGE_KEY = "nhostSession";
 
@@ -50,10 +48,10 @@ void hydrateMobileNhostSessionStorage();
 export function createMobileNhostSessionStorage(): SessionStorageBackend {
   return {
     get() {
-      return cachedSession;
+      return cachedSession as unknown as ReturnType<SessionStorageBackend["get"]>;
     },
     set(value) {
-      cachedSession = value;
+      cachedSession = value as unknown as SessionValue;
       void AsyncStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(value));
     },
     remove() {
