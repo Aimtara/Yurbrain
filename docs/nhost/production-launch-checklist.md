@@ -39,19 +39,39 @@ Use this as the final go/no-go checklist before launching Yurbrain's Nhost-backe
 
 ## 3) Hasura permissions
 
-- [ ] `anonymous` role has no unintended table access.
-- [ ] `user` role is owner-scoped (`user_id = X-Hasura-User-Id` or equivalent profile owner rule).
-- [ ] Insert presets enforce ownership columns server-side.
-- [ ] `service` role access is restricted to server-side workloads only.
+- [ ] `anonymous` role has no table permissions unless explicitly approved and documented.
+- [ ] `user` role rules are owner-scoped with verified claim filters:
+  - [ ] `profiles`: `id = X-Hasura-User-Id`
+  - [ ] user-owned tables: `user_id = X-Hasura-User-Id`
+- [ ] Insert presets enforce ownership columns from claims (no client spoofing).
+- [ ] Protected tables verified in metadata:
+  - [ ] `profiles`
+  - [ ] `brain_items`
+  - [ ] `attachments`
+  - [ ] `item_artifacts`
+  - [ ] `item_threads`
+  - [ ] `thread_messages`
+  - [ ] `feed_cards`
+  - [ ] `tasks`
+  - [ ] `sessions`
+  - [ ] `events` (read-only for `user`)
+  - [ ] `user_preferences`
 - [ ] Permission filter indexes are present and verified on owner-scoped tables.
+- [ ] Dashboard/table-permission drift check completed against repo metadata.
 
 ## 4) Storage bucket permissions
 
 - [ ] Buckets exist and match intended model (`avatars`, `capture_assets`, `imports`).
-- [ ] Upload/read/delete permissions follow owner-only rules for private buckets.
-- [ ] Public avatar access (if enabled) is explicitly scoped and intentional.
-- [ ] MIME type and file size limits are enforced for each bucket.
-- [ ] Attachment metadata linkage (`attachments` table) is validated for upload paths.
+- [ ] Bucket rule matrix is applied exactly as documented in `docs/nhost/storage.md`.
+- [ ] `avatars` bucket is private by default (no blanket public read).
+- [ ] `capture_assets` and `imports` are private owner-only buckets.
+- [ ] MIME type allowlists and max-size limits are set per bucket.
+- [ ] Object-key naming enforces owner namespace (`user/{user_id}/...`).
+- [ ] Attachment metadata linkage (`attachments` table) validated:
+  - [ ] Hasura row perms owner-scope rows by `user_id`
+  - [ ] FK linkage keeps `attachments(item_id, user_id)` aligned with `brain_items(id, user_id)`
+- [ ] Two-user isolation smoke check passes for upload/read/delete/list.
+- [ ] Dashboard bucket settings captured as launch evidence (screenshots/checklist output).
 
 ## 5) Database migrations
 

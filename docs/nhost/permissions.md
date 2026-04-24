@@ -1,94 +1,107 @@
 # Yurbrain Hasura permissions (production-safe baseline)
 
-This document reflects the implemented Hasura metadata in `nhost/metadata`.
+This document is an audit of the repository-managed Hasura metadata in `nhost/metadata`.
 
-## Role model
+## Claims and identity source
 
-- `user`: authenticated end-user role for web/mobile.
-- `service`: privileged server-side role used by trusted backend workloads.
-- `anonymous`: no table permissions (no public data-table access).
+All owner-scoped rules are based on verified JWT claims interpreted by Hasura:
 
-## Claim assumptions
+- `X-Hasura-User-Id` (owner UUID)
+- `X-Hasura-Role` (effective role)
+- `X-Hasura-Allowed-Roles` (must include effective role)
 
-- `X-Hasura-User-Id`: UUID principal for the authenticated user.
-- `X-Hasura-Role`: effective role (`user`, `service`, or `anonymous`).
-- `X-Hasura-Allowed-Roles`: includes at least the role being used.
+Owner predicates used in metadata:
 
-## Ownership predicates
+- profile table: `id = X-Hasura-User-Id`
+- all other user-owned tables: `user_id = X-Hasura-User-Id`
 
-- Standard owner tables: `user_id = X-Hasura-User-Id`
-- Profile table: `id = X-Hasura-User-Id`
+## Roles currently configured in metadata
 
-## Protected tables (current runtime schema)
+Current table metadata files define permissions for the `user` role only.
 
-The following tables are protected with owner-scoped `user` permissions:
+- `user`: owner-scoped table access.
+- `anonymous`: no table permissions are defined.
+- `service`: no table permissions are defined in Hasura metadata (server-side privileged flows use trusted API/admin paths rather than browser/mobile Hasura table roles).
 
-- `profiles`
-- `brain_items`
-- `item_artifacts`
-- `item_threads`
-- `thread_messages`
-- `feed_cards`
-- `tasks`
-- `sessions`
-- `events`
-- `user_preferences`
+## Protected tables and ownership rules
 
-## User-role permissions
+Protected by owner predicates in `nhost/metadata/databases/default/tables/public_*.yaml`:
 
-For `user`, permissions are constrained as follows:
+- `profiles` (`id = X-Hasura-User-Id`)
+- `brain_items` (`user_id = X-Hasura-User-Id`)
+- `attachments` (`user_id = X-Hasura-User-Id`)
+- `item_artifacts` (`user_id = X-Hasura-User-Id`)
+- `item_threads` (`user_id = X-Hasura-User-Id`)
+- `thread_messages` (`user_id = X-Hasura-User-Id`)
+- `feed_cards` (`user_id = X-Hasura-User-Id`)
+- `tasks` (`user_id = X-Hasura-User-Id`)
+- `sessions` (`user_id = X-Hasura-User-Id`)
+- `events` (`user_id = X-Hasura-User-Id`)
+- `user_preferences` (`user_id = X-Hasura-User-Id`)
 
-- `select`: owner predicate only.
-- `insert`: owner predicate only + owner column preset from `X-Hasura-User-Id`.
-- `update`: owner predicate only.
-- `delete`: owner predicate only.
+## Permission shape by table
 
-### Column presets
+General `user` pattern:
+
+- `select`: owner-filtered.
+- `insert`: owner-filtered check plus ownership preset from claim.
+- `update`: owner-filtered (where supported).
+- `delete`: owner-filtered (where supported).
+
+Intentional exception:
+
+- `events`: `select` only for `user`; no `insert`, `update`, or `delete` permissions.
+
+## Ownership presets that prevent spoofing
 
 - `profiles.id <- X-Hasura-User-Id`
-- `*.user_id <- X-Hasura-User-Id` for owner-scoped tables with `user_id`
+- `*.user_id <- X-Hasura-User-Id` on owner-scoped tables
 
-These presets prevent spoofing ownership via client-supplied ids.
+This prevents a client from writing another user's ownership id via mutation payloads.
 
-## Service-role permissions
+## Anonymous/public access stance
 
-`service` has full table CRUD for operational workloads (admin APIs, background pipelines, backfills).
+- No `anonymous` table permissions are present in metadata.
+- No public read/write table permissions are configured.
+- Any future public table access must be explicitly documented and added with narrow column/filter scope.
 
-Security boundary:
+## Attachment metadata isolation
 
-- `service` credentials are server-only.
-- Never expose `service` JWT/admin credentials to web/mobile bundles.
+`attachments` protection is layered:
 
-## Anonymous/public access
+1. Hasura owner filter (`user_id = X-Hasura-User-Id`) in `public_attachments.yaml`.
+2. Database FK coupling in migration `0012_nhost_storage_attachments.sql`:
+   - `attachments.user_id -> profiles.id`
+   - composite FK `attachments(item_id, user_id) -> brain_items(id, user_id)`
 
-- No table permissions are granted to `anonymous`.
-- No public table read/write access is configured.
-- If a future public use-case is required, grant it explicitly and narrowly per table/column.
+This enforces that attachment rows remain bound to the same owner as the linked brain item.
 
-## Permission filter performance indexes
+## Index support for permission filters
 
-Permission predicates are backed by indexes to avoid full scans on owner filters.
+Owner-filter paths are backed by additive indexes from:
 
-Existing indexes cover most tables via `user_id` and common sort columns.
-Additive migration `0011_nhost_permission_filter_indexes.sql` adds additional owner-path indexes:
+- `packages/db/migrations/0011_nhost_permission_filter_indexes.sql`
+
+Including:
 
 - `item_threads(user_id, created_at)`
 - `thread_messages(user_id, created_at)`
-- `feed_cards(user_id, lens, dismissed)`
-- `tasks(user_id, status, created_at)`
+- `item_artifacts(user_id, type, created_at)`
+- `sessions(user_id, started_at)`
 
-## Metadata location
+## Operational/manual steps
 
-Implemented metadata files:
+Repository is source-of-truth for table permissions. Operationally:
 
-- `nhost/metadata/version.yaml`
-- `nhost/metadata/databases/databases.yaml`
-- `nhost/metadata/databases/default/tables/tables.yaml`
-- `nhost/metadata/databases/default/tables/public_*.yaml` (table-level permission specs)
+1. Apply database migrations.
+2. Apply Hasura metadata from `nhost/metadata`.
+3. In Nhost dashboard, verify no ad-hoc permission drift was introduced.
 
-## Remaining security assumptions
+If a dashboard hotfix is applied during incident response, mirror it back into repository metadata immediately.
 
-- JWT issuance/verification is correctly configured by Nhost Auth.
-- Role claims are trusted only from signed JWTs.
-- Admin secret and server role credentials remain server-only.
-- API routes that bypass Hasura still enforce ownership checks server-side.
+## Security assumptions
+
+- JWT verification is correctly configured in Nhost Auth/Hasura.
+- JWT claims are trusted only from signed tokens.
+- Admin credentials remain server-only.
+- API routes that bypass Hasura table access still enforce owner checks server-side.
