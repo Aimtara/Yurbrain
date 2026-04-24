@@ -3,6 +3,23 @@
 This runbook is the operator sequence for launch day.
 Use it with `docs/nhost/production-launch-checklist.md`.
 
+## Repo-aligned operator prerequisites
+
+Run from repo root unless stated otherwise.
+
+1. Install/authenticate the Nhost CLI before the launch window.
+   - `command -v nhost`
+   - `nhost login`
+2. Export the production project identifiers used by the exact commands below.
+   - `export RELEASE_BRANCH="<approved-release-branch>"`
+   - `export NHOST_SUBDOMAIN="<production-project-subdomain>"`
+   - `export NHOST_POSTGRES_URL="<production-public-postgres-url>"`
+3. Repository topology for this launch:
+   - Hasura/Nhost project config lives in `nhost/config.yaml`.
+   - Hasura metadata lives in `nhost/metadata`.
+   - SQL migrations live in `packages/db/migrations`.
+   - This repository does **not** contain a top-level `functions/` directory. Canonical `/functions/*` endpoints are implemented in `apps/api/src/routes/functions.ts` and ship with the API artifact, so there is no separate `nhost functions deploy` step for this repo.
+
 ## Roles
 
 - **Release Lead**: runs commands and makes go/no-go call.
@@ -15,13 +32,14 @@ Use it with `docs/nhost/production-launch-checklist.md`.
 From repo root:
 
 1. Ensure clean, expected revision.
-   - `git fetch origin cursor/nhost-monorepo-integration-b697`
-   - `git checkout cursor/nhost-monorepo-integration-b697`
-   - `git pull origin cursor/nhost-monorepo-integration-b697`
+   - `git fetch origin "$RELEASE_BRANCH"`
+   - `git checkout "$RELEASE_BRANCH"`
+   - `git pull origin "$RELEASE_BRANCH"`
    - `git rev-parse --short HEAD`
 2. Install dependencies.
    - `pnpm install --frozen-lockfile`
 3. Run merge-gate checks.
+   - `pnpm check:secrets`
    - `pnpm check:nhost-safety`
    - `pnpm typecheck`
    - `pnpm test:nhost-safety`
@@ -66,8 +84,14 @@ Go/no-go:
 
 1. Trigger pre-launch backup/snapshot (DB and storage export path per your platform policy).
 2. Record backup ID/snapshot timestamp in launch notes.
-3. Apply production migrations using your approved production migration command.
-4. Run post-migration sanity checks:
+3. Validate the checked-in Nhost config before touching production.
+   - `nhost config validate --subdomain "$NHOST_SUBDOMAIN"`
+4. Apply the checked-in production project state to the target Nhost project.
+   - `nhost up cloud --subdomain "$NHOST_SUBDOMAIN" --postgres-url "$NHOST_POSTGRES_URL"`
+   - This is the repo-aligned launch command for production DB migrations plus Hasura metadata/config sync because Nhost cloud development reapplies tracked config, migrations, and metadata from this repository to the selected project.
+5. If the repo-level Nhost config changed and you need a config-only re-apply after the cloud sync, run:
+   - `nhost config apply --subdomain "$NHOST_SUBDOMAIN" --yes`
+6. Run post-migration sanity checks:
    - core tables present (`profiles`, `brain_items`, `attachments`, `tasks`, `sessions`)
    - expected indexes/permissions metadata present
 
@@ -78,6 +102,8 @@ Go/no-go:
 ## T-10 to T-0 minutes: deploy API/web/mobile
 
 1. Deploy API release artifact for the approved commit SHA.
+   - This ships the canonical `/functions/*` endpoints implemented in `apps/api/src/routes/functions.ts`.
+   - Do **not** run `nhost functions deploy` for this repository; there is no standalone Nhost `functions/` source tree to deploy separately.
 2. Deploy web release artifact for the same SHA.
 3. Promote/build mobile release with production `EXPO_PUBLIC_*` values.
 4. Verify runtime env injection:

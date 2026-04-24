@@ -13,6 +13,7 @@ Run from repo root:
 
 For quick focused checks:
 
+- `pnpm check:secrets` (alias of `pnpm check:secret-leaks`)
 - `pnpm check:secret-leaks`
 - `pnpm check:nhost-safety`
 - `pnpm test:nhost-safety`
@@ -22,9 +23,10 @@ The CI workflow `.github/workflows/nhost-production-safety.yml` runs `pnpm check
 
 ## What each safety check enforces
 
-### `check:secret-leaks`
+### `check:secrets` / `check:secret-leaks`
 
-Runs `tooling/scripts/secret-leak-check.mjs` and fails if:
+`check:secrets` is a convenience alias for `check:secret-leaks`.
+Both run `tooling/scripts/secret-leak-check.mjs` and fail if:
 
 1. Real env files are tracked (`.env`, `*.env.local`, `*.env.production`, etc.; examples excluded).
 2. Tracked files include high-risk patterns (for example `NHOST_ADMIN_SECRET=...`, private keys, AWS secret key literals, GitHub PAT literals).
