@@ -4,15 +4,16 @@ table:
 select_permissions:
   - role: user
     permission:
-      columns: "*"
+      columns:
+        - id
+        - thread_id
+        - user_id
+        - role
+        - content
+        - created_at
       filter:
         user_id:
           _eq: X-Hasura-User-Id
-      allow_aggregations: true
-  - role: service
-    permission:
-      columns: "*"
-      filter: {}
       allow_aggregations: true
 insert_permissions:
   - role: user
@@ -22,32 +23,24 @@ insert_permissions:
           _eq: X-Hasura-User-Id
       set:
         user_id: X-Hasura-User-Id
-      columns: "*"
-  - role: service
-    permission:
-      check: {}
-      columns: "*"
+      columns:
+        - thread_id
+        - role
+        - content
 update_permissions:
   - role: user
     permission:
-      columns: "*"
+      columns:
+        - content
       filter:
         user_id:
           _eq: X-Hasura-User-Id
       check:
         user_id:
           _eq: X-Hasura-User-Id
-  - role: service
-    permission:
-      columns: "*"
-      filter: {}
-      check: {}
 delete_permissions:
   - role: user
     permission:
       filter:
         user_id:
           _eq: X-Hasura-User-Id
-  - role: service
-    permission:
-      filter: {}
