@@ -34,9 +34,9 @@ Included:
 
 - Brain item CRUD (`/brain-items`)
 - Threads/messages (`/threads`, `/messages`)
-- Feed generation/ranking loop (`/feed`, `/ai/feed/generate-card`)
-- AI summarize/classify/item-query (`/ai/summarize`, `/ai/classify`, `/ai/query`)
-- Task conversion + CRUD (`/ai/convert`, `/tasks`, `/tasks/manual-convert`)
+- Feed generation/ranking loop (`/feed`, `/functions/feed/generate-card`)
+- AI summarize/classify/item-query (`/functions/summarize`, `/functions/classify`, `/functions/query`)
+- Task conversion + CRUD (`/functions/convert`, `/tasks`, `/tasks/manual-convert`)
 - Session lifecycle (`/tasks/:id/start`, `/sessions/:id/pause`, `/sessions/:id/finish`)
 - Observability middleware (`x-correlation-id`, structured error envelopes, request timing logs)
 

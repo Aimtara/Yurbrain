@@ -7,12 +7,13 @@ test.after(async () => {
   await app.close();
 });
 
-test("POST /ai/convert returns not_recommended for very short content", async () => {
+test("POST /functions/convert returns not_recommended for very short content", async () => {
+  const headers = { "x-yurbrain-user-id": "11111111-1111-1111-1111-111111111111" };
   const response = await app.inject({
     method: "POST",
-    url: "/ai/convert",
+    url: "/functions/convert",
+    headers,
     payload: {
-      userId: "11111111-1111-1111-1111-111111111111",
       content: "ok"
     }
   });
@@ -23,12 +24,13 @@ test("POST /ai/convert returns not_recommended for very short content", async ()
   assert.ok(body.reason);
 });
 
-test("POST /ai/convert creates task and preserves source linkage", async () => {
+test("POST /functions/convert creates task and preserves source linkage", async () => {
+  const headers = { "x-yurbrain-user-id": "22222222-2222-2222-2222-222222222222" };
   const response = await app.inject({
     method: "POST",
-    url: "/ai/convert",
+    url: "/functions/convert",
+    headers,
     payload: {
-      userId: "22222222-2222-2222-2222-222222222222",
       sourceItemId: "33333333-3333-3333-3333-333333333333",
       sourceMessageId: "44444444-4444-4444-4444-444444444444",
       content: "Follow up with product design about task conversion flows"
@@ -55,7 +57,6 @@ test("session lifecycle start -> pause -> finish updates task status", async () 
     url: "/tasks",
     headers,
     payload: {
-      userId,
       title: "Prepare release notes"
     }
   });

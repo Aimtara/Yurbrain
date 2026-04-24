@@ -5,6 +5,12 @@ export const FounderReviewWindowSchema = z.enum(["7d"]);
 export const FounderReviewExecutionLensSchema = z.enum(["all", "ready_to_move", "needs_unblock", "momentum"]);
 export const FounderReviewScoreStatusSchema = z.enum(["strong", "watch", "weak"]);
 export const FounderReviewRiskSeveritySchema = z.enum(["low", "medium", "high"]);
+export const FounderReviewDiagnosticsReasonSchema = z.enum([
+  "blocked",
+  "stale",
+  "continuation_gap",
+  "recent_signal"
+]);
 
 const FounderReviewIncludeAiInputSchema = z.preprocess((value) => {
   if (value === undefined || value === null || value === "") return false;
@@ -98,6 +104,39 @@ export const FounderReviewAiReadoutSchema = z
   })
   .strict();
 
+export const FounderReviewDiagnosticsItemSchema = z
+  .object({
+    itemId: z.string().uuid(),
+    title: z.string().min(1).max(160),
+    reason: FounderReviewDiagnosticsReasonSchema,
+    detail: z.string().min(1).max(260),
+    action: FounderReviewActionSchema
+  })
+  .strict();
+
+export const FounderReviewDiagnosticsSummarySchema = z
+  .object({
+    itemCount: z.number().int().min(0),
+    taskCount: z.number().int().min(0),
+    sessionCount: z.number().int().min(0),
+    blockedCount: z.number().int().min(0),
+    staleCount: z.number().int().min(0),
+    continuationGapCount: z.number().int().min(0)
+  })
+  .strict();
+
+export const FounderReviewDiagnosticsResponseSchema = z
+  .object({
+    generatedAt: z.string().datetime(),
+    window: FounderReviewWindowSchema,
+    summary: FounderReviewDiagnosticsSummarySchema,
+    focusItems: z.array(FounderReviewDiagnosticsItemSchema).max(12),
+    focusActions: z.array(FounderReviewActionSchema).max(8),
+    strongestKeywords: z.array(z.string().min(1).max(80)).max(8),
+    latestItemTitles: z.array(z.string().min(1).max(160)).max(8)
+  })
+  .strict();
+
 export const FounderReviewResponseSchema = z
   .object({
     generatedAt: z.string().datetime(),
@@ -128,7 +167,6 @@ export const FounderReviewResponseSchema = z
 export const FounderReviewQuerySchema = z
   .object({
     window: FounderReviewWindowSchema.optional().default("7d"),
-    userId: z.string().uuid().optional(),
     includeAi: FounderReviewIncludeAiInputSchema.optional().default(false)
   })
   .strict();
@@ -138,3 +176,6 @@ export type FounderReviewScore = z.infer<typeof FounderReviewScoreSchema>;
 export type FounderReviewRiskFlag = z.infer<typeof FounderReviewRiskFlagSchema>;
 export type FounderReviewResponse = z.infer<typeof FounderReviewResponseSchema>;
 export type FounderReviewQuery = z.infer<typeof FounderReviewQuerySchema>;
+export type FounderReviewDiagnosticsItem = z.infer<typeof FounderReviewDiagnosticsItemSchema>;
+export type FounderReviewDiagnosticsSummary = z.infer<typeof FounderReviewDiagnosticsSummarySchema>;
+export type FounderReviewDiagnosticsResponse = z.infer<typeof FounderReviewDiagnosticsResponseSchema>;

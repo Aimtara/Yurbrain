@@ -47,3 +47,53 @@ test("bootstrapNhostSession hydrates identity from authenticated session", async
   assert.equal(getConfiguredAccessToken(), "session-token");
   assert.equal(getIdentityResolutionMode(), "strict");
 });
+
+test("bootstrapNhostSession keeps stored identity when runtime config exists but live session is unavailable", async () => {
+  const localStorageState = new Map<string, string>([
+    [
+      "nhostSession",
+      JSON.stringify({
+        accessToken: "stored-token",
+        user: { id: "99999999-9999-4999-8999-999999999999" }
+      })
+    ]
+  ]);
+
+  const originalGlobalLocalStorage = (globalThis as { localStorage?: unknown }).localStorage;
+  const mockedLocalStorage = {
+    getItem: (key: string) => localStorageState.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      localStorageState.set(key, value);
+    },
+    removeItem: (key: string) => {
+      localStorageState.delete(key);
+    }
+  };
+  (globalThis as { localStorage?: unknown }).localStorage = mockedLocalStorage;
+
+  try {
+    setNhostEnvResolver(() => ({
+      NEXT_PUBLIC_NHOST_GRAPHQL_URL: "https://graphql.foundation.example/v1/graphql",
+      NEXT_PUBLIC_NHOST_AUTH_URL: "https://auth.foundation.example/v1"
+    }));
+    setNhostClientFactory(() => ({
+      getUserSession: () => null
+    }));
+
+    const result = await bootstrapNhostSession();
+
+    assert.deepEqual(result, {
+      configured: true,
+      userId: "99999999-9999-4999-8999-999999999999"
+    });
+    assert.equal(getConfiguredCurrentUserId(), "99999999-9999-4999-8999-999999999999");
+    assert.equal(getConfiguredAccessToken(), "stored-token");
+    assert.equal(getIdentityResolutionMode(), "strict");
+  } finally {
+    if (originalGlobalLocalStorage === undefined) {
+      delete (globalThis as { localStorage?: unknown }).localStorage;
+    } else {
+      (globalThis as { localStorage?: unknown }).localStorage = originalGlobalLocalStorage;
+    }
+  }
+});

@@ -9,12 +9,13 @@ test.after(async () => {
 
 test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", async () => {
   const userId = "99999999-9999-4999-8999-999999999999";
+  const headers = { "x-yurbrain-user-id": userId };
 
   const createdItemResponse = await app.inject({
     method: "POST",
     url: "/brain-items",
+    headers,
     payload: {
-      userId,
       type: "idea",
       title: "Plan launch prep",
       rawContent: "Need to prepare release checklist and kickoff notes"
@@ -27,7 +28,8 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
   const feedResponse = await app.inject({
     method: "GET",
     url: "/feed",
-    query: { userId, lens: "all", limit: "5" }
+    headers,
+    query: { lens: "all", limit: "5" }
   });
 
   assert.equal(feedResponse.statusCode, 200);
@@ -37,6 +39,7 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
   const threadResponse = await app.inject({
     method: "POST",
     url: "/threads",
+    headers,
     payload: {
       targetItemId: createdItem.id,
       kind: "item_comment"
@@ -49,6 +52,7 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
   const commentResponse = await app.inject({
     method: "POST",
     url: "/messages",
+    headers,
     payload: {
       threadId: thread.id,
       role: "user",
@@ -62,7 +66,8 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
 
   const summarizeResponse = await app.inject({
     method: "POST",
-    url: "/ai/summarize",
+    url: "/functions/summarize",
+    headers,
     payload: {
       itemId: createdItem.id,
       rawContent: createdItem.rawContent
@@ -77,9 +82,9 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
 
   const convertResponse = await app.inject({
     method: "POST",
-    url: "/ai/convert",
+    url: "/functions/convert",
+    headers,
     payload: {
-      userId,
       sourceItemId: createdItem.id,
       sourceMessageId: comment.id,
       content: comment.content
@@ -99,6 +104,7 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
   const startSessionResponse = await app.inject({
     method: "POST",
     url: `/tasks/${convertBody.task?.id}/start`,
+    headers,
     payload: {}
   });
 
@@ -109,6 +115,7 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
   const pauseSessionResponse = await app.inject({
     method: "POST",
     url: `/sessions/${session.id}/pause`,
+    headers,
     payload: {}
   });
 
@@ -118,13 +125,14 @@ test("core loop e2e: capture -> resurface -> comment -> AI -> plan -> act", asyn
   const finishSessionResponse = await app.inject({
     method: "POST",
     url: `/sessions/${session.id}/finish`,
+    headers,
     payload: {}
   });
 
   assert.equal(finishSessionResponse.statusCode, 200);
   assert.equal(finishSessionResponse.json<{ state: string }>().state, "finished");
 
-  const taskResponse = await app.inject({ method: "GET", url: `/tasks/${convertBody.task?.id}` });
+  const taskResponse = await app.inject({ method: "GET", url: `/tasks/${convertBody.task?.id}`, headers });
 
   assert.equal(taskResponse.statusCode, 200);
   assert.equal(taskResponse.json<{ status: string }>().status, "done");

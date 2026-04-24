@@ -42,6 +42,8 @@ import type {
 
 export default function Page() {
   const yurbrainClient = useYurbrainClient();
+  const [bootstrapLoading, setBootstrapLoading] = useState(true);
+  const [bootstrapError, setBootstrapError] = useState("");
   const {
     hydrated,
     activeLens,
@@ -320,8 +322,10 @@ export default function Page() {
   );
   const {
     founderReview,
+    founderReviewDiagnostics,
     founderReviewLoading,
     founderReviewAiReadoutLoading,
+    founderReviewDiagnosticsLoading,
     founderReviewError,
     founderReviewActionNotice,
     founderReviewUnauthorized,
@@ -416,19 +420,33 @@ export default function Page() {
   useEffect(() => {
     if (!hydrated) return;
     void (async () => {
-      const preferredLens = await loadUserPreferences();
-      const lensForInitialLoad = preferredLens ?? activeLens;
-      await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
+      setBootstrapLoading(true);
+      setBootstrapError("");
+      try {
+        await yurbrainClient.getCurrentUser<{ id: string }>();
+      } catch {
+        setBootstrapError("Sign in required. Authenticate with your current Yurbrain account and reload.");
+        return;
+      }
+      try {
+        const preferredLens = await loadUserPreferences();
+        const lensForInitialLoad = preferredLens ?? activeLens;
+        await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
+      } catch {
+        setBootstrapError("Signed in, but the workspace failed to load. Retry after checking API connectivity.");
+      } finally {
+        setBootstrapLoading(false);
+      }
     })();
-  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadItems, loadTasks, loadUserPreferences]);
+  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadItems, loadTasks, loadUserPreferences, yurbrainClient]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || bootstrapLoading || bootstrapError) return;
     void loadFeed(activeLens);
-  }, [activeLens, feedLimit, hydrated, loadFeed]);
+  }, [activeLens, bootstrapError, bootstrapLoading, feedLimit, hydrated, loadFeed]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || bootstrapLoading || bootstrapError) return;
     if (!selectedItemId) {
       setCommentThreadId("");
       setChatThreadId("");
@@ -437,15 +455,15 @@ export default function Page() {
       return;
     }
     void loadSelectedItemContext(selectedItemId);
-  }, [hydrated, loadSelectedItemContext, selectedItemId]);
+  }, [bootstrapError, bootstrapLoading, hydrated, loadSelectedItemContext, selectedItemId]);
 
   useEffect(() => {
-    if (!hydrated || !selectedTaskId) {
+    if (!hydrated || bootstrapLoading || bootstrapError || !selectedTaskId) {
       setActiveSession(null);
       return;
     }
     void loadSessionsForTask(selectedTaskId);
-  }, [hydrated, loadSessionsForTask, selectedTaskId]);
+  }, [bootstrapError, bootstrapLoading, hydrated, loadSessionsForTask, selectedTaskId]);
 
   const timelineEntries = useMemo(() => {
     const merged = [
@@ -478,6 +496,22 @@ export default function Page() {
 
   return (
     <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
+      {bootstrapLoading ? (
+        <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #bfdbfe", background: "#eff6ff", padding: "20px", color: "#1e3a8a" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Loading your workspace</h1>
+          <p style={{ margin: 0 }}>
+            Verifying current-user identity before opening your core loop.
+          </p>
+        </section>
+      ) : null}
+
+      {!bootstrapLoading && bootstrapError ? (
+        <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
+          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
+          <p style={{ margin: 0 }}>{bootstrapError}</p>
+        </section>
+      ) : null}
+
       {founderReviewUnauthorized ? (
         <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
           <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
@@ -487,7 +521,7 @@ export default function Page() {
         </section>
       ) : null}
 
-      {activeSurface === "feed" && !founderReviewUnauthorized ? (
+      {activeSurface === "feed" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
         <FocusFeedSurface
           activeLens={activeLens}
           executionLens={executionLens}
@@ -546,11 +580,13 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "founder_review" && !founderReviewUnauthorized ? (
+      {activeSurface === "founder_review" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
         <FounderReviewSurface
           review={founderReview}
+          diagnostics={founderReviewDiagnostics}
           loading={founderReviewLoading}
           loadingAiReadout={founderReviewAiReadoutLoading}
+          loadingDiagnostics={founderReviewDiagnosticsLoading}
           error={founderReviewError}
           actionNotice={founderReviewActionNotice}
           onRefresh={() => void loadFounderReview(false)}
@@ -591,7 +627,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "time" && !founderReviewUnauthorized ? (
+      {activeSurface === "time" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
         <TimeSurface
           timeWindow={timeWindow}
           customWindowMinutes={customWindowMinutes}
@@ -610,7 +646,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "me" && !founderReviewUnauthorized ? (
+      {activeSurface === "me" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
         <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px", display: "grid", gap: "16px" }}>
           <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "14px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -695,7 +731,7 @@ export default function Page() {
         </section>
       ) : null}
 
-      {activeSurface === "item" && !founderReviewUnauthorized ? (
+      {activeSurface === "item" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
         <ItemDetailSurface
           selectedItem={selectedItem}
           continuity={derivedItemContinuity}
@@ -735,7 +771,7 @@ export default function Page() {
         />
       ) : null}
 
-      {activeSurface === "session" && !founderReviewUnauthorized ? (
+      {activeSurface === "session" && !founderReviewUnauthorized && !bootstrapLoading && !bootstrapError ? (
         <SessionSurface
           selectedTask={selectedTask}
           selectedTaskSession={selectedTaskSession}

@@ -1,1 +1,1 @@
-export { nhost } from "./client";
+export * from "./client";

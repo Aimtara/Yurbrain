@@ -56,7 +56,10 @@ N2 does not change backend behavior; it stabilizes the client boundary for later
 - N7 (web CRUD cutover): complete.
 - N8 (feed function cutover): complete.
 - N9 (AI thin-slice functions): complete.
-- N10+ (founder review hardening and beyond): in progress / not started per `docs/backend-migration-status.md`.
+- N10 (founder review hardening): complete.
+- N11 (event safety pass): complete.
+- N12 (mobile cutover): complete.
+- N13 (legacy REST strangler cleanup): in progress (kickoff baseline documented).
 
 ## N3 implementation baseline (now in repo)
 
@@ -124,7 +127,7 @@ N7 is complete when these are true:
 N8 is complete when these are true:
 
 1. Feed retrieval and interaction paths are routed through function-backed APIs (`/functions/feed` + feed action helpers) via `packages/client`.
-2. Canonical function routes and compatibility aliases are aligned (`/functions/feed` + `/functions/feed/rank`, `/functions/what-should-i-do-next` + `/functions/next-step`) with targeted tests.
+2. Canonical function routes are aligned on stable paths (`/functions/feed`, `/functions/what-should-i-do-next`) with targeted tests.
 3. Founder review and synthesis-computed pathways remain function-backed in the shared client boundary (no UI transport leakage).
 4. Validation evidence covers strict-auth loop safety and function-feed ranking ergonomics.
 
@@ -137,13 +140,99 @@ N9 is complete when these are true:
 3. Ownership failures for thin-slice function routes are graceful (`404`) and do not surface as internal server errors.
 4. Loop parity checkpoints remain green after N9 cutover slices.
 
-## N10 implementation baseline (kickoff)
+## N10 implementation baseline (completed)
 
-N10 is in progress when these are true:
+N10 is complete when these are true:
 
 1. Founder review computed quality and diagnostics are hardened for production-readiness while preserving concise continuity output.
-2. Temporary compatibility pathways retained from N8/N9 are reviewed and either removed or explicitly justified.
-3. Web integration continues to show no UI transport leakage while founder-facing actions remain continuity-first.
+2. Founder diagnostics returns actionable item-level payloads (reason/detail + item action) and scoped feed-level actions.
+3. Web Founder Review surface consumes diagnostics through `packages/client` only and can trigger meaningful follow-up actions from the diagnostics panel.
+4. Temporary compatibility pathways retained from N8/N9 are reviewed and explicitly justified.
+5. Validation evidence confirms founder diagnostics actions navigate to item/detail and feed contexts without UI transport leakage.
+
+## N10 completion update
+
+Completed in this repository state:
+
+1. Founder-review domain calls are canonicalized to function endpoints for strict-auth parity checks (`/functions/founder-review` and `/functions/founder-review/diagnostics`).
+2. `packages/client` keeps founder diagnostics access inside the domain boundary (`getFounderDiagnostics`) so UI/client layers do not embed function transport paths.
+3. Founder diagnostics function payload is now actionable: generated metadata, summary counters (`blocked/stale/continuation_gap`), item-level focus entries, and feed-level focus actions.
+4. Founder Review web integration now loads diagnostics alongside review data and wires diagnostics actions into existing founder action handlers.
+5. Legacy `/founder-review` compatibility route is removed after all in-repo callers were validated on canonical `/functions/founder-review`.
+
+## N11 implementation baseline (completed)
+
+N11 is complete when these are true:
+
+1. Event and telemetry surfaces are audited for ownership safety and transport-boundary compliance.
+2. Public/raw event access remains blocked; only safe aggregate or server-only pathways remain reachable.
+3. Event-producing paths in capture/feed/plan/session/founder flows preserve loop behavior while reducing leakage risk.
+4. N11 checkpoints are captured in status + checklist docs with explicit parity evidence targets.
+
+## N11 completion update
+
+Completed in this repository state:
+
+1. Raw event read remains explicitly blocked on `/events` (403) and is now covered by dedicated N11 safety tests.
+2. Event payload writes for `brain_item_created` and `brain_item_updated` now pass through typed allowlisted policy builders, preventing accidental leakage of raw or oversized fields.
+3. Event safety tests now validate owner-scoped write behavior, legacy `body.userId` spoof resistance on create paths, and founder diagnostics exclusion of raw event payloads.
+4. Test runtime safety was hardened by isolating default per-process test database paths per server instance to prevent PGlite collisions during concurrent server construction.
+
+## N12 implementation baseline (completed)
+
+N12 is complete when these are true:
+
+1. Mobile app data flows route exclusively through the same `packages/client` domain methods already validated on web.
+2. Mobile boot/auth behavior is aligned to strict identity expectations without introducing transport forks.
+3. Capture/feed/item/comments/plan/session/founder-review mobile parity checkpoints are defined with explicit test evidence targets.
+4. Any mobile-only compatibility seams are documented as temporary and tracked for N13 cleanup.
+
+## N12 completion update
+
+Completed in this repository state:
+
+1. Mobile provider now uses explicit Nhost transport selection through local wrapper wiring (`SharedYurbrainClientProvider options={{ transport: "nhost" }}`), matching web bootstrap identity boundary expectations.
+2. Mobile app root now imports the local provider wrapper (instead of package-level default provider) so transport policy stays explicit and guarded.
+3. Mobile loop controller parity remains on shared `packages/client` domain methods for capture/feed/item/comments/plan/session/founder-mode paths with no direct GraphQL/function calls in mobile surfaces.
+4. Added N12 mobile guard tests covering provider transport wiring, app/provider composition, and mobile persisted-state helper parity.
+
+## N13 implementation baseline (kickoff)
+
+N13 starts when these are true:
+
+1. Remaining legacy REST handlers are inventoried by caller and classified as remove now vs keep temporarily.
+2. Compatibility routes retained in N8-N12 have explicit removal criteria and cleanup owners.
+3. Deletion candidates are constrained to capabilities already parity-validated on both web and mobile.
+4. Cleanup checkpoints keep `/events` public access disabled and preserve loop safety under strict auth.
+
+## N13 progress update (slice 1)
+
+Completed in this repository state:
+
+1. Removed dead function compatibility aliases now that web/mobile + `packages/client` use canonical paths:
+   - `GET /functions/feed/rank`
+   - `POST /functions/next-step`
+2. Removed unused duplicate function session endpoints in favor of canonical session helper + session routes:
+   - `POST /functions/tasks/:id/start`
+   - `POST /functions/sessions/:id/pause`
+   - `GET /functions/sessions/:id/diagnostics`
+3. Removed legacy founder review compatibility route `GET /founder-review` and corresponding web rewrite entry after caller audit confirmed canonical function usage.
+4. Preserved `/events` block and strict-auth/core-loop validation gates while reducing route-surface drift.
+
+## N13 progress update (slice 2)
+
+Completed in this repository state:
+
+1. Removed legacy REST AI route modules from server registration (`registerAiRoutes`, `registerConvertRoutes`) after all in-repo callers were moved to canonical function paths.
+2. Canonicalized remaining AI pathways under `/functions/*` only:
+   - `POST /functions/summarize`
+   - `POST /functions/classify`
+   - `POST /functions/query`
+   - `POST /functions/convert`
+   - `POST /functions/summarize-progress`
+   - `POST /functions/what-should-i-do-next`
+3. Re-homed the feed-card generator helper to `POST /functions/feed/generate-card` and removed web `/ai/:path*` rewrite forwarding.
+4. Updated domain client endpoint constants and legacy helper hooks to remove `/ai/*` dependencies and route exclusively through canonical function endpoints.
 ## N5 required/optional backfill order
 
 Required for N6/N7 cutover safety:

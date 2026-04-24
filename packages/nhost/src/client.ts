@@ -1,26 +1,266 @@
-import { createClient } from "@nhost/nhost-js";
+import { createClient, type NhostClient } from "@nhost/nhost-js";
+import type { SessionStorageBackend } from "@nhost/nhost-js/session";
 
-type NhostEnv = {
-  NHOST_SUBDOMAIN?: string;
-  NHOST_REGION?: string;
-  YURBRAIN_NHOST_SUBDOMAIN?: string;
-  YURBRAIN_NHOST_REGION?: string;
+declare const process:
+  | {
+      env?: Record<string, string | undefined>;
+    }
+  | undefined;
+
+type EnvRecord = Record<string, string | undefined>;
+type RuntimeTarget = "web" | "mobile";
+
+export type PublicNhostConfig = {
+  subdomain?: string;
+  region?: string;
+  backendUrl?: string;
+  graphqlUrl?: string;
+  authUrl?: string;
+  functionsUrl?: string;
+  storageUrl?: string;
+  anonKey: string;
 };
 
-function resolveEnv(): NhostEnv {
-  if (typeof process === "undefined" || !process.env) return {};
-  return process.env as NhostEnv;
+export type ServerNhostConfig = PublicNhostConfig & {
+  adminSecret: string;
+};
+
+export type NhostGraphqlVariables = Record<string, unknown>;
+
+function getProcessEnv(): EnvRecord {
+  if (typeof process === "undefined" || !process.env) {
+    return {};
+  }
+  return process.env;
 }
 
-function resolveConfig() {
-  const env = resolveEnv();
-  const subdomain = env.NHOST_SUBDOMAIN ?? env.YURBRAIN_NHOST_SUBDOMAIN;
-  const region = env.NHOST_REGION ?? env.YURBRAIN_NHOST_REGION;
+function trimValue(value: string | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
 
+function trimUrl(value: string | undefined): string | undefined {
+  const normalized = trimValue(value);
+  if (!normalized) return undefined;
+  return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
+}
+
+function requireValue(value: string | undefined, keyName: string): string {
+  if (value) return value;
+  throw new Error(`[nhost] Missing required environment variable: ${keyName}`);
+}
+
+function resolveFirst(env: EnvRecord, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = trimValue(env[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function resolveUrl(env: EnvRecord, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = trimUrl(env[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function ensureBaseFromSubdomainAndRegion(subdomain?: string, region?: string): string | undefined {
+  if (!subdomain || !region) return undefined;
+  return `https://${subdomain}.${region}.nhost.run`;
+}
+
+function buildServiceUrls(config: {
+  backendUrl?: string;
+  authUrl?: string;
+  graphqlUrl?: string;
+  functionsUrl?: string;
+  storageUrl?: string;
+}) {
+  const backendUrl = trimUrl(config.backendUrl);
   return {
-    subdomain: subdomain ?? "your-subdomain",
-    region: region ?? "your-region"
+    backendUrl,
+    authUrl: trimUrl(config.authUrl) ?? (backendUrl ? `${backendUrl}/v1/auth` : undefined),
+    graphqlUrl: trimUrl(config.graphqlUrl) ?? (backendUrl ? `${backendUrl}/v1/graphql` : undefined),
+    functionsUrl: trimUrl(config.functionsUrl) ?? (backendUrl ? `${backendUrl}/v1/functions` : undefined),
+    storageUrl: trimUrl(config.storageUrl) ?? (backendUrl ? `${backendUrl}/v1/storage` : undefined)
   };
 }
 
-export const nhost = createClient(resolveConfig());
+function assertPublicShape(config: PublicNhostConfig, target: RuntimeTarget) {
+  if (!config.anonKey) {
+    const expectedKey = target === "web" ? "NEXT_PUBLIC_NHOST_ANON_KEY" : "EXPO_PUBLIC_NHOST_ANON_KEY";
+    throw new Error(`[nhost] Missing required environment variable: ${expectedKey}`);
+  }
+
+  const hasAddressing = Boolean(config.backendUrl) || Boolean(config.subdomain && config.region) || Boolean(config.authUrl);
+  if (!hasAddressing) {
+    const prefix = target === "web" ? "NEXT_PUBLIC" : "EXPO_PUBLIC";
+    throw new Error(
+      `[nhost] Missing Nhost addressing configuration. Set ${prefix}_NHOST_BACKEND_URL or ${prefix}_NHOST_SUBDOMAIN + ${prefix}_NHOST_REGION or ${prefix}_NHOST_AUTH_URL.`
+    );
+  }
+}
+
+export function resolveWebPublicNhostConfig(customEnv: EnvRecord = getProcessEnv()): PublicNhostConfig {
+  const subdomain = resolveFirst(customEnv, ["NEXT_PUBLIC_NHOST_SUBDOMAIN"]);
+  const region = resolveFirst(customEnv, ["NEXT_PUBLIC_NHOST_REGION"]);
+  const backendUrl = resolveUrl(customEnv, ["NEXT_PUBLIC_NHOST_BACKEND_URL"]);
+  const anonKey = requireValue(resolveFirst(customEnv, ["NEXT_PUBLIC_NHOST_ANON_KEY"]), "NEXT_PUBLIC_NHOST_ANON_KEY");
+  const serviceUrls = buildServiceUrls({
+    backendUrl: backendUrl ?? ensureBaseFromSubdomainAndRegion(subdomain, region),
+    authUrl: resolveUrl(customEnv, ["NEXT_PUBLIC_NHOST_AUTH_URL"]),
+    graphqlUrl: resolveUrl(customEnv, ["NEXT_PUBLIC_NHOST_GRAPHQL_URL"]),
+    functionsUrl: resolveUrl(customEnv, ["NEXT_PUBLIC_NHOST_FUNCTIONS_URL"]),
+    storageUrl: resolveUrl(customEnv, ["NEXT_PUBLIC_NHOST_STORAGE_URL"])
+  });
+  const config: PublicNhostConfig = {
+    subdomain,
+    region,
+    anonKey,
+    ...serviceUrls
+  };
+  assertPublicShape(config, "web");
+  return config;
+}
+
+export function resolveMobilePublicNhostConfig(customEnv: EnvRecord = getProcessEnv()): PublicNhostConfig {
+  const subdomain = resolveFirst(customEnv, ["EXPO_PUBLIC_NHOST_SUBDOMAIN"]);
+  const region = resolveFirst(customEnv, ["EXPO_PUBLIC_NHOST_REGION"]);
+  const backendUrl = resolveUrl(customEnv, ["EXPO_PUBLIC_NHOST_BACKEND_URL"]);
+  const anonKey = requireValue(resolveFirst(customEnv, ["EXPO_PUBLIC_NHOST_ANON_KEY"]), "EXPO_PUBLIC_NHOST_ANON_KEY");
+  const serviceUrls = buildServiceUrls({
+    backendUrl: backendUrl ?? ensureBaseFromSubdomainAndRegion(subdomain, region),
+    authUrl: resolveUrl(customEnv, ["EXPO_PUBLIC_NHOST_AUTH_URL"]),
+    graphqlUrl: resolveUrl(customEnv, ["EXPO_PUBLIC_NHOST_GRAPHQL_URL"]),
+    functionsUrl: resolveUrl(customEnv, ["EXPO_PUBLIC_NHOST_FUNCTIONS_URL"]),
+    storageUrl: resolveUrl(customEnv, ["EXPO_PUBLIC_NHOST_STORAGE_URL"])
+  });
+  const config: PublicNhostConfig = {
+    subdomain,
+    region,
+    anonKey,
+    ...serviceUrls
+  };
+  assertPublicShape(config, "mobile");
+  return config;
+}
+
+export function resolveServerNhostConfig(customEnv: EnvRecord = getProcessEnv()): ServerNhostConfig {
+  const subdomain = resolveFirst(customEnv, ["NHOST_SUBDOMAIN", "YURBRAIN_NHOST_SUBDOMAIN"]);
+  const region = resolveFirst(customEnv, ["NHOST_REGION", "YURBRAIN_NHOST_REGION"]);
+  const backendUrl = resolveUrl(customEnv, ["NHOST_BACKEND_URL"]);
+  const anonKey = requireValue(resolveFirst(customEnv, ["NHOST_ANON_KEY"]), "NHOST_ANON_KEY");
+  const adminSecret = requireValue(
+    resolveFirst(customEnv, ["NHOST_ADMIN_SECRET", "YURBRAIN_HASURA_ADMIN_SECRET"]),
+    "NHOST_ADMIN_SECRET"
+  );
+
+  const serviceUrls = buildServiceUrls({
+    backendUrl: backendUrl ?? ensureBaseFromSubdomainAndRegion(subdomain, region),
+    authUrl: resolveUrl(customEnv, ["NHOST_AUTH_URL", "YURBRAIN_NHOST_AUTH_URL"]),
+    graphqlUrl: resolveUrl(customEnv, ["NHOST_GRAPHQL_URL", "YURBRAIN_NHOST_GRAPHQL_URL", "YURBRAIN_HASURA_GRAPHQL_URL"]),
+    functionsUrl: resolveUrl(customEnv, ["NHOST_FUNCTIONS_URL", "YURBRAIN_NHOST_FUNCTIONS_URL"]),
+    storageUrl: resolveUrl(customEnv, ["NHOST_STORAGE_URL"])
+  });
+
+  const config: ServerNhostConfig = {
+    subdomain,
+    region,
+    anonKey,
+    adminSecret,
+    ...serviceUrls
+  };
+
+  if (!config.backendUrl && !(config.subdomain && config.region) && !config.authUrl) {
+    throw new Error(
+      "[nhost] Missing server Nhost addressing configuration. Set NHOST_BACKEND_URL or NHOST_SUBDOMAIN + NHOST_REGION or NHOST_AUTH_URL."
+    );
+  }
+
+  return config;
+}
+
+type CreateClientInput = Pick<
+  PublicNhostConfig,
+  "subdomain" | "region" | "authUrl" | "graphqlUrl" | "functionsUrl" | "storageUrl"
+> & {
+  storage?: SessionStorageBackend;
+};
+
+function createBaseNhostClient(config: CreateClientInput): NhostClient {
+  return createClient({
+    subdomain: config.subdomain,
+    region: config.region,
+    authUrl: config.authUrl,
+    graphqlUrl: config.graphqlUrl,
+    functionsUrl: config.functionsUrl,
+    storageUrl: config.storageUrl,
+    storage: config.storage
+  });
+}
+
+export function createWebNhostClientFromEnv(customEnv: EnvRecord = getProcessEnv()): NhostClient {
+  const config = resolveWebPublicNhostConfig(customEnv);
+  return createBaseNhostClient(config);
+}
+
+export function createMobileNhostClientFromEnv(
+  customEnv: EnvRecord = getProcessEnv(),
+  options: { storage?: SessionStorageBackend } = {}
+): NhostClient {
+  const config = resolveMobilePublicNhostConfig(customEnv);
+  return createBaseNhostClient({
+    ...config,
+    storage: options.storage
+  });
+}
+
+export function createServerNhostClientFromEnv(customEnv: EnvRecord = getProcessEnv()): NhostClient {
+  const config = resolveServerNhostConfig(customEnv);
+  return createBaseNhostClient(config);
+}
+
+export function resolveServerNhostAdminHeaders(
+  customEnv: EnvRecord = getProcessEnv()
+): Record<string, string> {
+  const config = resolveServerNhostConfig(customEnv);
+  return {
+    "x-hasura-admin-secret": config.adminSecret
+  };
+}
+
+export async function executeServerGraphqlWithAdminSecret<T>(
+  query: string,
+  variables: NhostGraphqlVariables = {},
+  customEnv: EnvRecord = getProcessEnv()
+): Promise<T> {
+  const config = resolveServerNhostConfig(customEnv);
+  if (!config.graphqlUrl) {
+    throw new Error("[nhost] Missing GraphQL URL for server admin request. Set NHOST_GRAPHQL_URL or NHOST_BACKEND_URL.");
+  }
+
+  const response = await fetch(config.graphqlUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...resolveServerNhostAdminHeaders(customEnv)
+    },
+    body: JSON.stringify({ query, variables })
+  });
+
+  if (!response.ok) {
+    throw new Error(`[nhost] GraphQL request failed with status ${response.status}`);
+  }
+
+  const parsed = (await response.json()) as { data?: T; errors?: Array<{ message?: string }> };
+  if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
+    throw new Error(parsed.errors[0]?.message || "[nhost] GraphQL request returned errors");
+  }
+  if (parsed.data === undefined) {
+    throw new Error("[nhost] GraphQL request returned no data");
+  }
+  return parsed.data;
+}

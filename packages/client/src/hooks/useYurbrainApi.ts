@@ -57,7 +57,7 @@ export function useYurbrainApi() {
         body: JSON.stringify(payload)
       }),
     convertToTask: <T>(payload: unknown) =>
-      apiClient<T>(endpoints.aiConvert, {
+      apiClient<T>(endpoints.functionConvert, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
@@ -93,31 +93,31 @@ export function useYurbrainApi() {
         body: JSON.stringify({})
       }),
     summarizeItem: <T>(payload: unknown) =>
-      apiClient<T>(endpoints.aiSummarize, {
+      apiClient<T>(endpoints.functionSummarizeItem, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
     classifyItem: <T>(payload: unknown) =>
-      apiClient<T>(endpoints.aiClassify, {
+      apiClient<T>(endpoints.functionClassifyItem, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
     queryItem: <T>(payload: unknown) =>
-      apiClient<T>(endpoints.aiQuery, {
+      apiClient<T>(endpoints.functionQueryItem, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
     summarizeCluster: <T>(payload: { itemIds: string[] }) =>
-      apiClient<T>(endpoints.aiSummarizeCluster, {
+      apiClient<T>(endpoints.functionSummarizeProgress, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
     getNextStep: <T>(payload: { itemIds: string[] }) =>
-      apiClient<T>(endpoints.aiNextStep, {
+      apiClient<T>(endpoints.functionNextStep, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)

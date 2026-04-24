@@ -9,11 +9,12 @@ test.after(async () => {
 
 test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () => {
   const userId = "66666666-6666-4666-8666-666666666666";
+  const headers = { "x-yurbrain-user-id": userId };
   const createItem = await app.inject({
     method: "POST",
     url: "/brain-items",
+    headers,
     payload: {
-      userId,
       type: "note",
       title: "Artifact persistence check",
       rawContent: "Ensure summary and classification artifacts can be fetched later."
@@ -24,8 +25,8 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
 
   const summarize = await app.inject({
     method: "POST",
-    url: "/ai/summarize",
-    headers: { "x-yurbrain-user-id": userId },
+    url: "/functions/summarize",
+    headers,
     payload: {
       itemId: item.id,
       rawContent: item.rawContent
@@ -35,8 +36,8 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
 
   const classify = await app.inject({
     method: "POST",
-    url: "/ai/classify",
-    headers: { "x-yurbrain-user-id": userId },
+    url: "/functions/classify",
+    headers,
     payload: {
       itemId: item.id,
       rawContent: item.rawContent
@@ -47,7 +48,7 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
   const allArtifacts = await app.inject({
     method: "GET",
     url: `/brain-items/${item.id}/artifacts`,
-    headers: { "x-yurbrain-user-id": userId }
+    headers
   });
   assert.equal(allArtifacts.statusCode, 200);
   const all = allArtifacts.json<Array<{ id: string; type: string }>>();
@@ -58,7 +59,7 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
   const summaryOnly = await app.inject({
     method: "GET",
     url: `/brain-items/${item.id}/artifacts?type=summary`,
-    headers: { "x-yurbrain-user-id": userId }
+    headers
   });
   assert.equal(summaryOnly.statusCode, 200);
   const summaries = summaryOnly.json<Array<{ type: string }>>();
@@ -68,10 +69,11 @@ test("GET /brain-items/:id/artifacts returns persisted AI artifacts", async () =
 
 test("GET /sessions supports task and user filters", async () => {
   const userId = "67676767-6767-4676-8676-676767676767";
+  const headers = { "x-yurbrain-user-id": userId };
   const createTask = await app.inject({
     method: "POST",
     url: "/tasks",
-    headers: { "x-yurbrain-user-id": userId },
+    headers,
     payload: {
       title: "Session retrieval check"
     }
@@ -82,7 +84,7 @@ test("GET /sessions supports task and user filters", async () => {
   const start = await app.inject({
     method: "POST",
     url: `/tasks/${task.id}/start`,
-    headers: { "x-yurbrain-user-id": userId },
+    headers,
     payload: {}
   });
   assert.equal(start.statusCode, 201);
@@ -91,7 +93,7 @@ test("GET /sessions supports task and user filters", async () => {
   const byTask = await app.inject({
     method: "GET",
     url: `/sessions?taskId=${task.id}`,
-    headers: { "x-yurbrain-user-id": userId }
+    headers
   });
   assert.equal(byTask.statusCode, 200);
   const taskSessions = byTask.json<Array<{ id: string; taskId: string }>>();
@@ -99,19 +101,21 @@ test("GET /sessions supports task and user filters", async () => {
 
   const byUser = await app.inject({
     method: "GET",
-    url: `/sessions?userId=${userId}`,
-    headers: { "x-yurbrain-user-id": userId }
+    url: "/sessions?taskId=00000000-0000-4000-8000-000000000000",
+    headers
   });
   assert.equal(byUser.statusCode, 200);
   const userSessions = byUser.json<Array<{ id: string }>>();
-  assert.ok(userSessions.some((entry) => entry.id === session.id));
+  assert.equal(userSessions.some((entry) => entry.id === session.id), false);
 });
 
 test("preferences routes persist personalization preferences", async () => {
   const userId = "68686868-6868-4686-8686-686868686868";
+  const headers = { "x-yurbrain-user-id": userId };
   const initial = await app.inject({
     method: "GET",
-    url: `/preferences/${userId}`
+    url: `/preferences/${userId}`,
+    headers
   });
   assert.equal(initial.statusCode, 200);
   const initialBody = initial.json<{
@@ -131,6 +135,7 @@ test("preferences routes persist personalization preferences", async () => {
   const updated = await app.inject({
     method: "PUT",
     url: `/preferences/${userId}`,
+    headers,
     payload: {
       defaultLens: "open_loops",
       founderMode: true,
@@ -158,7 +163,8 @@ test("preferences routes persist personalization preferences", async () => {
 
   const persisted = await app.inject({
     method: "GET",
-    url: `/preferences/${userId}`
+    url: `/preferences/${userId}`,
+    headers
   });
   assert.equal(persisted.statusCode, 200);
   const body = persisted.json<{

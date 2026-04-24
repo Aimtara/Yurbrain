@@ -9,10 +9,10 @@ test.after(async () => {
   await app.close();
 });
 
-test("GET /founder-review returns a UI-ready deterministic model", async () => {
+test("GET /functions/founder-review returns a UI-ready deterministic model", async () => {
   const response = await app.inject({
     method: "GET",
-    url: "/founder-review?window=7d",
+    url: "/functions/founder-review?window=7d",
     headers: { "x-yurbrain-user-id": founderReviewUserId }
   });
 
@@ -40,10 +40,10 @@ test("GET /founder-review returns a UI-ready deterministic model", async () => {
   assert.ok(body.currentReadout.recommendedNextMove.action.target === "feed" || body.currentReadout.recommendedNextMove.action.target === "item");
 });
 
-test("GET /founder-review with ai wording adds concise explanatory copy", async () => {
+test("GET /functions/founder-review with ai wording adds concise explanatory copy", async () => {
   const response = await app.inject({
     method: "GET",
-    url: "/founder-review?window=7d&includeAi=1",
+    url: "/functions/founder-review?window=7d&includeAi=1",
     headers: { "x-yurbrain-user-id": founderReviewUserId }
   });
 
@@ -62,7 +62,7 @@ test("GET /founder-review with ai wording adds concise explanatory copy", async 
   assert.ok((body.aiReadout?.groundingNote.length ?? 0) > 0);
 });
 
-test("GET /founder-review accepts bearer JWT subject for identity", async () => {
+test("GET /functions/founder-review accepts bearer JWT subject for identity", async () => {
   const jwtPayload = Buffer.from(
     JSON.stringify({ sub: founderReviewUserId }),
     "utf8"
@@ -71,7 +71,7 @@ test("GET /founder-review accepts bearer JWT subject for identity", async () => 
 
   const response = await app.inject({
     method: "GET",
-    url: "/founder-review?window=7d",
+    url: "/functions/founder-review?window=7d",
     headers: { authorization: `Bearer ${bearerToken}` }
   });
 
@@ -79,3 +79,52 @@ test("GET /founder-review accepts bearer JWT subject for identity", async () => 
   const body = response.json<{ window: string }>();
   assert.equal(body.window, "7d");
 });
+
+test("GET /functions/founder-review/diagnostics is owner-scoped and returns compact diagnostics", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/functions/founder-review/diagnostics?window=7d",
+    headers: { "x-yurbrain-user-id": founderReviewUserId }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json<{
+    generatedAt: string;
+    window: "7d";
+    summary: {
+      itemCount: number;
+      taskCount: number;
+      sessionCount: number;
+      blockedCount: number;
+      staleCount: number;
+      continuationGapCount: number;
+    };
+    focusItems: Array<{
+      itemId: string;
+      title: string;
+      reason: "blocked" | "stale" | "continuation_gap" | "recent_signal";
+      detail: string;
+      action: { target: "item"; itemId: string; label: string };
+    }>;
+    focusActions: Array<{ id: string; label: string; target: "feed" | "item" }>;
+    strongestKeywords: string[];
+    latestItemTitles: string[];
+  }>();
+  assert.ok(Array.isArray(body.focusItems));
+  assert.ok(body.focusItems.length <= 12);
+  assert.ok(body.focusItems.every((entry) => entry.action.target === "item"));
+  assert.ok(body.focusItems.every((entry) => entry.action.itemId === entry.itemId));
+  assert.ok(body.focusItems.every((entry) => entry.action.label.length > 0));
+  assert.ok(body.focusItems.every((entry) => entry.detail.length > 0));
+  assert.ok(Array.isArray(body.focusActions));
+  assert.ok(body.focusActions.length >= 1);
+  assert.ok(Array.isArray(body.strongestKeywords));
+  assert.ok(Array.isArray(body.latestItemTitles));
+  assert.equal(typeof body.summary.itemCount, "number");
+  assert.equal(typeof body.summary.taskCount, "number");
+  assert.equal(typeof body.summary.sessionCount, "number");
+  assert.equal(typeof body.summary.blockedCount, "number");
+  assert.equal(typeof body.summary.staleCount, "number");
+  assert.equal(typeof body.summary.continuationGapCount, "number");
+});
+

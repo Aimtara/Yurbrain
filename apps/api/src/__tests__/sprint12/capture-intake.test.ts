@@ -9,9 +9,11 @@ test.after(async () => {
 
 test("POST /capture/intake accepts near-zero-friction payload and persists continuity metadata", async () => {
   const userId = "88888888-8888-4888-8888-888888888888";
+  const headers = { "x-yurbrain-user-id": userId };
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
+    headers,
     payload: {
       userId,
       type: "link",
@@ -58,7 +60,8 @@ test("POST /capture/intake accepts near-zero-friction payload and persists conti
 
   const fetched = await app.inject({
     method: "GET",
-    url: `/brain-items/${body.item.id}`
+    url: `/brain-items/${body.item.id}`,
+    headers
   });
   assert.equal(fetched.statusCode, 200);
   const fetchedItem = fetched.json<{ sourceApp: string | null; contentType: string; founderModeAtCapture: boolean }>();
@@ -69,9 +72,11 @@ test("POST /capture/intake accepts near-zero-friction payload and persists conti
 
 test("POST /capture/intake accepts simplified deferred-capture payload", async () => {
   const userId = "8b8b8b8b-8b8b-48b8-8b8b-8b8b8b8b8b8b";
+  const headers = { "x-yurbrain-user-id": userId };
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
+    headers,
     payload: {
       userId,
       type: "link",
@@ -108,9 +113,11 @@ test("POST /capture/intake accepts simplified deferred-capture payload", async (
 
 test("capture enrichment failures do not block persistence", async () => {
   const userId = "89898989-8989-4898-8989-898989898989";
+  const headers = { "x-yurbrain-user-id": userId };
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
+    headers,
     payload: {
       userId,
       type: "link",
@@ -127,12 +134,13 @@ test("capture enrichment failures do not block persistence", async () => {
   assert.ok(body.enrichment.warnings.includes("source_link_parse_failed"));
   assert.equal(body.item.previewTitle, "Saved link");
 
-  const fetched = await app.inject({ method: "GET", url: `/brain-items/${body.item.id}` });
+  const fetched = await app.inject({ method: "GET", url: `/brain-items/${body.item.id}`, headers });
   assert.equal(fetched.statusCode, 200);
 });
 
 test("capture intake creates relation artifacts and a cluster feed card at threshold", async () => {
   const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  const headers = { "x-yurbrain-user-id": userId };
   const payloads = [
     {
       userId,
@@ -154,11 +162,11 @@ test("capture intake creates relation artifacts and a cluster feed card at thres
     }
   ];
 
-  const first = await app.inject({ method: "POST", url: "/capture/intake", payload: payloads[0] });
+  const first = await app.inject({ method: "POST", url: "/capture/intake", headers, payload: payloads[0] });
   assert.equal(first.statusCode, 201);
-  const second = await app.inject({ method: "POST", url: "/capture/intake", payload: payloads[1] });
+  const second = await app.inject({ method: "POST", url: "/capture/intake", headers, payload: payloads[1] });
   assert.equal(second.statusCode, 201);
-  const third = await app.inject({ method: "POST", url: "/capture/intake", payload: payloads[2] });
+  const third = await app.inject({ method: "POST", url: "/capture/intake", headers, payload: payloads[2] });
   assert.equal(third.statusCode, 201);
 
   const thirdBody = third.json<{
@@ -176,7 +184,8 @@ test("capture intake creates relation artifacts and a cluster feed card at thres
 
   const feed = await app.inject({
     method: "GET",
-    url: `/feed?userId=${userId}&includeSnoozed=true`
+    url: "/feed?includeSnoozed=true",
+    headers
   });
   assert.equal(feed.statusCode, 200);
   const feedCards = feed.json<Array<{ cardType: string; title: string }>>();
@@ -184,7 +193,8 @@ test("capture intake creates relation artifacts and a cluster feed card at thres
 
   const artifacts = await app.inject({
     method: "GET",
-    url: `/brain-items/${thirdBody.item.id}/artifacts?type=relation`
+    url: `/brain-items/${thirdBody.item.id}/artifacts?type=relation`,
+    headers
   });
   assert.equal(artifacts.statusCode, 200);
   const relationArtifacts = artifacts.json<Array<{ type: string; payload: { relatedItems?: unknown[] } }>>();

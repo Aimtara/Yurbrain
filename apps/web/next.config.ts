@@ -11,14 +11,13 @@ const nextConfig: NextConfig = {
       { source: "/capture/:path*", destination: `${apiOrigin}/capture/:path*` },
       { source: "/brain-items/:path*", destination: `${apiOrigin}/brain-items/:path*` },
       { source: "/feed/:path*", destination: `${apiOrigin}/feed/:path*` },
-      { source: "/founder-review", destination: `${apiOrigin}/founder-review` },
+      { source: "/founder-review", destination: `${apiOrigin}/functions/founder-review` },
       { source: "/functions/:path*", destination: `${apiOrigin}/functions/:path*` },
       { source: "/threads/:path*", destination: `${apiOrigin}/threads/:path*` },
       { source: "/messages/:path*", destination: `${apiOrigin}/messages/:path*` },
       { source: "/preferences/:path*", destination: `${apiOrigin}/preferences/:path*` },
       { source: "/tasks/:path*", destination: `${apiOrigin}/tasks/:path*` },
-      { source: "/sessions/:path*", destination: `${apiOrigin}/sessions/:path*` },
-      { source: "/ai/:path*", destination: `${apiOrigin}/ai/:path*` }
+      { source: "/sessions/:path*", destination: `${apiOrigin}/sessions/:path*` }
     ];
   }
 };

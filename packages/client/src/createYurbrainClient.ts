@@ -4,7 +4,6 @@ import { createYurbrainDomainClient, type YurbrainDomainClient } from "./domain/
 
 type FounderReviewQuery = {
   window?: "7d";
-  userId?: string;
   includeAi?: boolean;
 };
 
@@ -69,16 +68,6 @@ export type CreateYurbrainClientOptions = {
   transport?: "rest" | "nhost";
   domainClient?: YurbrainDomainClient;
 };
-
-function renderQuery(query: Record<string, string | undefined>): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(query)) {
-    if (!value) continue;
-    params.set(key, value);
-  }
-  const rendered = params.toString();
-  return rendered ? `?${rendered}` : "";
-}
 
 function createDomainBackedClient(domainClient: YurbrainDomainClient): YurbrainClient {
   return {
@@ -153,13 +142,7 @@ function createDomainBackedClient(domainClient: YurbrainDomainClient): YurbrainC
     queryBrainItemThread: (payload) => domainClient.queryBrainItemThread(payload),
     getFounderReview: (query = {}) => domainClient.getFounderReview(query),
     getFounderDiagnostics: (query = {}) =>
-      apiClient(
-        `/functions/founder-review/diagnostics${renderQuery({
-          window: query.window ?? "7d",
-          userId: query.userId,
-          includeAi: query.includeAi ? "1" : undefined
-        })}`
-      )
+      domainClient.getFounderDiagnostics(query)
   };
 }
 

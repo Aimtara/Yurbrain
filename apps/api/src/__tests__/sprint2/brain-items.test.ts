@@ -8,13 +8,14 @@ test.after(async () => {
 });
 
 test("brain-item CRUD + validation error mapping", async () => {
+  const userId = "11111111-1111-4111-8111-111111111111";
+  const headers = { "x-yurbrain-user-id": userId };
   const invalidCreate = await app.inject({
     method: "POST",
     url: "/brain-items",
+    headers,
     payload: {
-      userId: "not-a-uuid",
       type: "note",
-      title: "Test",
       rawContent: "Body"
     }
   });
@@ -24,8 +25,8 @@ test("brain-item CRUD + validation error mapping", async () => {
   const created = await app.inject({
     method: "POST",
     url: "/brain-items",
+    headers,
     payload: {
-      userId: "11111111-1111-1111-1111-111111111111",
       type: "note",
       title: "Sprint 2",
       rawContent: "Deterministic loop"
@@ -35,13 +36,14 @@ test("brain-item CRUD + validation error mapping", async () => {
   assert.equal(created.statusCode, 201);
   const item = created.json<{ id: string; title: string }>();
 
-  const fetched = await app.inject({ method: "GET", url: `/brain-items/${item.id}` });
+  const fetched = await app.inject({ method: "GET", url: `/brain-items/${item.id}`, headers });
   assert.equal(fetched.statusCode, 200);
   assert.equal(fetched.json<{ title: string }>().title, "Sprint 2");
 
   const updated = await app.inject({
     method: "PATCH",
     url: `/brain-items/${item.id}`,
+    headers,
     payload: { title: "Sprint 2 updated" }
   });
 

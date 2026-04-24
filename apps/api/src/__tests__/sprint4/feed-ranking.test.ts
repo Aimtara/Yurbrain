@@ -9,6 +9,7 @@ test.after(async () => {
 
 test("GET /feed applies lens + limit deterministically", async () => {
   const userId = "11111111-1111-1111-1111-111111111111";
+  const headers = { "x-yurbrain-user-id": userId };
 
   for (const [title, rawContent] of [
     ["Open invoice", "Need to settle invoice this week"],
@@ -18,8 +19,8 @@ test("GET /feed applies lens + limit deterministically", async () => {
     await app.inject({
       method: "POST",
       url: "/brain-items",
+      headers,
       payload: {
-        userId,
         type: "note",
         title,
         rawContent
@@ -27,7 +28,7 @@ test("GET /feed applies lens + limit deterministically", async () => {
     });
   }
 
-  const resp = await app.inject({ method: "GET", url: `/feed?userId=${userId}&limit=2` });
+  const resp = await app.inject({ method: "GET", url: "/feed?limit=2", headers });
   assert.equal(resp.statusCode, 200);
   const body = resp.json<
     Array<{
@@ -45,7 +46,7 @@ test("GET /feed applies lens + limit deterministically", async () => {
   assert.ok(body.every((card) => (card as { relatedCount?: number | null }).relatedCount === null || typeof (card as { relatedCount?: number | null }).relatedCount === "number"));
   assert.ok(body.every((card) => typeof (card as { lastTouched?: string | null }).lastTouched !== "undefined"));
 
-  const respAgain = await app.inject({ method: "GET", url: `/feed?userId=${userId}&limit=2` });
+  const respAgain = await app.inject({ method: "GET", url: "/feed?limit=2", headers });
   assert.equal(respAgain.statusCode, 200);
   const bodyAgain = respAgain.json<Array<{ id: string }>>();
 
@@ -56,11 +57,13 @@ test("GET /feed applies lens + limit deterministically", async () => {
 });
 
 test("GET /feed excludes snoozed cards by default", async () => {
+  const userId = "33333333-3333-3333-3333-333333333333";
+  const headers = { "x-yurbrain-user-id": userId };
   const createResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId: "33333333-3333-3333-3333-333333333333",
       title: "Snooze me",
       body: "This should disappear while snoozed"
     }
@@ -72,13 +75,15 @@ test("GET /feed excludes snoozed cards by default", async () => {
   const snoozeResp = await app.inject({
     method: "POST",
     url: `/feed/${card.id}/snooze`,
+    headers,
     payload: { minutes: 120 }
   });
   assert.equal(snoozeResp.statusCode, 200);
 
   const feedResp = await app.inject({
     method: "GET",
-    url: "/feed?userId=33333333-3333-3333-3333-333333333333"
+    url: "/feed",
+    headers
   });
 
   assert.equal(feedResp.statusCode, 200);
@@ -87,7 +92,8 @@ test("GET /feed excludes snoozed cards by default", async () => {
 
   const includeSnoozedResp = await app.inject({
     method: "GET",
-    url: "/feed?userId=33333333-3333-3333-3333-333333333333&includeSnoozed=true"
+    url: "/feed?includeSnoozed=true",
+    headers
   });
   assert.equal(includeSnoozedResp.statusCode, 200);
   const includeSnoozedCards = includeSnoozedResp.json<Array<{ id: string; postponeCount: number; lastPostponedAt: string | null }>>();
@@ -100,12 +106,13 @@ test("GET /feed excludes snoozed cards by default", async () => {
 
 test("ranking de-prioritizes repeatedly postponed cards when included", async () => {
   const userId = "77777777-7777-4777-8777-777777777777";
+  const headers = { "x-yurbrain-user-id": userId };
 
   const stableResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Stable card",
       body: "Should stay easier to pick than repeatedly postponed card."
     }
@@ -115,9 +122,9 @@ test("ranking de-prioritizes repeatedly postponed cards when included", async ()
 
   const postponedResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Postponed card",
       body: "Will be postponed a few times."
     }
@@ -129,6 +136,7 @@ test("ranking de-prioritizes repeatedly postponed cards when included", async ()
     const snoozeResp = await app.inject({
       method: "POST",
       url: `/feed/${postponedCard.id}/snooze`,
+      headers,
       payload: { minutes: 120 }
     });
     assert.equal(snoozeResp.statusCode, 200);
@@ -136,7 +144,8 @@ test("ranking de-prioritizes repeatedly postponed cards when included", async ()
 
   const feedResp = await app.inject({
     method: "GET",
-    url: `/feed?userId=${userId}&includeSnoozed=true&limit=2`
+    url: "/feed?includeSnoozed=true&limit=2",
+    headers
   });
   assert.equal(feedResp.statusCode, 200);
   const cards = feedResp.json<Array<{ id: string; postponeCount: number }>>();
@@ -148,11 +157,12 @@ test("ranking de-prioritizes repeatedly postponed cards when included", async ()
 
 test("dismissed cards stay hidden and cannot be snoozed", async () => {
   const userId = "44444444-4444-4444-4444-444444444444";
+  const headers = { "x-yurbrain-user-id": userId };
   const createResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Dismiss me",
       body: "Card should not surface after dismissal"
     }
@@ -163,7 +173,8 @@ test("dismissed cards stay hidden and cannot be snoozed", async () => {
 
   const dismissResp = await app.inject({
     method: "POST",
-    url: `/feed/${card.id}/dismiss`
+    url: `/feed/${card.id}/dismiss`,
+    headers
   });
   assert.equal(dismissResp.statusCode, 200);
   assert.equal(dismissResp.json<{ dismissed: boolean }>().dismissed, true);
@@ -171,13 +182,15 @@ test("dismissed cards stay hidden and cannot be snoozed", async () => {
   const snoozeDismissedResp = await app.inject({
     method: "POST",
     url: `/feed/${card.id}/snooze`,
+    headers,
     payload: { minutes: 120 }
   });
   assert.equal(snoozeDismissedResp.statusCode, 409);
 
   const feedResp = await app.inject({
     method: "GET",
-    url: `/feed?userId=${userId}`
+    url: "/feed",
+    headers
   });
   assert.equal(feedResp.statusCode, 200);
   const cards = feedResp.json<Array<{ id: string }>>();
@@ -186,11 +199,12 @@ test("dismissed cards stay hidden and cannot be snoozed", async () => {
 
 test("ranking lowers noisy over-refreshed cards", async () => {
   const userId = "55555555-5555-4555-8555-555555555555";
+  const headers = { "x-yurbrain-user-id": userId };
   const calmResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Calm card",
       body: "Stable signal should remain visible"
     }
@@ -200,9 +214,9 @@ test("ranking lowers noisy over-refreshed cards", async () => {
 
   const noisyResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Noisy card",
       body: "Repeated refreshes should reduce ranking weight"
     }
@@ -213,14 +227,16 @@ test("ranking lowers noisy over-refreshed cards", async () => {
   for (let index = 0; index < 4; index += 1) {
     const refreshResp = await app.inject({
       method: "POST",
-      url: `/feed/${noisyCard.id}/refresh`
+      url: `/feed/${noisyCard.id}/refresh`,
+      headers
     });
     assert.equal(refreshResp.statusCode, 200);
   }
 
   const feedResp = await app.inject({
     method: "GET",
-    url: `/feed?userId=${userId}&limit=2`
+    url: "/feed?limit=2",
+    headers
   });
   assert.equal(feedResp.statusCode, 200);
   const cards = feedResp.json<Array<{ id: string }>>();
@@ -229,11 +245,12 @@ test("ranking lowers noisy over-refreshed cards", async () => {
 
 test("ranking preserves continuity for recently revisited cards without adding noise", async () => {
   const userId = "66666666-6666-4666-8666-666666666666";
+  const headers = { "x-yurbrain-user-id": userId };
   const earlierResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Earlier card",
       body: "Should stay visible when recently revisited"
     }
@@ -243,9 +260,9 @@ test("ranking preserves continuity for recently revisited cards without adding n
 
   const laterResp = await app.inject({
     method: "POST",
-    url: "/ai/feed/generate-card",
+    url: "/functions/feed/generate-card",
+    headers,
     payload: {
-      userId,
       title: "Later card",
       body: "New but not revisited yet"
     }
@@ -255,13 +272,15 @@ test("ranking preserves continuity for recently revisited cards without adding n
 
   const refreshResp = await app.inject({
     method: "POST",
-    url: `/feed/${earlierCard.id}/refresh`
+    url: `/feed/${earlierCard.id}/refresh`,
+    headers
   });
   assert.equal(refreshResp.statusCode, 200);
 
   const feedResp = await app.inject({
     method: "GET",
-    url: `/feed?userId=${userId}&limit=2`
+    url: "/feed?limit=2",
+    headers
   });
   assert.equal(feedResp.statusCode, 200);
   const cards = feedResp.json<Array<{ id: string; whyShown: { reasons: string[] } }>>();

@@ -1,9 +1,15 @@
-import type { FounderReviewActionModel, FounderReviewModel } from "./types";
+import type {
+  FounderReviewActionModel,
+  FounderReviewDiagnosticsModel,
+  FounderReviewModel
+} from "./types";
 
 type FounderReviewSurfaceProps = {
   review: FounderReviewModel | null;
+  diagnostics: FounderReviewDiagnosticsModel | null;
   loading: boolean;
   loadingAiReadout?: boolean;
+  loadingDiagnostics?: boolean;
   error: string;
   onRefresh: () => void;
   onRefreshWithAiReadout?: () => void;
@@ -19,8 +25,10 @@ function scoreColor(score: number): string {
 
 export function FounderReviewSurface({
   review,
+  diagnostics,
   loading,
   loadingAiReadout = false,
+  loadingDiagnostics = false,
   error,
   onRefresh,
   onRefreshWithAiReadout,
@@ -83,6 +91,42 @@ export function FounderReviewSurface({
           </p>
         </div>
       ) : null}
+
+      <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "12px" }}>
+        <h3 style={{ margin: 0, fontSize: "18px", lineHeight: "24px" }}>Diagnostics (actionable)</h3>
+        {loadingDiagnostics ? <p style={{ margin: 0, color: "#475569" }}>Loading diagnostics...</p> : null}
+        {diagnostics ? (
+          <>
+            <p style={{ margin: 0, color: "#475569" }}>
+              Items: {diagnostics.summary.itemCount} · Tasks: {diagnostics.summary.taskCount} · Sessions: {diagnostics.summary.sessionCount}
+            </p>
+            <p style={{ margin: 0, color: "#475569" }}>
+              Blocked: {diagnostics.summary.blockedCount} · Stale: {diagnostics.summary.staleCount} · Continuation gaps:{" "}
+              {diagnostics.summary.continuationGapCount}
+            </p>
+            {diagnostics.focusItems.length > 0 ? (
+              <div style={{ display: "grid", gap: "8px" }}>
+                {diagnostics.focusItems.map((focus) => (
+                  <button key={focus.itemId} type="button" onClick={() => onRunAction(focus.action)} style={{ textAlign: "left" }}>
+                    {focus.title} — {focus.detail}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p style={{ margin: 0, color: "#475569" }}>No urgent item-level focus candidates right now.</p>
+            )}
+            <div style={{ display: "grid", gap: "8px" }}>
+              {diagnostics.focusActions.map((action) => (
+                <button key={action.id} type="button" onClick={() => onRunAction(action)} style={{ textAlign: "left" }}>
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p style={{ margin: 0, color: "#475569" }}>Diagnostics unavailable.</p>
+        )}
+      </div>
 
       <div style={{ borderRadius: "20px", border: "1px solid #e2e8f0", background: "#ffffff", padding: "16px", display: "grid", gap: "12px" }}>
         <h3 style={{ margin: 0, fontSize: "18px", lineHeight: "24px" }}>Overall score strip</h3>

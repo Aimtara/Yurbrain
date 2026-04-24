@@ -1,5 +1,8 @@
 import type { DbRepository } from "@yurbrain/db";
 import { synthesizeFromItems } from "../ai/synthesis";
+import { buildSummarizeProgressWithLlm, type SummarizeProgressResult } from "./summarize-progress-llm";
+import { buildWhatShouldIDoNextWithLlm, type WhatShouldIDoNextResult } from "./what-should-i-do-next-llm";
+import type { FastifyBaseLogger } from "fastify";
 
 export type SynthesisMode = "cluster_summary" | "next_step";
 
@@ -18,14 +21,24 @@ export async function runSynthesisLogic(
 
 export async function buildSummarizeProgress(
   repo: DbRepository,
-  itemIds: string[]
-) {
-  return runSynthesisLogic(repo, itemIds, "cluster_summary");
+  itemIds: string[],
+  options: {
+    log?: FastifyBaseLogger;
+    correlationId?: string;
+    timeoutMs?: number;
+  } = {}
+): Promise<SummarizeProgressResult> {
+  return buildSummarizeProgressWithLlm(repo, itemIds, options);
 }
 
 export async function buildWhatShouldIDoNext(
   repo: DbRepository,
-  itemIds: string[]
-) {
-  return runSynthesisLogic(repo, itemIds, "next_step");
+  itemIds: string[],
+  options: {
+    log?: FastifyBaseLogger;
+    correlationId?: string;
+    timeoutMs?: number;
+  } = {}
+): Promise<WhatShouldIDoNextResult> {
+  return buildWhatShouldIDoNextWithLlm(repo, itemIds, options);
 }

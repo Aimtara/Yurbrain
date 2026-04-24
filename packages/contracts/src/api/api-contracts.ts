@@ -118,7 +118,12 @@ export const UpdateBrainItemRequestSchema = z
 
 export const CreateThreadRequestSchema = ItemThreadSchema.pick({ targetItemId: true, kind: true });
 export const CreateMessageRequestSchema = ThreadMessageSchema.pick({ threadId: true, role: true, content: true });
-export const GenerateFeedCardRequestSchema = FeedCardSchema.pick({ userId: true, title: true, body: true }).partial({ title: true, body: true });
+export const GenerateFeedCardRequestSchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    body: z.string().min(1).optional()
+  })
+  .strict();
 export const ManualConvertTaskRequestSchema = z
   .object({
     userId: z.string().uuid().optional(),
@@ -169,7 +174,7 @@ export const AiConvertRequestSchema = z
 export const AuthMeResponseSchema = z
   .object({
     id: z.string().uuid(),
-    source: z.enum(["header", "authorization", "legacy_query", "legacy_params", "legacy_body", "test_fallback"])
+    source: z.enum(["header", "authorization"])
   })
   .strict();
 
@@ -256,7 +261,12 @@ export const AiSynthesisResponseSchema = z
     summary: z.string().min(1).max(1_200),
     repeatedIdeas: z.array(z.string().min(1).max(180)).max(5).optional(),
     suggestedNextAction: z.string().min(1).max(240),
-    reason: z.string().min(1).max(240)
+    reason: z.string().min(1).max(240),
+    confidence: z.number().min(0).max(1).optional(),
+    blockers: z.array(z.string().min(1).max(140)).max(3).optional(),
+    sourceSignals: z.array(z.string().min(1).max(160)).max(4).optional(),
+    usedFallback: z.boolean().optional(),
+    fallbackReason: z.enum(["not_configured", "timeout", "provider_error", "parse_failed"]).optional()
   })
   .strict();
 

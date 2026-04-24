@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "main": "src/index.ts",
+  "scripts": {
+    "dev": "echo \"@yurbrain/nhost is a library package (no runtime dev server)\"",
+    "start": "echo \"@yurbrain/nhost is consumed by app packages\""
+  },
   "dependencies": {
     "@nhost/nhost-js": "^4.7.0"
   }

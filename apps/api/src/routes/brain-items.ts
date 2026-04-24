@@ -14,6 +14,7 @@ import {
 } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
 import { detectRelatedItems } from "../services/capture/related-items";
+import { buildBrainItemCreatedEventPayload, buildBrainItemUpdatedEventPayload } from "../services/events/policy";
 import { generateCardFromItem } from "../services/feed/generate-card";
 import type { AppState } from "../state";
 
@@ -53,7 +54,12 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
       id: randomUUID(),
       userId: item.userId,
       eventType: EventTypeSchema.parse("brain_item_created"),
-      payload: { id: item.id, type: item.type },
+      payload: buildBrainItemCreatedEventPayload({
+        id: item.id,
+        type: item.type,
+        contentType: item.contentType,
+        topicGuess: item.topicGuess
+      }),
       occurredAt: now
     });
 
@@ -94,7 +100,15 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
     }
     const query = ListItemArtifactsQuerySchema.parse(request.query ?? {});
     const artifacts = await state.repo.listArtifactsByItem(id, query.type ? { type: query.type } : undefined);
-    return reply.send(ItemArtifactListResponseSchema.parse(artifacts));
+    const response = artifacts.map((artifact) => ({
+      id: artifact.id,
+      itemId: artifact.itemId,
+      type: artifact.type,
+      payload: artifact.payload,
+      confidence: artifact.confidence,
+      createdAt: artifact.createdAt
+    }));
+    return reply.send(ItemArtifactListResponseSchema.parse(response));
   });
 
   app.get("/brain-items/:id/related", async (request, reply) => {
@@ -150,7 +164,10 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
       id: randomUUID(),
       userId: updated.userId,
       eventType: EventTypeSchema.parse("brain_item_updated"),
-      payload: { id: updated.id, changed: Object.keys(updates) },
+      payload: buildBrainItemUpdatedEventPayload({
+        id: updated.id,
+        changed: Object.keys(updates)
+      }),
       occurredAt: updated.updatedAt
     });
 

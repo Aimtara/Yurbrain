@@ -12,6 +12,7 @@
     "@nhost/nhost-js": "^4.7.0",
     "@nhost/react": "^3.11.2",
     "@yurbrain/client": "workspace:*",
+    "@yurbrain/nhost": "workspace:*",
     "@yurbrain/ui": "workspace:*",
     "next": "15.3.0",
     "react": "19.0.0",

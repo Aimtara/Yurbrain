@@ -221,27 +221,8 @@ export function useItemDetailController({
         setItemActionNotice("Asked Yurbrain in-context.");
       } catch {
         setChatError("Could not reach AI query. Retry your last question.");
-        setChatFallbackNotice("AI query unavailable; using local echo fallback.");
-        const fallbackEntries: MessageDto[] = [
-          { id: `local-user-${Date.now()}`, threadId: chatThreadId, role: "user", content: question, createdAt: new Date().toISOString() },
-          {
-            id: `local-assistant-${Date.now()}`,
-            threadId: chatThreadId,
-            role: "assistant",
-            content: `Recommendation: ${derivedItemContinuity.nextStep ?? "Open this item and continue it now."} Reason: ${
-              derivedItemContinuity.blockedState
-                ? `It is currently blocked (${derivedItemContinuity.blockedState}).`
-                : "It is the clearest active continuity loop."
-            } Next move: ${derivedItemContinuity.nextStep ?? "Write one continuation note, then return to feed."}`,
-            createdAt: new Date().toISOString()
-          }
-        ];
-        setChatMessages((current) => [
-          ...current,
-          ...fallbackEntries
-        ]);
-        setCommentMessages((current) => [...current, ...fallbackEntries]);
-        setItemActionNotice("Used local ask fallback.");
+        setChatFallbackNotice("");
+        setItemActionNotice("");
       }
     },
     [

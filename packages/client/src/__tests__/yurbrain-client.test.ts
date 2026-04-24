@@ -44,19 +44,18 @@ test("yurbrain client uses founder mode and lens helpers", async () => {
   assert.equal(secondBody.defaultLens, "in_progress");
 });
 
-test("yurbrain client maps founder diagnostics to function endpoint", async () => {
+test("yurbrain client maps founder diagnostics through domain function endpoint", async () => {
   const calls = installFetch(() => new Response("{}", { status: 200 }));
   const client = createYurbrainClient();
 
   await client.getFounderDiagnostics({
     window: "7d",
-    userId: "11111111-1111-1111-1111-111111111111",
     includeAi: true
   });
 
   assert.equal(
     calls[0]?.url,
-    "/functions/founder-review/diagnostics?window=7d&userId=11111111-1111-1111-1111-111111111111&includeAi=1"
+    "/functions/founder-review/diagnostics?window=7d&includeAi=1"
   );
 });
 

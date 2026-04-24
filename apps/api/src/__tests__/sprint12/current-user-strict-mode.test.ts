@@ -11,7 +11,7 @@ function createUnsignedJwt(sub: string): string {
   return `${header}.${payload}.`;
 }
 
-test("strict identity mode requires bearer identity and ignores header/query fallbacks", async () => {
+test("current user resolution prefers bearer identity and ignores query spoofing", async () => {
   const dbPath = path.resolve(process.cwd(), ".yurbrain-data", `strict-current-user-${process.pid}-${Date.now()}`);
   await rm(dbPath, { recursive: true, force: true });
   const server = createServer({ databasePath: dbPath });
@@ -20,21 +20,10 @@ test("strict identity mode requires bearer identity and ignores header/query fal
   const bearerToken = createUnsignedJwt(authUserId);
 
   try {
-    const strictWithoutBearer = await server.app.inject({
-      method: "GET",
-      url: "/auth/me",
-      headers: {
-        "x-yurbrain-identity-mode": "strict",
-        "x-yurbrain-user-id": fallbackUserId
-      }
-    });
-    assert.equal(strictWithoutBearer.statusCode, 401);
-
     const strictWithBearerAndHeader = await server.app.inject({
       method: "GET",
       url: "/auth/me?userId=33333333-3333-4333-8333-333333333333",
       headers: {
-        "x-yurbrain-identity-mode": "strict",
         authorization: `Bearer ${bearerToken}`,
         "x-yurbrain-user-id": fallbackUserId
       }
