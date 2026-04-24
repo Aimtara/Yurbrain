@@ -73,11 +73,12 @@ export function createServer(options: ServerOptions = {}) {
       });
     }
 
+    const errorName = error instanceof Error ? error.name : "UnknownError";
     app.log.error(
       {
         event: "unhandled_error",
         requestId: request.id,
-        errorName: error.name
+        errorName
       },
       "unhandled_error"
     );
