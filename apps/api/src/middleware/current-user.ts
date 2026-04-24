@@ -187,7 +187,7 @@ async function verifyBearerTokenAndResolveUserId(token: string, log?: FastifyBas
     const issuers = buildNhostIssuers();
     const audience = buildNhostAudience();
     const jwksUrl = buildNhostJwksUrl();
-    if (issuers.length === 0 || audience.length === 0 || !jwksUrl) {
+    if (issuers.length === 0 || !jwksUrl) {
       log?.error?.(
         {
           issuersConfigured: issuers.length > 0,
@@ -199,11 +199,19 @@ async function verifyBearerTokenAndResolveUserId(token: string, log?: FastifyBas
       return null;
     }
 
-    const { payload } = await jwtVerify(token, getJwksResolver(jwksUrl), {
+    const verificationOptions: {
+      issuer: string[];
+      audience?: string[];
+      algorithms: string[];
+    } = {
       issuer: issuers,
-      audience,
       algorithms: [...PRODUCTION_JWT_ALGORITHMS]
-    });
+    };
+    if (audience.length > 0) {
+      verificationOptions.audience = audience;
+    }
+
+    const { payload } = await jwtVerify(token, getJwksResolver(jwksUrl), verificationOptions);
     return resolveVerifiedJwtUserId(payload);
   } catch (error) {
     log?.info?.(

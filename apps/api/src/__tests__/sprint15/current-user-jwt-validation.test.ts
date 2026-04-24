@@ -234,3 +234,43 @@ test("x-yurbrain-user-id header is rejected when strict auth fallback is disable
     await rm(dbPath, { recursive: true, force: true });
   }
 });
+
+test("x-yurbrain-user-id header is always rejected in production mode", async () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  const previousTestMode = process.env.YURBRAIN_TEST_MODE;
+  const previousHeaderOverride = process.env.YURBRAIN_ALLOW_TEST_USER_HEADER;
+  process.env.NODE_ENV = "production";
+  delete process.env.YURBRAIN_TEST_MODE;
+  process.env.YURBRAIN_ALLOW_TEST_USER_HEADER = "1";
+  const dbPath = createDbPath("jwt-auth-header-production");
+  await rm(dbPath, { recursive: true, force: true });
+  const server = createServer({ databasePath: dbPath });
+  const userId = "98989898-9898-4898-8898-989898989898";
+
+  try {
+    const response = await server.app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { "x-yurbrain-user-id": userId }
+    });
+    assert.equal(response.statusCode, 401);
+  } finally {
+    if (previousNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previousNodeEnv;
+    }
+    if (previousTestMode === undefined) {
+      delete process.env.YURBRAIN_TEST_MODE;
+    } else {
+      process.env.YURBRAIN_TEST_MODE = previousTestMode;
+    }
+    if (previousHeaderOverride === undefined) {
+      delete process.env.YURBRAIN_ALLOW_TEST_USER_HEADER;
+    } else {
+      process.env.YURBRAIN_ALLOW_TEST_USER_HEADER = previousHeaderOverride;
+    }
+    await server.app.close();
+    await rm(dbPath, { recursive: true, force: true });
+  }
+});
