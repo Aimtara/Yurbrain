@@ -1,9 +1,12 @@
 import {
   createServerNhostClientFromEnv,
-  executeServerGraphqlWithAdminSecret,
   resolveServerNhostAdminHeaders,
   resolveServerNhostConfig
 } from "@yurbrain/nhost";
+import {
+  queryNhostAdminGraphql,
+  type QueryNhostOptions
+} from "./graphql";
 
 let cachedServerNhostClient: ReturnType<typeof createServerNhostClientFromEnv> | null = null;
 
@@ -25,4 +28,10 @@ export function assertServerNhostAdminConfig() {
   return config;
 }
 
-export { executeServerGraphqlWithAdminSecret };
+export function executeServerGraphqlWithAdminSecret<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
+  options: QueryNhostOptions = {}
+) {
+  return queryNhostAdminGraphql<T>(query, variables, undefined, options);
+}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@nhost/nhost-js";
+import { toUserSafeNhostAuthMessage } from "@yurbrain/nhost";
 import { useMobileNhostClient } from "./provider";
 import { resolveMobileNhostAuthConfig } from "./auth-config";
 import { hydrateMobileNhostSessionStorage } from "./storage";
@@ -31,10 +32,7 @@ export type MobileNhostAuth = AuthState &
   };
 
 function toErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message;
-  }
-  return fallback;
+  return toUserSafeNhostAuthMessage(error, fallback);
 }
 
 function assertFetchSuccess(
@@ -108,11 +106,11 @@ export function useNhostAuth(): MobileNhostAuth {
             redirectTo: emailVerificationRedirectTo
           }
         });
-        assertFetchSuccess(result, "Failed to sign up.");
+        assertFetchSuccess(result, "Unable to create account right now.");
         setSession(nhost.getUserSession());
         return { success: true };
       }).catch((authError) => {
-        const message = toErrorMessage(authError, "Failed to sign up.");
+        const message = toErrorMessage(authError, "Unable to create account right now.");
         setError(message);
         return { success: false };
       }),
@@ -129,11 +127,11 @@ export function useNhostAuth(): MobileNhostAuth {
           email,
           password
         });
-        assertFetchSuccess(result, "Failed to sign in.");
+        assertFetchSuccess(result, "Unable to sign in right now.");
         setSession(nhost.getUserSession());
         return { success: true };
       }).catch((authError) => {
-        const message = toErrorMessage(authError, "Failed to sign in.");
+        const message = toErrorMessage(authError, "Unable to sign in right now.");
         setError(message);
         return { success: false };
       }),
@@ -151,11 +149,11 @@ export function useNhostAuth(): MobileNhostAuth {
           refreshToken: current?.refreshToken,
           all: false
         });
-        assertFetchSuccess(result, "Failed to sign out.");
+        assertFetchSuccess(result, "Unable to sign out right now.");
         nhost.clearSession();
         setSession(null);
       }).catch((authError) => {
-        setError(toErrorMessage(authError, "Failed to sign out."));
+        setError(toErrorMessage(authError, "Unable to sign out right now."));
       }),
     [nhost, withLoading]
   );
@@ -169,7 +167,7 @@ export function useNhostAuth(): MobileNhostAuth {
         await nhost.refreshSession(0);
         setSession(nhost.getUserSession());
       }).catch((authError) => {
-        setError(toErrorMessage(authError, "Failed to refresh session."));
+        setError(toErrorMessage(authError, "Unable to refresh session right now."));
       }),
     [nhost, withLoading]
   );
@@ -183,7 +181,7 @@ export function useNhostAuth(): MobileNhostAuth {
         const { emailVerificationRedirectTo } = resolveMobileNhostAuthConfig();
         const targetEmail = email ?? nhost.getUserSession()?.user?.email;
         if (!targetEmail) {
-          throw new Error("An email is required to send verification.");
+          throw new Error("Email is required.");
         }
         const result = await nhost.auth.sendVerificationEmail({
           email: targetEmail,
@@ -191,10 +189,10 @@ export function useNhostAuth(): MobileNhostAuth {
             redirectTo: emailVerificationRedirectTo
           }
         });
-        assertFetchSuccess(result, "Failed to send verification email.");
+        assertFetchSuccess(result, "Unable to send verification email right now.");
       }).catch((authError) => {
         setError(
-          toErrorMessage(authError, "Failed to send verification email.")
+          toErrorMessage(authError, "Unable to send verification email right now.")
         );
       }),
     [nhost, withLoading]
@@ -213,9 +211,9 @@ export function useNhostAuth(): MobileNhostAuth {
             redirectTo: passwordResetRedirectTo
           }
         });
-        assertFetchSuccess(result, "Failed to request password reset.");
+        assertFetchSuccess(result, "Unable to request password reset right now.");
       }).catch((authError) => {
-        setError(toErrorMessage(authError, "Failed to request password reset."));
+        setError(toErrorMessage(authError, "Unable to request password reset right now."));
       }),
     [nhost, withLoading]
   );

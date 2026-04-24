@@ -1,5 +1,6 @@
 import { createClient, type NhostClient } from "@nhost/nhost-js";
 import type { SessionStorageBackend } from "@nhost/nhost-js/session";
+import { createNhostRequestError } from "./errors";
 
 declare const process:
   | {
@@ -335,29 +336,68 @@ export async function executeServerGraphqlWithAdminSecret<T>(
   customEnv: EnvRecord = getProcessEnv()
 ): Promise<T> {
   const config = resolveServerNhostConfig(customEnv);
+  const operation = "executeServerGraphqlWithAdminSecret";
   if (!config.graphqlUrl) {
-    throw new Error("[nhost] Missing GraphQL URL for server admin request. Set NHOST_GRAPHQL_URL or NHOST_BACKEND_URL.");
+    throw createNhostRequestError({
+      code: "NHOST_CONFIG_ERROR",
+      message:
+        "[nhost] Missing GraphQL URL for server admin request. Set NHOST_GRAPHQL_URL or NHOST_BACKEND_URL.",
+      operation,
+      retryable: false,
+      userMessage: "Server configuration is incomplete for this request."
+    });
   }
 
-  const response = await fetch(config.graphqlUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...resolveServerNhostAdminHeaders(customEnv)
-    },
-    body: JSON.stringify({ query, variables })
-  });
+  let response: Response;
+  try {
+    response = await fetch(config.graphqlUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...resolveServerNhostAdminHeaders(customEnv)
+      },
+      body: JSON.stringify({ query, variables })
+    });
+  } catch (caught) {
+    throw createNhostRequestError({
+      code: "NHOST_NETWORK_ERROR",
+      message:
+        caught instanceof Error && caught.message
+          ? caught.message
+          : "[nhost] Network error while executing server GraphQL request",
+      operation,
+      retryable: true,
+      userMessage: "Network issue while contacting the backend service."
+    });
+  }
 
   if (!response.ok) {
-    throw new Error(`[nhost] GraphQL request failed with status ${response.status}`);
+    throw createNhostRequestError({
+      code: "NHOST_HTTP_ERROR",
+      message: `[nhost] GraphQL request failed with status ${response.status}`,
+      statusCode: response.status,
+      operation
+    });
   }
 
   const parsed = (await response.json()) as { data?: T; errors?: Array<{ message?: string }> };
   if (Array.isArray(parsed.errors) && parsed.errors.length > 0) {
-    throw new Error(parsed.errors[0]?.message || "[nhost] GraphQL request returned errors");
+    throw createNhostRequestError({
+      code: "NHOST_GRAPHQL_ERROR",
+      message: parsed.errors[0]?.message || "[nhost] GraphQL request returned errors",
+      operation,
+      retryable: false,
+      userMessage: "Unable to complete this request right now."
+    });
   }
   if (parsed.data === undefined) {
-    throw new Error("[nhost] GraphQL request returned no data");
+    throw createNhostRequestError({
+      code: "NHOST_GRAPHQL_ERROR",
+      message: "[nhost] GraphQL request returned no data",
+      operation,
+      retryable: false,
+      userMessage: "Unable to complete this request right now."
+    });
   }
   return parsed.data;
 }

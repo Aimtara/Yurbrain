@@ -200,6 +200,7 @@ Secret rotation:
 
 - Local workflow: `docs/dev/nhost-local-setup.md`
 - Auth behavior + redirect semantics: `docs/nhost/auth.md`
+- Observability and safe error handling: `docs/nhost/observability.md`
 - Storage hardening: `docs/nhost/storage.md`
 - Permissions model: `docs/nhost/permissions.md`
 - Production safety checks and CI gate: `docs/nhost/production-safety-checks.md`

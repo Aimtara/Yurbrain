@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toUserSafeNhostAuthMessage } from "@yurbrain/nhost";
 import { useWebNhostClient } from "./provider";
 import { getWebAuthRedirectConfig } from "./auth-config";
 
@@ -14,16 +15,7 @@ type SessionLike = {
 } | null;
 
 function toErrorMessage(caught: unknown, fallback: string): string {
-  if (caught instanceof Error && caught.message.trim().length > 0) {
-    return caught.message;
-  }
-  if (typeof caught === "object" && caught && "body" in caught) {
-    const body = (caught as { body?: { message?: unknown } }).body;
-    if (body && typeof body.message === "string" && body.message.trim().length > 0) {
-      return body.message;
-    }
-  }
-  return fallback;
+  return toUserSafeNhostAuthMessage(caught, fallback);
 }
 
 export function useNhostAuth() {
@@ -100,7 +92,7 @@ export function useNhostAuth() {
           });
           syncSessionState();
           return result;
-        }, "Failed to sign up."),
+        }, "Unable to create account right now."),
       signIn: (email: string, password: string) =>
         withErrorHandling(async () => {
           if (!nhost) throw new Error("Nhost client is not initialized");
@@ -110,7 +102,7 @@ export function useNhostAuth() {
           });
           syncSessionState();
           return result;
-        }, "Failed to sign in."),
+        }, "Unable to sign in right now."),
       signOut: () =>
         withErrorHandling(async () => {
           if (!nhost) throw new Error("Nhost client is not initialized");
@@ -118,7 +110,7 @@ export function useNhostAuth() {
           nhost.clearSession();
           syncSessionState();
           return result;
-        }, "Failed to sign out."),
+        }, "Unable to sign out right now."),
       requestPasswordReset: (email: string) =>
         withErrorHandling(async () => {
           if (!nhost) throw new Error("Nhost client is not initialized");
@@ -129,14 +121,14 @@ export function useNhostAuth() {
               redirectTo: config.passwordResetRedirectTo
             }
           });
-        }, "Failed to request password reset."),
+        }, "Unable to request password reset right now."),
       sendVerificationEmail: (email?: string) =>
         withErrorHandling(async () => {
           if (!nhost) throw new Error("Nhost client is not initialized");
           const config = getWebAuthRedirectConfig();
           const targetEmail = email ?? nhost.getUserSession()?.user?.email;
           if (!targetEmail) {
-            throw new Error("An email is required to send verification.");
+            throw new Error("Email is required.");
           }
           return nhost.auth.sendVerificationEmail({
             email: targetEmail,
@@ -144,14 +136,14 @@ export function useNhostAuth() {
               redirectTo: config.emailVerificationRedirectTo
             }
           });
-        }, "Failed to send verification email."),
+        }, "Unable to send verification email right now."),
       refreshSession: () =>
         withErrorHandling(async () => {
           if (!nhost) throw new Error("Nhost client is not initialized");
           const refreshed = await nhost.refreshSession(0);
           syncSessionState();
           return refreshed;
-        }, "Failed to refresh session.")
+        }, "Unable to refresh session right now.")
     }),
     [nhost, loading, error, isAuthenticated, isEmailVerified, session, syncSessionState]
   );
