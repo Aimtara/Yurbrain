@@ -12,23 +12,40 @@ const SESSION_STORAGE_KEY = "nhostSession";
 
 let cachedSession: SessionValue | null = null;
 let initialized = false;
+let hydrationPromise: Promise<void> | null = null;
 
-async function hydrateSessionFromStorage() {
-  if (initialized) return;
-  initialized = true;
-  try {
-    const raw = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) {
-      cachedSession = null;
-      return;
-    }
-    cachedSession = JSON.parse(raw) as SessionValue;
-  } catch {
-    cachedSession = null;
+export async function hydrateMobileNhostSessionStorage() {
+  if (hydrationPromise) {
+    await hydrationPromise;
+    return;
   }
+  hydrationPromise = (async () => {
+    if (initialized) return;
+    initialized = true;
+    try {
+      const raw = await AsyncStorage.getItem(SESSION_STORAGE_KEY);
+      if (!raw) {
+        cachedSession = null;
+        return;
+      }
+      cachedSession = JSON.parse(raw) as SessionValue;
+    } catch {
+      cachedSession = null;
+    }
+  })();
+  await hydrationPromise;
 }
 
-void hydrateSessionFromStorage();
+export async function ensureMobileNhostSessionHydrated() {
+  await hydrateMobileNhostSessionStorage();
+}
+
+export function getMobileNhostHydrationState(): "loading" | "ready" {
+  if (!initialized) return "loading";
+  return "ready";
+}
+
+void hydrateMobileNhostSessionStorage();
 
 export function createMobileNhostSessionStorage(): SessionStorageBackend {
   return {

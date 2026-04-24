@@ -36,3 +36,58 @@ The implementation here adds a dedicated `@yurbrain/nhost` package and app-local
    - web/mobile only get `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*`
    - api gets `NHOST_ADMIN_SECRET` (and optional server `NHOST_*` URLs)
 4. Rotate any previously exposed admin secret if it was ever placed in client/public env vars.
+
+## Auth hardening notes (web + mobile)
+
+The Nhost client integration now includes minimal production-safe auth flow scaffolding:
+
+- sign up
+- sign in (password)
+- sign out
+- password reset email
+- email verification email (resend)
+- explicit session refresh/restore checks
+- auth loading/error state helpers
+- protected-surface fallback when no valid session exists
+
+### Redirect URL strategy
+
+Do not hardcode per-environment URLs in source code. Use env keys:
+
+- Web:
+  - `NEXT_PUBLIC_NHOST_SIGN_IN_REDIRECT_URL`
+  - `NEXT_PUBLIC_NHOST_SIGN_OUT_REDIRECT_URL`
+  - `NEXT_PUBLIC_NHOST_PASSWORD_RESET_REDIRECT_URL`
+  - `NEXT_PUBLIC_NHOST_EMAIL_VERIFICATION_REDIRECT_URL`
+- Mobile:
+  - `EXPO_PUBLIC_NHOST_SIGN_IN_REDIRECT_URL`
+  - `EXPO_PUBLIC_NHOST_PASSWORD_RESET_REDIRECT_URL`
+  - `EXPO_PUBLIC_NHOST_EMAIL_VERIFICATION_REDIRECT_URL`
+  - `EXPO_PUBLIC_NHOST_MOBILE_DEEP_LINK_BASE_URL`
+
+If unset, runtime origin/deep-link defaults are used as safe local fallbacks.
+
+### Nhost dashboard configuration required
+
+In Nhost Auth settings:
+
+1. Enable email/password provider.
+2. Configure email verification behavior to require verification if desired for production.
+3. Configure password reset email template and URL behavior.
+4. Add allowed redirect URLs for each environment:
+   - local web (`http://localhost:3000`)
+   - local mobile callback/deep-link URI (for example `exp://127.0.0.1:19000` or your app scheme)
+   - staging web/mobile callback URIs
+   - production web/mobile callback URIs
+5. Keep admin credentials server-only; never expose admin secret in web/mobile envs.
+
+### Production redirect URL guidance
+
+Do not hardcode local/staging/prod callback URLs in code.
+Set environment variables per deployment target:
+
+- web: `NEXT_PUBLIC_NHOST_*_REDIRECT_URL`
+- mobile: `EXPO_PUBLIC_NHOST_*_REDIRECT_URL`
+- server docs/ops reference: `NHOST_AUTH_REDIRECT_SIGN_IN_URL`, `NHOST_AUTH_REDIRECT_SIGN_OUT_URL`, `NHOST_AUTH_REDIRECT_PASSWORD_RESET_URL`, `NHOST_AUTH_REDIRECT_EMAIL_VERIFICATION_URL`
+
+These should match the exact values allowed in the Nhost dashboard auth settings.
