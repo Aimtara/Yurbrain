@@ -2,6 +2,7 @@ import { createSecretKey } from "node:crypto";
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
 import { z } from "zod";
+import { sendSafeErrorResponse } from "./observability";
 
 export const CURRENT_USER_HEADER = "x-yurbrain-user-id";
 const BEARER_PREFIX = "bearer ";
@@ -214,14 +215,34 @@ async function verifyBearerTokenAndResolveUserId(token: string, log?: FastifyBas
     const { payload } = await jwtVerify(token, getJwksResolver(jwksUrl), verificationOptions);
     return resolveVerifiedJwtUserId(payload);
   } catch (error) {
+    const classification = classifyJwtValidationFailure(error);
     log?.info?.(
       {
-        err: error
+        event: "jwt_validation_failed",
+        reason: classification.reason,
+        errorName: classification.errorName
       },
       "jwt_validation_failed"
     );
     return null;
   }
+}
+
+function classifyJwtValidationFailure(error: unknown): { reason: string; errorName: string } {
+  if (!(error instanceof Error)) {
+    return { reason: "unknown", errorName: "UnknownError" };
+  }
+  const message = error.message.toLowerCase();
+  const name = error.name || "Error";
+  if (message.includes("expired")) return { reason: "expired_token", errorName: name };
+  if (message.includes("signature")) return { reason: "invalid_signature", errorName: name };
+  if (message.includes("issuer") || message.includes("audience") || message.includes("claim")) {
+    return { reason: "invalid_claims", errorName: name };
+  }
+  if (message.includes("jwks") || message.includes("fetch") || message.includes("network")) {
+    return { reason: "jwks_unreachable", errorName: name };
+  }
+  return { reason: "invalid_token", errorName: name };
 }
 
 async function resolveFromAuthorizationHeader(
@@ -278,10 +299,21 @@ export function requireCurrentUser(request: FastifyRequest, reply: FastifyReply,
   const resolved = resolveCurrentUser(request);
   if (!resolved) {
     const allowHeaderHint = canUseHeaderIdentityFallback();
-    reply.code(401).send({
+    log?.warn?.(
+      {
+        event: "auth_required_missing_identity",
+        correlationId: (request as { correlationId?: string }).correlationId,
+        allowHeaderHint,
+        hasAuthorizationHeader: typeof request.headers.authorization === "string"
+      },
+      "authentication required"
+    );
+    sendSafeErrorResponse(request as FastifyRequest & { correlationId?: string }, reply, {
+      statusCode: 401,
       message: allowHeaderHint
         ? "Current user identity is required. Provide Authorization: Bearer <token> or x-yurbrain-user-id header (test mode only)."
-        : "Current user identity is required. Provide Authorization: Bearer <token>."
+        : "Current user identity is required. Provide Authorization: Bearer <token>.",
+      code: "AUTHENTICATION_REQUIRED"
     });
     return null;
   }

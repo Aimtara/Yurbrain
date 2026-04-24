@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import { ZodError } from "zod";
 import { AuthMeResponseSchema } from "@yurbrain/contracts";
 import { registerCurrentUserResolution, requireCurrentUser } from "./middleware/current-user";
-import { registerObservability, buildErrorEnvelope } from "./middleware/observability";
+import { registerObservability, sendSafeErrorResponse } from "./middleware/observability";
 import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerCaptureRoutes } from "./routes/capture";
 import { registerFunctionRoutes } from "./routes/functions";
@@ -22,7 +22,28 @@ type ServerOptions = {
 export function createServer(options: ServerOptions = {}) {
   const isTestEnvironment = process.env.NODE_ENV === "test";
   const state = createState(options);
-  const app = Fastify({ logger: !isTestEnvironment });
+  const app = Fastify({
+    logger: isTestEnvironment
+      ? false
+      : {
+          redact: {
+            paths: [
+              "req.headers.authorization",
+              "req.headers.cookie",
+              "req.headers.x-hasura-admin-secret",
+              "req.headers.x-api-key",
+              "req.body.password",
+              "req.body.token",
+              "req.body.accessToken",
+              "req.body.refreshToken",
+              "req.body.adminSecret",
+              "req.body.rawContent",
+              "req.body.content"
+            ],
+            censor: "[REDACTED]"
+          }
+        }
+  });
   registerObservability(app);
   registerCurrentUserResolution(app);
 
@@ -41,23 +62,30 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   app.setErrorHandler((error, request, reply) => {
-    const requestIdHeader = (request.headers["x-request-id"] as string | undefined)?.trim() || request.id;
-    reply.header("x-request-id", requestIdHeader);
-
     if (error instanceof ZodError) {
       const issues = error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message }));
-      const envelope = buildErrorEnvelope(request, 400, "Validation failed", issues);
-      return reply.code(400).send({
-        ...envelope,
+      return sendSafeErrorResponse(request, reply, {
+        statusCode: 400,
         message: "Validation failed",
-        requestId: requestIdHeader,
-        issues
+        details: issues,
+        code: "VALIDATION_FAILED",
+        extra: { issues }
       });
     }
 
-    app.log.error({ err: error, requestId: request.id }, "unhandled_error");
-    const envelope = buildErrorEnvelope(request, 500, "Internal server error");
-    return reply.code(500).send({ ...envelope, message: "Internal server error", requestId: requestIdHeader });
+    app.log.error(
+      {
+        event: "unhandled_error",
+        requestId: request.id,
+        errorName: error.name
+      },
+      "unhandled_error"
+    );
+    return sendSafeErrorResponse(request, reply, {
+      statusCode: 500,
+      message: "Internal server error",
+      code: "INTERNAL_SERVER_ERROR"
+    });
   });
 
   registerBrainItemRoutes(app, state);
@@ -80,8 +108,10 @@ export function createServer(options: ServerOptions = {}) {
   });
 
   app.get("/events", async (_request, reply) => {
-    return reply.code(403).send({
-      message: "The /events endpoint is disabled until authentication and per-user event filtering are implemented"
+    return sendSafeErrorResponse(_request, reply, {
+      statusCode: 403,
+      message: "The /events endpoint is disabled until authentication and per-user event filtering are implemented",
+      code: "FEATURE_DISABLED"
     });
   });
 

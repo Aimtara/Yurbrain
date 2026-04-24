@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test, { afterEach, beforeEach } from "node:test";
 import {
+  ApiClientError,
   apiClient,
   configureApiBaseUrl,
   configureAccessToken,
@@ -84,9 +85,42 @@ test("apiClient resolves base URL from globalThis when not explicitly configured
 });
 
 test("apiClient throws informative error on non-OK responses", async () => {
-  installFetch(() => new Response("boom", { status: 500 }));
+  const requestId = "req-api-client-500";
+  const correlationId = "corr-api-client-500";
+  installFetch(
+    () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Internal server error",
+            statusCode: 500,
+            correlationId
+          },
+          message: "Internal server error",
+          requestId
+        }),
+        {
+          status: 500,
+          headers: {
+            "content-type": "application/json",
+            "x-request-id": requestId,
+            "x-correlation-id": correlationId
+          }
+        }
+      )
+  );
 
-  await assert.rejects(() => apiClient<unknown>("/feed"), /Request failed: 500/);
+  await assert.rejects(
+    () => apiClient<unknown>("/feed"),
+    (error: unknown) =>
+      error instanceof ApiClientError &&
+      error.statusCode === 500 &&
+      error.code === "INTERNAL_SERVER_ERROR" &&
+      error.requestId === requestId &&
+      error.correlationId === correlationId &&
+      error.message === "Internal server error"
+  );
 });
 
 test("configureCurrentUserId exposes current user for adapters", () => {

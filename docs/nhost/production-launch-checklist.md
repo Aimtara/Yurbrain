@@ -131,6 +131,8 @@ Use this as the final go/no-go checklist before launching Yurbrain's Nhost-backe
 - [ ] API secret injection is via secure runtime secret manager only.
 - [ ] Secret access is least-privilege and audited.
 - [ ] Raw auth headers/tokens/admin secrets are not logged.
+- [ ] API errors use structured safe envelopes (`message`, `requestId`, `error.code`, `error.correlationId`) without leaking stack/provider internals.
+- [ ] Request completion logs avoid query strings and never log private capture payload bodies.
 - [ ] Emergency secret rotation procedure is documented and tested.
 
 ## 12) CI checks

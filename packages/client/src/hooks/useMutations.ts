@@ -1,5 +1,5 @@
 import { endpoints } from "../api/endpoints";
-import { apiClient } from "../api/client";
+import { apiClient, isApiClientError } from "../api/client";
 import { getCurrentUserId } from "../auth/current-user";
 
 export type NormalizedMutationError = {
@@ -8,9 +8,7 @@ export type NormalizedMutationError = {
 };
 
 function normalizeMutationError(error: unknown): NormalizedMutationError {
-  const message = error instanceof Error ? error.message : "Unknown error";
-  const statusMatch = message.match(/(\d{3})$/);
-  const statusCode = statusMatch ? Number(statusMatch[1]) : undefined;
+  const statusCode = isApiClientError(error) ? error.statusCode : undefined;
 
   if (!statusCode) {
     return { code: "NETWORK", message: "Could not reach server. Check your connection and retry." };
