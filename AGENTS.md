@@ -16,7 +16,7 @@ Yurbrain is a pnpm + Turborepo monorepo (3 apps, 5 shared packages). The only re
 
 - **Lint**: `pnpm lint` — runs `tsc --noEmit` for the API (only `api` has a lint script configured).
 - **Tests**: `pnpm test` — runs all workspace tests (18 tests across 5 packages). Tests use `YURBRAIN_TEST_MODE=1` and each test gets an isolated PGlite instance.
-- **E2E**: `pnpm test:e2e` — runs the full-loop smoke test (capture → feed → query → convert → act). The e2e test passes but exits with code 1 due to PGlite process cleanup — this is a known pre-existing issue, not a test failure.
+- **E2E**: `pnpm test:e2e` — runs the full-loop smoke test (capture → feed → query → convert → act) and should exit cleanly with code 0.
 - **Build**: `pnpm build` — runs Turborepo build across all packages.
 
 ### Gotchas
@@ -24,4 +24,4 @@ Yurbrain is a pnpm + Turborepo monorepo (3 apps, 5 shared packages). The only re
 - The AI provider is a deterministic mock; no real LLM calls are made.
 - The `pnpm dev:api` script (`ts-node-dev`) does not work due to ESM/CJS mismatch with `@yurbrain/db`. Always use `tsx --watch` or `tsx` directly.
 - PGlite stores data at `.yurbrain-data/runtime` (dev) or `.yurbrain-data/test-{pid}` (tests).
-- The `pnpm test:e2e` exit code 1 is caused by PGlite not releasing resources cleanly; the actual test assertions pass.
+- The e2e spec uses strict-style auth headers (`Authorization: Bearer ...` plus `x-yurbrain-auth-mode: strict`) to validate the authenticated core loop path.

@@ -21,6 +21,8 @@ Feed:
 - POST /feed/:id/refresh
 
 Preferences:
+- GET /preferences/me
+- PUT /preferences/me
 - GET /preferences/:userId
 - PUT /preferences/:userId
 
@@ -29,6 +31,8 @@ AI:
 - POST /functions/classify
 - POST /functions/query
 - POST /functions/convert
+- POST /functions/summarize-progress
+- POST /functions/what-should-i-do-next
 - POST /functions/feed/generate-card
 
 Tasks:

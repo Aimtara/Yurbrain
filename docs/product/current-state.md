@@ -1,6 +1,6 @@
 # Yurbrain Current Implementation State
 
-_Last audited: April 16, 2026 (UTC)._
+_Last audited: April 23, 2026 (UTC)._
 
 This document is factual current state after code inspection plus command verification.
 
@@ -28,7 +28,7 @@ Not used for runtime truth:
   - Brain: `POST/GET/PATCH /brain-items`, `GET /brain-items/:id/artifacts`
   - Threads/messages: `POST /threads`, `GET /threads/:id`, `GET /threads/by-target`, `POST /messages`, `GET /threads/:id/messages`
   - Feed: `GET /feed`, `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh`
-  - Preferences: `GET /preferences/:userId`, `PUT /preferences/:userId`
+  - Preferences: `GET /preferences/me`, `PUT /preferences/me` (legacy `/:userId` shape still aliases to current-user scope)
   - Tasks/sessions: `POST/GET/PATCH /tasks`, `GET /tasks`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish`, `GET /sessions`
   - AI: `POST /functions/summarize`, `POST /functions/classify`, `POST /functions/query`, `POST /functions/convert`, `POST /functions/feed/generate-card`
 - Persistence across restart is covered by test (`apps/api/src/__tests__/sprint7/persistence.test.ts`).
@@ -62,7 +62,7 @@ Not used for runtime truth:
 - Web execution now includes an Active Task / Focus Mode surface with a large task hero, live session timer, reliable pause/finish controls, and an in-place source context peek that can reopen the linked item without leaving the execution flow.
 - Feed postpone now uses a dedicated Postpone/Reschedule sheet with one-tap actions (`Later today`, `Tomorrow`, `Suggest a slot`, `Break into smaller step`) plus optional custom datetime; postpone metadata (`postponeCount`, `lastPostponedAt`) is persisted and contributes a mild ranking penalty so repeated postpones can influence resurfacing deterministically.
 - Web now includes a lightweight `Me` surface with supportive reflection blocks: top insight card, estimation accuracy summary, carry-forward pattern, postponement pattern, and recommendation block derived deterministically from existing task/session/feed data.
-- Personalization settings are now persisted and restored through `/preferences/:userId` for render mode (`focus`/`explore`), AI summary mode (`concise`/`balanced`/`detailed`), feed density (`comfortable`/`compact`), and resurfacing intensity (`gentle`/`balanced`/`active`); Focus remains the default while Explore is a saved placeholder preference.
+- Personalization settings are now persisted and restored through `/preferences/me` for render mode (`focus`/`explore`), AI summary mode (`concise`/`balanced`/`detailed`), feed density (`comfortable`/`compact`), and resurfacing intensity (`gentle`/`balanced`/`active`); Focus remains the default while Explore is a saved placeholder preference.
 - Explore Mode contract scaffolding now exists on `FeedCard` as optional `explore` metadata (`clusterId`, `position`, `salience`, `relationships`, and manual grouping fields) so future spatial rendering can ship without reworking current Focus-mode APIs.
 
 ### Feed semantics and contract (real)
@@ -86,7 +86,7 @@ Not used for runtime truth:
 
 ## What is partially implemented
 
-- Web and mobile are still prototype surfaces (hardcoded demo user id, minimal styling, limited UX polish).
+- Web and mobile enforce authenticated bootstrap (`getCurrentUser`) before loading core-loop data; unauthenticated sessions show sign-in-required messaging.
 - Mobile is not the primary full-loop surface; web is the validated end-to-end surface.
 - AI outputs are deterministic runner + fallback behavior (useful for MVP continuity, not production intelligence).
 - Monorepo lint/build coverage is uneven:
