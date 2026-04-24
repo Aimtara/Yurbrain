@@ -314,4 +314,15 @@ Block release if any of the following occur:
 2. Run web auth manual checklist.
 3. Run mobile auth + capture/feed manual checks.
 4. Execute A/B user isolation manual checks.
-5. Fill pass/fail table and declare Go/No-Go.
+5. Copy `docs/qa/alpha-smoke-execution-report-template.md` to `docs/qa/runs/<date>-alpha-smoke-report.md`.
+6. Fill pass/fail table + execution report and declare Go/No-Go.
+
+## Required artifacts for release signoff
+
+Minimum required evidence to close Alpha smoke:
+
+- command output for `pnpm check:alpha-smoke`
+- web auth manual evidence (signup, verification, reset, restore, signout)
+- mobile auth manual evidence (signup, verification, reset, restore, signout)
+- A/B isolation evidence (capture/read/feed/task/session boundaries)
+- final decision record in `docs/qa/runs/<date>-alpha-smoke-report.md`

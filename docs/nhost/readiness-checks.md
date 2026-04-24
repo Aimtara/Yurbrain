@@ -116,3 +116,19 @@ Rationale:
 - no full monorepo exhaustive test sweep in this gate (trade-off for runtime/cost)
 
 Use targeted manual QA + release checklist for UI flows that cannot be validated reliably in headless CI.
+
+## Required manual signoff artifacts (top release blockers)
+
+Command gates alone are not sufficient for Alpha/production launch.
+Record these manual artifacts for each release candidate:
+
+1. Alpha smoke execution report:
+   - `docs/qa/alpha-smoke-execution-report-template.md`
+2. Staging + production smoke signoff:
+   - `docs/nhost/staging-production-smoke-report-template.md`
+3. Backup/restore drill record:
+   - `docs/nhost/backup-restore-drill-runbook.md`
+4. Secret rotation validation record:
+   - `docs/nhost/secret-rotation-validation-runbook.md`
+5. Monitoring/incident readiness record:
+   - `docs/nhost/incident-response-readiness-runbook.md`
