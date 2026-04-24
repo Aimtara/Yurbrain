@@ -13,6 +13,17 @@ type FeedQuery = {
   includeSnoozed?: boolean;
 };
 
+type BrainItemSearchQuery = {
+  q?: string;
+  type?: "note" | "link" | "idea" | "quote" | "file";
+  tag?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  status?: "active" | "archived";
+  processingStatus?: "processed" | "pending";
+  limit?: number;
+};
+
 type ItemThreadKind = "item_comment" | "item_chat";
 
 type TouchBrainItemResult = {
@@ -33,7 +44,7 @@ export type YurbrainClient = {
   snoozeFeedCard: <T>(cardId: string, minutes?: number) => Promise<T>;
   refreshFeedCard: <T>(cardId: string) => Promise<T>;
   createCaptureIntake: <T>(payload: unknown) => Promise<T>;
-  listBrainItems: <T>() => Promise<T>;
+  listBrainItems: <T>(query?: BrainItemSearchQuery) => Promise<T>;
   getBrainItem: <T>(itemId: string) => Promise<T>;
   touchBrainItem: <T = unknown>(itemId: string) => Promise<T>;
   getItemContext: <T>(itemId: string) => Promise<T>;
@@ -87,7 +98,10 @@ function createDomainBackedClient(domainClient: YurbrainDomainClient): YurbrainC
     snoozeFeedCard: (cardId, minutes) => domainClient.snoozeFeedCard(cardId, minutes),
     refreshFeedCard: (cardId) => domainClient.refreshFeedCard(cardId),
     createCaptureIntake: (payload) => domainClient.createCaptureIntake(payload),
-    listBrainItems: () => domainClient.listBrainItems(),
+    listBrainItems: (query = {}) =>
+      query && Object.keys(query).length > 0
+        ? domainClient.searchBrainItems(query)
+        : domainClient.listBrainItems(),
     getBrainItem: (itemId) => domainClient.getBrainItem(itemId),
     touchBrainItem: async (itemId) => {
       const existing = await domainClient.getBrainItem<TouchBrainItemResult>(itemId);

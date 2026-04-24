@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import type { YurbrainClient } from "@yurbrain/client";
+import {
+  isApiClientError,
+  isUnauthorizedApiError,
+  type YurbrainClient
+} from "@yurbrain/client";
 
 import type {
   FounderReviewActionModel,
@@ -27,10 +31,6 @@ export function useFounderReviewController({
   const [actionNotice, setActionNotice] = useState("");
   const [unauthorized, setUnauthorized] = useState(false);
 
-  function isUnauthorizedError(error: unknown): boolean {
-    return error instanceof Error && /Request failed: 401/.test(error.message);
-  }
-
   const loadFounderReview = useCallback(async (includeAiReadout = false) => {
     setLoading(true);
     setLoadingAiReadout(includeAiReadout);
@@ -49,12 +49,16 @@ export function useFounderReviewController({
       setReview(data);
       setDiagnostics(diagnosticsData);
     } catch (error) {
-      if (isUnauthorizedError(error)) {
+      if (isUnauthorizedApiError(error)) {
         setUnauthorized(true);
       }
       setReview(null);
       setDiagnostics(null);
-      setError("Founder Review could not load right now.");
+      if (isApiClientError(error) && error.correlationId) {
+        setError(`Founder Review could not load right now. Reference: ${error.correlationId}`);
+      } else {
+        setError("Founder Review could not load right now.");
+      }
     } finally {
       setLoading(false);
       setLoadingAiReadout(false);

@@ -2,7 +2,7 @@ export type MobileSurface = "feed" | "item" | "session" | "time" | "me";
 export type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
 export type ExecutionLens = "all" | "ready_to_move" | "needs_unblock" | "momentum";
 export type TimeWindowOption = "2h" | "4h" | "6h" | "8h" | "24h" | "custom";
-export type CaptureSubmitIntent = "save" | "save_and_plan" | "save_and_remind";
+export type CaptureSubmitIntent = "save" | "save_and_plan";
 
 export type CaptureDraft = {
   type: "text" | "link" | "image";

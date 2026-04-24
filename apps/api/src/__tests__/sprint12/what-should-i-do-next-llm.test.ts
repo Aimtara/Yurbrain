@@ -87,6 +87,7 @@ function buildMockRepo(overrides: {
     },
     getBrainItemById: async (id) => (id === base.item.id ? base.item : null),
     listBrainItemsByUser: async () => [base.item],
+    searchBrainItemsByUser: async () => [base.item],
     updateBrainItem: async () => null,
     appendEvent: async () => {
       throw new Error("not used");

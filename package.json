@@ -20,7 +20,11 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "build": "turbo build",
+    "check:secret-leaks": "node tooling/scripts/secret-leak-check.mjs",
     "check:nhost-safety": "node tooling/scripts/nhost-production-safety-check.mjs",
+    "check:alpha-smoke": "YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint12/strict-auth-core-loop.test.ts src/__tests__/sprint12/capture-intake.test.ts src/__tests__/sprint12/function-routes.test.ts src/__tests__/sprint3/ai-routes.test.ts src/__tests__/sprint15/brain-items-search.test.ts src/__tests__/sprint15/current-user-jwt-validation.test.ts src/__tests__/sprint14/strict-current-user-enforcement.test.ts && pnpm --filter mobile test",
+    "check:alpha": "pnpm check:secret-leaks && pnpm check:nhost-safety && pnpm typecheck && pnpm lint && pnpm --filter api test && pnpm --filter @yurbrain/client test && pnpm --filter @yurbrain/db test && pnpm --filter mobile test && pnpm --filter web build",
+    "check:production-safety": "pnpm check:secret-leaks && pnpm check:nhost-safety && pnpm typecheck && pnpm lint && pnpm test:nhost-safety && pnpm build:nhost-safety",
     "test:nhost-safety": "pnpm --filter @yurbrain/client test && pnpm --filter mobile test && pnpm --filter @yurbrain/db test && pnpm --filter api exec tsx --test src/__tests__/nhost-admin-graphql.test.ts",
     "build:nhost-safety": "pnpm --filter web build"
   },

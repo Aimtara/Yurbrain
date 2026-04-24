@@ -7,6 +7,10 @@ on:
       - main
       - cursor/**
 
+concurrency:
+  group: nhost-production-safety-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   nhost-safety:
     runs-on: ubuntu-latest
@@ -28,17 +32,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Nhost secret/env safety check
-        run: pnpm check:nhost-safety
-
-      - name: Typecheck (TypeScript safety gate)
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Nhost targeted tests
-        run: pnpm test:nhost-safety
-
-      - name: Nhost targeted build check
-        run: pnpm build:nhost-safety
+      - name: Production safety readiness suite
+        run: pnpm check:production-safety

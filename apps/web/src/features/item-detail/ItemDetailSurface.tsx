@@ -1,9 +1,22 @@
 import { ItemDetailScreen } from "@yurbrain/ui";
 
 import type { BrainItemDto } from "../shared/types";
+import { ItemSearchPanel } from "./ItemSearchPanel";
 
 type ItemDetailSurfaceProps = {
   selectedItem: BrainItemDto | null;
+  items: BrainItemDto[];
+  itemSearchQuery: string;
+  itemSearchTag: string;
+  itemSearchType: "all" | "note" | "link" | "idea" | "quote" | "file";
+  itemSearchStatus: "all" | "active" | "archived";
+  itemSearchProcessingStatus: "all" | "processed" | "pending";
+  itemSearchCreatedFrom: string;
+  itemSearchCreatedTo: string;
+  itemSearchLoading: boolean;
+  itemSearchError: string;
+  semanticSearchNotice: string;
+  emptyStateMessage: string;
   continuity: {
     whyShown?: string;
     whereLeftOff?: string;
@@ -22,6 +35,16 @@ type ItemDetailSurfaceProps = {
   timelineEntries: Array<{ id: string; label: string; role: "user" | "assistant" | "system"; timestamp?: string }>;
   canStartSession: boolean;
   onBackToFeed: () => void;
+  onSearchQueryChange: (value: string) => void;
+  onSearchTagChange: (value: string) => void;
+  onSearchTypeChange: (value: "all" | "note" | "link" | "idea" | "quote" | "file") => void;
+  onSearchStatusChange: (value: "all" | "active" | "archived") => void;
+  onSearchProcessingStatusChange: (value: "all" | "processed" | "pending") => void;
+  onSearchCreatedFromChange: (value: string) => void;
+  onSearchCreatedToChange: (value: string) => void;
+  onSearchApply: () => void;
+  onSearchReset: () => void;
+  onSelectSearchItem: (itemId: string) => void;
   onQuickAction: (action: "summarize_progress" | "next_step" | "classify" | "convert_to_task") => void;
   onAddComment: (itemId: string, comment: string) => void;
   onConvertCommentToTask: (itemId: string, comment: string) => void;
@@ -32,6 +55,18 @@ type ItemDetailSurfaceProps = {
 
 export function ItemDetailSurface({
   selectedItem,
+  items,
+  itemSearchQuery,
+  itemSearchTag,
+  itemSearchType,
+  itemSearchStatus,
+  itemSearchProcessingStatus,
+  itemSearchCreatedFrom,
+  itemSearchCreatedTo,
+  itemSearchLoading,
+  itemSearchError,
+  semanticSearchNotice,
+  emptyStateMessage,
   continuity,
   selectedArtifacts,
   itemContextLoading,
@@ -42,6 +77,16 @@ export function ItemDetailSurface({
   timelineEntries,
   canStartSession,
   onBackToFeed,
+  onSearchQueryChange,
+  onSearchTagChange,
+  onSearchTypeChange,
+  onSearchStatusChange,
+  onSearchProcessingStatusChange,
+  onSearchCreatedFromChange,
+  onSearchCreatedToChange,
+  onSearchApply,
+  onSearchReset,
+  onSelectSearchItem,
   onQuickAction,
   onAddComment,
   onConvertCommentToTask,
@@ -51,6 +96,30 @@ export function ItemDetailSurface({
 }: ItemDetailSurfaceProps) {
   return (
     <section style={{ margin: "24px auto 0", maxWidth: "960px", padding: "0 16px" }}>
+      <ItemSearchPanel
+        items={items}
+        query={itemSearchQuery}
+        tag={itemSearchTag}
+        type={itemSearchType}
+        status={itemSearchStatus}
+        processingStatus={itemSearchProcessingStatus}
+        createdFrom={itemSearchCreatedFrom}
+        createdTo={itemSearchCreatedTo}
+        loading={itemSearchLoading}
+        error={itemSearchError}
+        semanticSearchNotice={semanticSearchNotice}
+        emptyStateMessage={emptyStateMessage}
+        onQueryChange={onSearchQueryChange}
+        onTagChange={onSearchTagChange}
+        onTypeChange={onSearchTypeChange}
+        onStatusChange={onSearchStatusChange}
+        onProcessingStatusChange={onSearchProcessingStatusChange}
+        onCreatedFromChange={onSearchCreatedFromChange}
+        onCreatedToChange={onSearchCreatedToChange}
+        onApply={onSearchApply}
+        onReset={onSearchReset}
+        onSelectItem={onSelectSearchItem}
+      />
       {selectedItem ? (
         <ItemDetailScreen
           item={{ title: selectedItem.title, rawContent: selectedItem.rawContent }}
@@ -98,7 +167,7 @@ export function ItemDetailSurface({
         />
       ) : (
         <div style={{ borderRadius: "20px", border: "1px dashed #cbd5e1", background: "#ffffff", padding: "20px" }}>
-          <p style={{ margin: 0 }}>Pick a feed card to restore continuity.</p>
+          <p style={{ margin: 0 }}>Select an item from search results or feed to restore continuity.</p>
         </div>
       )}
     </section>

@@ -97,10 +97,9 @@ export function toNhostRequestError(
   if (caught instanceof NhostRequestError) {
     return caught;
   }
-  const message = extractErrorMessage(caught) ?? fallback.message;
   return createNhostRequestError({
     code: fallback.code ?? "NHOST_UNKNOWN_ERROR",
-    message,
+    message: fallback.message,
     statusCode: fallback.statusCode,
     operation: fallback.operation,
     retryable: fallback.retryable,

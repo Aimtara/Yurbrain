@@ -10,6 +10,22 @@ This guide defines minimal, production-safe observability for Yurbrain's Nhost i
 
 ## Logging and error handling baseline
 
+### API-safe error envelopes
+
+- API error responses should be emitted through `sendSafeErrorResponse` so clients receive:
+  - top-level `message`
+  - `requestId`
+  - nested `error` object with `code`, `statusCode`, and `correlationId`
+- Validation, auth-required, and route-level function errors use the same envelope pattern.
+- Route handlers must avoid returning raw thrown provider errors directly.
+
+Files:
+
+- `apps/api/src/middleware/observability.ts`
+- `apps/api/src/server.ts`
+- `apps/api/src/middleware/current-user.ts`
+- `apps/api/src/routes/functions.ts`
+
 ### Client auth flows (web/mobile)
 
 - Auth hooks normalize user-facing messages through `toUserSafeNhostAuthMessage` from `@yurbrain/nhost`.
@@ -58,6 +74,11 @@ Use `NhostRequestError` and helpers in `packages/nhost/src/errors.ts`:
 - `toNhostErrorLogContext(...)`: build safe log metadata from errors.
 - `toUserSafeNhostAuthMessage(...)`: map provider/internal errors to user-safe auth text.
 
+Behavior note:
+
+- `toNhostRequestError(...)` intentionally uses the provided fallback message rather than forwarding unknown upstream raw messages.
+- This keeps internal/provider detail in server logs only and avoids surfacing internals to UI clients.
+
 ## Safe GraphQL error handling
 
 `executeServerGraphqlWithAdminSecret` classifies failures into explicit codes:
@@ -73,6 +94,22 @@ Behavior:
 - Network failures are classified as retryable.
 - HTTP failures carry status codes for observability without exposing headers.
 - GraphQL errors are normalized and returned with safe user messages.
+
+### Client-side GraphQL/API sanitization
+
+- Shared REST API client throws `ApiClientError` containing:
+  - `statusCode`
+  - safe `message`
+  - `code`
+  - optional `requestId` and `correlationId` for support/debug flows
+- Shared Hasura GraphQL client throws `HasuraGraphqlClientError` with safe messages and stable error codes.
+- Raw Hasura GraphQL error text (for example permission traces) is intentionally not surfaced to end users.
+
+Files:
+
+- `packages/client/src/api/client.ts`
+- `packages/client/src/graphql/hasura-client.ts`
+- `apps/web/src/features/founder-review/useFounderReviewController.ts`
 
 ## Retry/backoff guidance
 
@@ -111,3 +148,5 @@ When reporting Nhost-related failures to users:
   - passwords
   - raw authorization headers
 - Do not include admin credentials in client runtime errors or UI strings.
+- Do not log URL query strings for request completion logs (avoid accidental token leakage from query params).
+- Do not log full private capture content (`rawContent`, full message bodies, attachment payloads).

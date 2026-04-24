@@ -68,6 +68,18 @@ export type BrainItemDto = {
   updatedAt: string;
 };
 
+export type BrainItemSearchQuery = {
+  q?: string;
+  type?: BrainItemDto["type"];
+  tag?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  status?: BrainItemDto["status"];
+  processingStatus?: "processed" | "pending";
+};
+
+export type BrainItemSearchFilters = BrainItemSearchQuery;
+
 export type ThreadDto = {
   id: string;
   targetItemId: string;

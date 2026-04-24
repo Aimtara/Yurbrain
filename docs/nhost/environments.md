@@ -5,13 +5,56 @@ This document is the canonical environment reference for Nhost + deployment vari
 Use this file as the single source of truth for local, preview, staging, and production.
 App-level `.env.example` files intentionally stay concise and point here to avoid duplication.
 
-## Variable classes
+## Variable classes (strict separation)
 
-- Public web vars: `NEXT_PUBLIC_*` (shipped to browser bundle).
-- Public mobile vars: `EXPO_PUBLIC_*` (bundled into mobile app config).
-- Server-only vars: plain `NHOST_*` / secrets (`NHOST_ADMIN_SECRET`, JWT secrets, API tokens).
+### Server-only variables (API/runtime secret manager only)
 
-Never place server-only vars in `NEXT_PUBLIC_*` or `EXPO_PUBLIC_*`.
+- `NHOST_*` server variables, including:
+  - `NHOST_ADMIN_SECRET`
+  - JWT verification settings (`NHOST_JWKS_URL`, `NHOST_JWT_ISSUER`, `NHOST_JWT_AUDIENCE`)
+  - server GraphQL/storage/functions URLs where needed
+- `API_ALLOWED_ORIGINS` (API CORS allowlist)
+- Operational/test-only API variables (`PORT`, `YURBRAIN_DB_PATH`, `YURBRAIN_TEST_MODE`, etc.)
+
+### Public web variables (browser bundle)
+
+- `NEXT_PUBLIC_NHOST_*`
+
+### Public mobile variables (mobile bundle)
+
+- `EXPO_PUBLIC_NHOST_*`
+
+Never place server-only secrets in `NEXT_PUBLIC_*` or `EXPO_PUBLIC_*`.
+
+## Runtime compatibility and cutover policy (`YURBRAIN_*` -> `NHOST_*`)
+
+Preferred naming:
+
+- `NHOST_*` for server runtime.
+
+Temporary compatibility:
+
+- API and shared Nhost helpers still read legacy aliases such as:
+  - `YURBRAIN_NHOST_BACKEND_URL`
+  - `YURBRAIN_NHOST_AUTH_URL`
+  - `YURBRAIN_NHOST_GRAPHQL_URL`
+  - `YURBRAIN_NHOST_STORAGE_URL`
+  - `YURBRAIN_NHOST_FUNCTIONS_URL`
+  - `YURBRAIN_NHOST_SUBDOMAIN`
+  - `YURBRAIN_NHOST_REGION`
+  - `YURBRAIN_NHOST_ANON_KEY`
+  - `YURBRAIN_NHOST_JWKS_URL`
+  - `YURBRAIN_NHOST_JWT_ISSUER`
+  - `YURBRAIN_NHOST_JWT_AUDIENCE`
+  - `YURBRAIN_NHOST_ADMIN_SECRET`
+  - `YURBRAIN_HASURA_GRAPHQL_URL`
+  - `YURBRAIN_HASURA_ADMIN_SECRET`
+
+Deprecation guidance:
+
+- Keep legacy keys during cutover only.
+- For each environment (local -> preview -> staging -> production), migrate to `NHOST_*` and verify.
+- Once all environments are green on `NHOST_*`, remove legacy aliases from runtime and templates.
 
 ## Shared expectations per environment
 
@@ -56,6 +99,7 @@ Required vars:
   - `NHOST_BACKEND_URL`
   - `NHOST_ANON_KEY`
   - `NHOST_ADMIN_SECRET` (server-only)
+  - `API_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,exp://localhost:8081`
   - Optional explicit service URLs:
     - `NHOST_GRAPHQL_URL`
     - `NHOST_AUTH_URL`
@@ -80,6 +124,14 @@ CORS / domains:
 
 - Allow `http://localhost:3000`, Expo local origin(s), and API dev origin.
 - Keep wildcard CORS disabled in deployed environments; local-only wildcard is acceptable for dev bootstrap.
+- Keep `API_ALLOWED_ORIGINS` aligned with actual local web/mobile origins used in testing.
+
+Nhost dashboard settings:
+
+- Auth -> Redirect URLs: localhost web + mobile deep-link callbacks.
+- Auth -> Allowed domains/origins: localhost web/mobile origins only.
+- Storage buckets present: `avatars`, `capture_assets`, `imports`.
+- Storage bucket limits and MIME rules aligned with `docs/nhost/storage.md`.
 
 Secret rotation:
 
@@ -110,6 +162,12 @@ CORS / domains:
 - Allow only preview web host(s) + required mobile scheme callback hosts.
 - Remove localhost-only origins in shared preview settings.
 
+Nhost dashboard settings:
+
+- Auth redirects must point to preview domains/deep links only.
+- Auth allowed domains must not include production domains by accident.
+- Storage bucket rules should match staging/production baseline.
+
 Secret rotation:
 
 - Rotate preview secrets on schedule and after contributor offboarding.
@@ -135,6 +193,11 @@ CORS / domains:
 
 - Restrict to staging web domain(s), staging mobile callback hosts, and staging API origin.
 - Validate auth redirect allowlist and CORS list together to avoid mismatch.
+
+Nhost dashboard settings:
+
+- Staging redirect/domain allowlists mirror production shape with staging hosts.
+- Storage and table permissions match production policy before go-live.
 
 Secret rotation:
 
@@ -165,6 +228,10 @@ Required vars:
   - `NHOST_BACKEND_URL` or `NHOST_SUBDOMAIN` + `NHOST_REGION`
   - `NHOST_ANON_KEY`
   - `NHOST_ADMIN_SECRET` (server-only)
+  - `NHOST_JWKS_URL`
+  - `NHOST_JWT_ISSUER`
+  - optional `NHOST_JWT_AUDIENCE` (recommended)
+  - `API_ALLOWED_ORIGINS=<comma-separated production origins>`
   - Optional explicit service URLs
   - Optional operational redirect refs:
     - `NHOST_AUTH_REDIRECT_SIGN_IN_URL`
@@ -184,6 +251,13 @@ CORS / domains:
 - Avoid wildcard `*` for authenticated API traffic.
 - Validate API CORS list and Nhost redirect/domain allowlists on each release.
 
+Nhost dashboard settings:
+
+- Auth redirect allowlist exactly matches production web/mobile redirect variables.
+- Auth allowed domains include only production domains.
+- Storage bucket privacy/MIME/size settings match `docs/nhost/storage.md`.
+- Hasura metadata/permissions applied from repository and drift-checked.
+
 Secret rotation:
 
 - Rotate `NHOST_ADMIN_SECRET` and server API tokens on a fixed cadence.
@@ -195,6 +269,41 @@ Secret rotation:
 - Root `.env.example`: shared/cross-app baseline variables and naming guidance.
 - App-level `.env.example`: only app-consumed variables.
 - Detailed per-environment values belong in this matrix document (`docs/nhost/environments.md`).
+
+## Required variable reference by surface
+
+### API (server-only, all environments)
+
+Required baseline:
+
+- `NHOST_BACKEND_URL` OR (`NHOST_SUBDOMAIN` + `NHOST_REGION`)
+- `NHOST_ANON_KEY`
+- `NHOST_ADMIN_SECRET`
+- `NHOST_JWKS_URL`
+- `NHOST_JWT_ISSUER`
+- `API_ALLOWED_ORIGINS`
+
+Recommended:
+
+- `NHOST_JWT_AUDIENCE`
+- explicit `NHOST_GRAPHQL_URL`, `NHOST_AUTH_URL`, `NHOST_STORAGE_URL`, `NHOST_FUNCTIONS_URL`
+
+### Web (public vars)
+
+Required baseline:
+
+- `NEXT_PUBLIC_NHOST_ANON_KEY`
+- `NEXT_PUBLIC_NHOST_BACKEND_URL` OR (`NEXT_PUBLIC_NHOST_SUBDOMAIN` + `NEXT_PUBLIC_NHOST_REGION`)
+- redirect URLs for sign-in/sign-out/password-reset/email-verification
+
+### Mobile (public vars)
+
+Required baseline:
+
+- `EXPO_PUBLIC_NHOST_ANON_KEY`
+- `EXPO_PUBLIC_NHOST_BACKEND_URL` OR (`EXPO_PUBLIC_NHOST_SUBDOMAIN` + `EXPO_PUBLIC_NHOST_REGION`)
+- `EXPO_PUBLIC_NHOST_MOBILE_DEEP_LINK_BASE_URL`
+- redirect URLs for sign-in/sign-out/password-reset/email-verification
 
 ## Related docs
 

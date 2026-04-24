@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { app } from "../../server";
+import { sanitizeUrlForLogging } from "../../middleware/observability";
 
 test.after(async () => {
   await app.close();
@@ -10,9 +11,10 @@ test.after(async () => {
 test("observability injects correlation id and preserves provided header", async () => {
   const userId = "cacacaca-caca-4aca-8aca-cacacacacaca";
   const headers = { "x-yurbrain-user-id": userId };
-  const generated = await app.inject({ method: "GET", url: "/feed", headers });
+  const generated = await app.inject({ method: "GET", url: "/feed?token=secret-token", headers });
   assert.equal(generated.statusCode, 200);
   assert.ok(generated.headers["x-correlation-id"]);
+  assert.equal(sanitizeUrlForLogging("/feed?token=secret-token"), "/feed");
 
   const provided = await app.inject({
     method: "GET",
@@ -43,6 +45,34 @@ test("error envelope includes correlation id and structured error details", asyn
   assert.ok(Array.isArray(body.error.details));
 });
 
+test("auth required returns safe structured envelope", async () => {
+  const response = await app.inject({
+    method: "GET",
+    url: "/feed"
+  });
+
+  assert.equal(response.statusCode, 401);
+  assert.ok(response.headers["x-request-id"]);
+  assert.ok(response.headers["x-correlation-id"]);
+  const body = response.json<{
+    message: string;
+    requestId?: string;
+    error: {
+      code?: string;
+      message: string;
+      statusCode: number;
+      correlationId?: string;
+    };
+  }>();
+  assert.ok(body.message.includes("Current user identity is required."));
+  assert.ok(body.message.includes("Provide Authorization: Bearer <token>"));
+  assert.equal(body.error.code, "AUTHENTICATION_REQUIRED");
+  assert.equal(body.error.statusCode, 401);
+  assert.ok(body.error.correlationId);
+  assert.equal(body.error.message, body.message);
+  assert.equal(body.requestId, response.headers["x-request-id"]);
+});
+
 test("ai query returns deterministic not-found envelope for missing thread", async () => {
   const userId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   const response = await app.inject({
@@ -56,5 +86,16 @@ test("ai query returns deterministic not-found envelope for missing thread", asy
   });
 
   assert.equal(response.statusCode, 404);
-  assert.equal(response.json<{ message: string }>().message, "Thread not found");
+  const body = response.json<{
+    message: string;
+    error: {
+      code?: string;
+      statusCode: number;
+      correlationId?: string;
+    };
+  }>();
+  assert.equal(body.message, "Thread not found");
+  assert.equal(body.error.code, "THREAD_NOT_FOUND");
+  assert.equal(body.error.statusCode, 404);
+  assert.ok(body.error.correlationId);
 });

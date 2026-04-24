@@ -1,5 +1,5 @@
 import { endpoints } from "../api/endpoints";
-import { apiClient } from "../api/client";
+import { apiClient, isApiClientError } from "../api/client";
 import { getCurrentUserId } from "../auth/current-user";
 
 export type NormalizedMutationError = {
@@ -8,9 +8,7 @@ export type NormalizedMutationError = {
 };
 
 function normalizeMutationError(error: unknown): NormalizedMutationError {
-  const message = error instanceof Error ? error.message : "Unknown error";
-  const statusMatch = message.match(/(\d{3})$/);
-  const statusCode = statusMatch ? Number(statusMatch[1]) : undefined;
+  const statusCode = isApiClientError(error) ? error.statusCode : undefined;
 
   if (!statusCode) {
     return { code: "NETWORK", message: "Could not reach server. Check your connection and retry." };
@@ -56,6 +54,35 @@ export async function createBrainItem<T>(payload: unknown) {
 
 export async function createCaptureIntake<T>(payload: unknown) {
   return postJson<T>(endpoints.captureIntake, payload);
+}
+
+type ListBrainItemsSearchQuery = {
+  q?: string;
+  type?: "note" | "link" | "idea" | "quote" | "file";
+  tag?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  status?: "active" | "archived";
+  processingStatus?: "processed" | "pending";
+  limit?: number;
+};
+
+export async function listBrainItemsWithSearch<T>(query: ListBrainItemsSearchQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.q?.trim()) params.set("q", query.q.trim());
+  if (query.type) params.set("type", query.type);
+  if (query.tag?.trim()) params.set("tag", query.tag.trim());
+  if (query.createdFrom?.trim()) params.set("createdFrom", query.createdFrom.trim());
+  if (query.createdTo?.trim()) params.set("createdTo", query.createdTo.trim());
+  if (query.status) params.set("status", query.status);
+  if (query.processingStatus) params.set("processingStatus", query.processingStatus);
+  if (typeof query.limit === "number" && Number.isFinite(query.limit)) {
+    params.set("limit", String(Math.max(1, Math.min(200, Math.trunc(query.limit)))));
+  }
+  const rendered = params.toString();
+  return withNormalizedErrors(() =>
+    apiClient<T>(`${endpoints.brainItemsSearch}${rendered ? `?${rendered}` : ""}`)
+  );
 }
 
 export async function createThread<T>(payload: unknown) {

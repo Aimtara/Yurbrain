@@ -2,16 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { app } from "../../server";
+import { createTestJwt } from "../helpers/auth-token";
 
-function createUnsignedJwt(sub: string): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
-  return `${header}.${payload}.`;
-}
-
-function strictHeaders(userId: string): Record<string, string> {
+async function strictHeaders(userId: string): Promise<Record<string, string>> {
   return {
-    authorization: `Bearer ${createUnsignedJwt(userId)}`,
+    authorization: `Bearer ${await createTestJwt(userId)}`,
     "x-yurbrain-auth-mode": "strict"
   };
 }
@@ -22,7 +17,7 @@ test.after(async () => {
 
 test("feed ranking ergonomics hold under strict auth using function feed actions", async () => {
   const userId = "18181818-1818-4818-8818-181818181818";
-  const headers = strictHeaders(userId);
+  const headers = await strictHeaders(userId);
 
   const stableResp = await app.inject({
     method: "POST",
@@ -74,7 +69,7 @@ test("feed ranking ergonomics hold under strict auth using function feed actions
 
 test("function feed canonical route works in strict mode and preserves whyShown quality", async () => {
   const userId = "19191919-1919-4919-8919-191919191919";
-  const headers = strictHeaders(userId);
+  const headers = await strictHeaders(userId);
 
   const capture = await app.inject({
     method: "POST",

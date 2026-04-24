@@ -3,6 +3,7 @@ import {
   AiSummaryModeSchema,
   ArtifactTypeSchema,
   BrainItemSchema,
+  BrainItemStatusSchema,
   BrainItemTypeSchema,
   CaptureContentTypeSchema,
   FeedDensitySchema,
@@ -104,6 +105,21 @@ export const RelatedItemsResponseSchema = z
   .object({
     itemId: z.string().uuid(),
     relatedItemIds: z.array(z.string().uuid())
+  })
+  .strict();
+
+export const BrainItemProcessingStatusSchema = z.enum(["processed", "pending"]);
+
+export const ListBrainItemsQuerySchema = z
+  .object({
+    q: z.string().trim().max(200).optional(),
+    type: BrainItemTypeSchema.optional(),
+    tag: z.string().trim().max(80).optional(),
+    createdFrom: z.string().trim().max(64).optional(),
+    createdTo: z.string().trim().max(64).optional(),
+    status: BrainItemStatusSchema.optional(),
+    processingStatus: BrainItemProcessingStatusSchema.optional(),
+    limit: z.coerce.number().int().min(1).max(200).optional()
   })
   .strict();
 
@@ -324,6 +340,7 @@ export const UpdateUserPreferenceRequestSchema = z
 
 export type CreateBrainItemRequest = z.infer<typeof CreateBrainItemRequestSchema>;
 export type CaptureIntakeRequest = z.infer<typeof CaptureIntakeRequestSchema>;
+export type ListBrainItemsQuery = z.infer<typeof ListBrainItemsQuerySchema>;
 export type UpdateBrainItemRequest = z.infer<typeof UpdateBrainItemRequestSchema>;
 export type CreateThreadRequest = z.infer<typeof CreateThreadRequestSchema>;
 export type CreateMessageRequest = z.infer<typeof CreateMessageRequestSchema>;

@@ -5,6 +5,7 @@ import {
   configureHasuraAdminSecret,
   configureHasuraGraphqlUrl,
   configureHasuraRole,
+  HasuraGraphqlClientError,
   hasuraGraphqlRequest,
   isHasuraGraphqlConfigured
 } from "../graphql/hasura-client";
@@ -92,6 +93,9 @@ test("hasuraGraphqlRequest surfaces graphql errors", async () => {
 
   await assert.rejects(
     () => hasuraGraphqlRequest("query Broken { tasks { id } }"),
-    /permission denied/
+    (error: unknown) =>
+      error instanceof HasuraGraphqlClientError &&
+      error.code === "HASURA_GRAPHQL_ERROR" &&
+      error.message === "Unable to complete this request right now."
   );
 });

@@ -1,210 +1,69 @@
 # Yurbrain Nhost storage hardening (production baseline)
 
-This document defines the production-safe Nhost storage model for Yurbrain and maps storage objects to database ownership.
+This document defines the exact storage bucket rules required for Alpha safety, and how storage objects map to owner-scoped DB metadata.
 
-## Buckets
+## Scope and source of truth
 
-### `avatars`
+- Bucket configuration (read/write/public behavior, MIME/size limits) is configured in the Nhost dashboard.
+- Attachment ownership metadata is repository-managed in:
+  - `packages/db/migrations/0012_nhost_storage_attachments.sql`
+  - `nhost/metadata/databases/default/tables/public_attachments.yaml`
 
-Purpose:
+## Required bucket rules (exact)
 
-- Profile images linked from `profiles.avatar_url`.
+| Bucket | Purpose | Required object-key prefix | Public access | Read rule | Write/Delete rule | MIME allowlist | Max size |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `avatars` | user profile images | `user/{user_id}/avatar/` | **off by default** | authenticated owner via signed URL (or explicit documented exception) | owner only | `image/jpeg`, `image/png`, `image/webp` | 5 MB |
+| `capture_assets` | capture-linked assets | `user/{user_id}/captures/{item_id}/` | off | authenticated owner via signed URL | owner only | `image/jpeg`, `image/png`, `image/webp`, `application/pdf`, `text/plain`, `text/markdown`, `audio/mpeg`, `audio/mp4`, `audio/wav` | 25 MB |
+| `imports` | temporary import files | `user/{user_id}/imports/{job_id}/` | off | authenticated owner via signed URL | owner only | `text/csv`, `application/json`, `text/plain`, `text/markdown`, `application/zip` | 100 MB |
 
-Object key shape:
+### Notes for `avatars`
 
-- `user/{user_id}/avatar/{file_id}.{ext}`
+- Do not make the entire bucket public.
+- If public avatar display is ever required, make it an explicit product decision and document the narrowed object exposure strategy.
 
-Allowed MIME types:
+## Attachment/file metadata isolation
 
-- `image/jpeg`
-- `image/png`
-- `image/webp`
+`attachments` is user-isolated with two enforcement layers:
 
-Max file size:
+1. Hasura row permissions (`public_attachments.yaml`):
+   - filter/check on `user_id = X-Hasura-User-Id`
+   - insert preset `user_id <- X-Hasura-User-Id`
+2. Database FK constraints (`0012_nhost_storage_attachments.sql`):
+   - `attachments.user_id -> profiles.id`
+   - `attachments(item_id, user_id) -> brain_items(id, user_id)`
 
-- 5 MB
+This prevents cross-user attachment linkage and ensures metadata rows stay owner-bound.
 
-Access model:
+## Dashboard-only configuration steps (manual)
 
-- upload/delete/list: owner only
-- read:
-  - default: signed URL only (private)
-  - optional public mode: only if intentionally enabled for avatar UX
+If bucket controls are not encoded in repo metadata, apply these in Nhost dashboard:
 
-Public avatar policy:
-
-- Do **not** make the entire bucket public by default.
-- If public avatars are required, expose only intentionally selected avatar objects.
-- Keep all non-avatar user files private.
-
-### `capture_assets`
-
-Purpose:
-
-- Capture-related user files (images, docs, audio, pdf) linked to application rows.
-
-Object key shape:
-
-- `user/{user_id}/captures/{capture_id}/{file_id}-{sanitized_name}`
-
-Allowed MIME types:
-
-- `image/jpeg`
-- `image/png`
-- `image/webp`
-- `application/pdf`
-- `text/plain`
-- `text/markdown`
-- `audio/mpeg`
-- `audio/mp4`
-- `audio/wav`
-
-Max file size:
-
-- 25 MB
-
-Access model:
-
-- upload/delete/list/read: owner only
-- downloads should use signed URLs from authenticated context
-
-### `imports`
-
-Purpose:
-
-- Temporary import source files (csv/json/markdown/zip) used by ingestion workflows.
-
-Object key shape:
-
-- `user/{user_id}/imports/{import_job_id}/{file_name}`
-
-Allowed MIME types:
-
-- `text/csv`
-- `application/json`
-- `text/plain`
-- `text/markdown`
-- `application/zip`
-
-Max file size:
-
-- 100 MB
-
-Access model:
-
-- upload/delete/list/read: owner only
-- no direct public access
-
-Lifecycle:
-
-- apply expiry/cleanup policy for stale import objects after processing.
+1. Open **Storage → Buckets**.
+2. Create/verify buckets: `avatars`, `capture_assets`, `imports`.
+3. For each bucket, set:
+   - public access: as specified in the table above
+   - max file size
+   - allowed MIME types
+4. Configure object key conventions in upload implementation and operational runbooks:
+   - enforce prefix `user/{user_id}/...`
+5. Validate with two-user test:
+   - user A uploads file and can read it
+   - user B cannot list/read/delete user A file
+6. Record dashboard settings in release evidence (screenshots or checklist tick-off).
 
 ## Ownership model
 
-Ownership is enforced in two layers:
+Ownership must be consistent across storage and DB:
 
-1. Storage path convention:
-   - every object key is prefixed with `user/{user_id}/...`.
-2. Database metadata:
-   - `attachments.user_id` is owner-of-record for each stored object.
-   - `attachments.bucket + attachments.object_key` is unique.
-
-## File metadata linkage to database
-
-Additive migration `packages/db/migrations/0012_nhost_storage_attachments.sql` creates `attachments`:
-
-- `user_id` -> owning user
-- `item_id` -> linked `brain_items.id`
-- `bucket`, `object_key` -> exact storage location
-- `kind`, `mime_type`, `size_bytes`, `sha256`, `storage_etag`
-- `status` (`pending`, `uploaded`, `failed`, `deleted`)
-- `metadata` JSONB for optional client/server metadata
-
-Hasura metadata `nhost/metadata/databases/default/tables/public_attachments.yaml` enforces:
-
-- user role can only read/write rows where `user_id = X-Hasura-User-Id`
-- insert preset forces `user_id` from JWT claim
-- no anonymous/public table access
-
-## User-only access rules
-
-- `capture_assets` and `imports` remain private in all environments.
-- `avatars` remains private by default; public read is opt-in and narrowly scoped.
-- Client apps only use anon/authenticated user credentials.
-- Admin/service credentials remain server-only and are never shipped to web/mobile bundles.
-
-## Upload / download / delete examples
-
-Examples below use the client-side Nhost SDK with authenticated user sessions.
-
-### Upload (private capture asset)
-
-```ts
-const uploadResult = await nhost.storage.upload({
-  bucketId: "capture_assets",
-  file,
-  id: `user/${userId}/captures/${captureId}/${crypto.randomUUID()}-${file.name}`
-});
-
-if (uploadResult.error) throw uploadResult.error;
-
-await nhost.graphql.request(
-  `
-  mutation LinkAttachment($object: attachments_insert_input!) {
-    insert_attachments_one(object: $object) { id bucket object_key status }
-  }
-  `,
-  {
-    object: {
-      item_id: captureId,
-      bucket: "capture_assets",
-      object_key: uploadResult.fileMetadata?.id,
-      kind: "file",
-      mime_type: file.type,
-      size_bytes: file.size,
-      status: "uploaded"
-    }
-  }
-);
-```
-
-### Download (signed URL for private object)
-
-```ts
-const { data, error } = await nhost.storage.getPresignedUrl({
-  bucketId: "capture_assets",
-  fileId: objectKey
-});
-if (error) throw error;
-const signedUrl = data?.presignedUrl;
-```
-
-### Delete (object + metadata row)
-
-```ts
-const { error: deleteErr } = await nhost.storage.delete({
-  bucketId: "capture_assets",
-  fileId: objectKey
-});
-if (deleteErr) throw deleteErr;
-
-await nhost.graphql.request(
-  `
-  mutation MarkAttachmentDeleted($id: uuid!) {
-    update_attachments_by_pk(pk_columns: { id: $id }, _set: { status: "deleted" }) {
-      id
-      status
-    }
-  }
-  `,
-  { id: attachmentId }
-);
-```
+1. Object path namespace: `user/{user_id}/...`
+2. DB record owner: `attachments.user_id`
+3. Linked item owner: `brain_items.user_id` (enforced by composite FK)
 
 ## Operational guardrails
 
-1. Never expose `NHOST_ADMIN_SECRET` to client runtimes.
-2. Enforce MIME + size checks in both bucket config and app/API validation paths.
-3. Keep attachment metadata writes atomic with upload completion when possible.
-4. Audit and clean stale `pending`/`failed`/orphaned files periodically.
-5. Prefer signed URLs over public bucket/object permissions for user data.
+1. Never expose `NHOST_ADMIN_SECRET` in web/mobile bundles.
+2. Use signed URLs for private file reads.
+3. Keep attachment metadata write in the same logical flow as upload completion.
+4. Periodically clean orphaned/stale objects (`pending`, `failed`, `deleted` lifecycle rows).
+5. Re-verify bucket rules on every production launch checklist run.

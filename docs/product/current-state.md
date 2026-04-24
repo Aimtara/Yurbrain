@@ -74,6 +74,11 @@ Not used for runtime truth:
   - `stateFlags`
   - plus existing `whyShown` and timestamps.
 
+### Search mode for MVP (real)
+- Search is currently keyword + filter based (no vector dependency): title, raw content, source fields, topic/tag text, and processed artifact content are queryable.
+- Supported filters are type, tag, created date range, status, and processing status; empty states distinguish "no captures yet" from "no matches for current filters".
+- Semantic/vector search remains post-alpha; the fallback is to keep keyword search as the default path so MVP search is never blocked on embedding infrastructure.
+
 ### Seed/reset/run reliability (real)
 - Root reset/seed flow works: `pnpm reset && pnpm seed`.
 - Seed now creates a realistic MVP dataset for single-user QA:

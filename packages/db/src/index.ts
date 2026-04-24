@@ -146,6 +146,19 @@ export type DbRepository = {
   createBrainItem: (item: BrainItemRecord) => Promise<BrainItemRecord>;
   getBrainItemById: (id: string) => Promise<BrainItemRecord | null>;
   listBrainItemsByUser: (userId: string) => Promise<BrainItemRecord[]>;
+  searchBrainItemsByUser: (
+    userId: string,
+    query: {
+      q?: string;
+      type?: BrainItemRecord["type"];
+      tag?: string;
+      createdFrom?: string;
+      createdTo?: string;
+      status?: BrainItemRecord["status"];
+      processingStatus?: "processed" | "pending";
+      limit?: number;
+    }
+  ) => Promise<BrainItemRecord[]>;
   updateBrainItem: (
     id: string,
     updates: Partial<
@@ -501,6 +514,106 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
           .from(schema.brainItems)
           .where(eq(schema.brainItems.userId, userId))
           .orderBy(desc(schema.brainItems.createdAt), asc(schema.brainItems.id));
+        return rows.map(toBrainItemRecord);
+      }),
+    searchBrainItemsByUser: (userId, query) =>
+      withDb(async ({ db }) => {
+        const limit = Math.max(1, Math.min(query.limit ?? 100, 200));
+        const clauses = [eq(schema.brainItems.userId, userId)];
+
+        if (query.type) {
+          clauses.push(eq(schema.brainItems.type, query.type));
+        }
+        if (query.status) {
+          clauses.push(eq(schema.brainItems.status, query.status));
+        }
+
+        if (query.createdFrom) {
+          const fromDate = new Date(query.createdFrom);
+          if (Number.isFinite(fromDate.getTime())) {
+            clauses.push(sql`${schema.brainItems.createdAt} >= ${fromDate}`);
+          }
+        }
+        if (query.createdTo) {
+          const toDate = new Date(query.createdTo);
+          if (Number.isFinite(toDate.getTime())) {
+            clauses.push(sql`${schema.brainItems.createdAt} <= ${toDate}`);
+          }
+        }
+
+        if (query.processingStatus === "processed") {
+          clauses.push(
+            sql`exists (
+              select 1 from ${schema.itemArtifacts} a
+              where a.item_id = ${schema.brainItems.id}
+                and a.user_id = ${userId}
+                and a.type in ('summary', 'classification')
+            )`
+          );
+        } else if (query.processingStatus === "pending") {
+          clauses.push(
+            sql`not exists (
+              select 1 from ${schema.itemArtifacts} a
+              where a.item_id = ${schema.brainItems.id}
+                and a.user_id = ${userId}
+                and a.type in ('summary', 'classification')
+            )`
+          );
+        }
+
+        const normalizedTag = query.tag?.trim().toLowerCase();
+        if (normalizedTag) {
+          const like = `%${normalizedTag}%`;
+          clauses.push(
+            sql`(
+              lower(coalesce(${schema.brainItems.topicGuess}, '')) like ${like}
+              or exists (
+                select 1 from ${schema.itemArtifacts} a
+                where a.item_id = ${schema.brainItems.id}
+                  and a.user_id = ${userId}
+                  and a.type = 'classification'
+                  and (
+                    lower(coalesce(a.payload ->> 'content', '')) like ${like}
+                    or lower(coalesce(a.payload ->> 'rationale', '')) like ${like}
+                    or lower(coalesce(a.payload::text, '')) like ${like}
+                  )
+              )
+            )`
+          );
+        }
+
+        const normalizedQuery = query.q?.trim().toLowerCase();
+        if (normalizedQuery) {
+          const like = `%${normalizedQuery}%`;
+          clauses.push(
+            sql`(
+              lower(coalesce(${schema.brainItems.title}, '')) like ${like}
+              or lower(coalesce(${schema.brainItems.rawContent}, '')) like ${like}
+              or lower(coalesce(${schema.brainItems.sourceLink}, '')) like ${like}
+              or lower(coalesce(${schema.brainItems.sourceApp}, '')) like ${like}
+              or lower(coalesce(${schema.brainItems.note}, '')) like ${like}
+              or lower(coalesce(${schema.brainItems.topicGuess}, '')) like ${like}
+              or exists (
+                select 1 from ${schema.itemArtifacts} a
+                where a.item_id = ${schema.brainItems.id}
+                  and a.user_id = ${userId}
+                  and a.type in ('summary', 'classification')
+                  and (
+                    lower(coalesce(a.payload ->> 'content', '')) like ${like}
+                    or lower(coalesce(a.payload ->> 'rationale', '')) like ${like}
+                    or lower(coalesce(a.payload::text, '')) like ${like}
+                  )
+              )
+            )`
+          );
+        }
+
+        const rows = await db
+          .select()
+          .from(schema.brainItems)
+          .where(and(...clauses))
+          .orderBy(desc(schema.brainItems.createdAt), asc(schema.brainItems.id))
+          .limit(limit);
         return rows.map(toBrainItemRecord);
       }),
     updateBrainItem: (id, updates) =>

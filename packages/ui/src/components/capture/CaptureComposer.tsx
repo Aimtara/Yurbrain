@@ -18,7 +18,6 @@ type Props = {
   errorMessage?: string;
   statusMessage?: string;
   successMessage?: string;
-  onVoiceStub?: () => void;
 };
 
 export function CaptureComposer({
@@ -30,8 +29,7 @@ export function CaptureComposer({
   isSubmitting = false,
   errorMessage,
   statusMessage,
-  successMessage,
-  onVoiceStub
+  successMessage
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isCompact, setIsCompact] = useState(false);
@@ -116,16 +114,21 @@ export function CaptureComposer({
             <h3 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Capture</h3>
             <p style={{ margin: "4px 0 0", color: "#475569", fontSize: "14px" }}>Capture first. Decide what to do next after.</p>
           </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button
-              type="button"
-              onClick={() => {
-                onVoiceStub?.();
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span
+              aria-label="Voice capture availability"
+              style={{
+                borderRadius: "999px",
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+                color: "#475569",
+                fontSize: "12px",
+                fontWeight: 600,
+                padding: "6px 10px"
               }}
-              aria-label="Voice capture stub"
             >
-              Voice
-            </button>
+              Voice capture (post-alpha)
+            </span>
             <button
               type="button"
               onClick={onClose}
@@ -224,12 +227,8 @@ export function CaptureComposer({
           >
             Save + Plan
           </button>
-          <button
-            type="button"
-            onClick={() => onSubmit("save_and_remind")}
-            disabled={isSubmitting || !canSubmit}
-          >
-            Save + Remind Later
+          <button type="button" disabled aria-disabled style={{ opacity: 0.6 }}>
+            Reminder scheduling (post-alpha)
           </button>
         </div>
       </section>
@@ -242,19 +241,19 @@ const captureTypes: Array<CaptureComposerValue["type"]> = ["text", "link", "imag
 const captureTypeLabels: Record<CaptureComposerValue["type"], string> = {
   text: "Text",
   link: "Link",
-  image: "Image"
+  image: "Image ref"
 };
 
 const contentFieldLabels: Record<CaptureComposerValue["type"], string> = {
   text: "Content",
   link: "Link URL",
-  image: "Image URL or reference"
+  image: "Image URL or file reference"
 };
 
 const contentFieldPlaceholders: Record<CaptureComposerValue["type"], string> = {
   text: "Capture in your own words...",
   link: "https://example.com/article-you-want-to-remember",
-  image: "https://example.com/image.png or brief image context"
+  image: "Paste image URL or file reference (uploads are post-alpha)"
 };
 
 const typeChipStyle: React.CSSProperties = {

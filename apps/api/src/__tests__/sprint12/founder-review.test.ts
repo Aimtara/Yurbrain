@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { createTestJwt } from "../helpers/auth-token";
 import { app } from "../../server";
 
 const founderReviewUserId = "11111111-1111-1111-1111-111111111111";
@@ -63,11 +64,7 @@ test("GET /functions/founder-review with ai wording adds concise explanatory cop
 });
 
 test("GET /functions/founder-review accepts bearer JWT subject for identity", async () => {
-  const jwtPayload = Buffer.from(
-    JSON.stringify({ sub: founderReviewUserId }),
-    "utf8"
-  ).toString("base64url");
-  const bearerToken = `eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.${jwtPayload}.sig`;
+  const bearerToken = await createTestJwt(founderReviewUserId);
 
   const response = await app.inject({
     method: "GET",

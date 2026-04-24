@@ -8,6 +8,7 @@ import {
   CreateBrainItemRequestSchema,
   ItemArtifactListResponseSchema,
   EventTypeSchema,
+  ListBrainItemsQuerySchema,
   ListItemArtifactsQuerySchema,
   RelatedItemsResponseSchema,
   UpdateBrainItemRequestSchema
@@ -19,6 +20,17 @@ import { generateCardFromItem } from "../services/feed/generate-card";
 import type { AppState } from "../state";
 
 export async function registerBrainItemRoutes(app: FastifyInstance, state: AppState) {
+  function normalizeDateInput(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+    const normalized = value.trim();
+    if (!normalized) return undefined;
+    const parsed = new Date(normalized);
+    if (!Number.isFinite(parsed.getTime())) {
+      throw new Error(`Invalid date value: ${value}`);
+    }
+    return parsed.toISOString();
+  }
+
   app.post("/brain-items", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
@@ -84,7 +96,26 @@ export async function registerBrainItemRoutes(app: FastifyInstance, state: AppSt
   app.get("/brain-items", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
-    return state.repo.listBrainItemsByUser(currentUser.id);
+    const rawQuery = ListBrainItemsQuerySchema.parse(request.query ?? {});
+    const query = {
+      ...rawQuery,
+      createdFrom: normalizeDateInput(rawQuery.createdFrom),
+      createdTo: normalizeDateInput(rawQuery.createdTo)
+    };
+    const hasSearchOrFilters = Boolean(
+      query.q?.trim() ||
+        query.type ||
+        query.tag?.trim() ||
+        query.createdFrom ||
+        query.createdTo ||
+        query.status ||
+        query.processingStatus ||
+        query.limit
+    );
+    if (!hasSearchOrFilters) {
+      return state.repo.listBrainItemsByUser(currentUser.id);
+    }
+    return state.repo.searchBrainItemsByUser(currentUser.id, query);
   });
 
   app.get("/brain-items/:id/artifacts", async (request, reply) => {

@@ -3,6 +3,34 @@ import { getConfiguredCurrentUserId } from "../api/client";
 let configuredHasuraGraphqlUrl: string | null = null;
 let configuredHasuraAdminSecret: string | null = null;
 let configuredHasuraRole: string | null = null;
+const FALLBACK_GRAPHQL_ERROR_CODE = "HASURA_GRAPHQL_REQUEST_FAILED";
+
+export class HasuraGraphqlClientError extends Error {
+  statusCode?: number;
+  code: string;
+
+  constructor(
+    message: string,
+    input: {
+      statusCode?: number;
+      code?: string;
+    }
+  ) {
+    super(message);
+    this.name = "HasuraGraphqlClientError";
+    this.statusCode = input.statusCode;
+    this.code = input.code ?? FALLBACK_GRAPHQL_ERROR_CODE;
+  }
+}
+
+function toStatusFallbackMessage(statusCode: number): string {
+  if (statusCode === 400) return "Validation failed.";
+  if (statusCode === 401) return "Authentication required.";
+  if (statusCode === 403) return "Access denied.";
+  if (statusCode === 404) return "Requested resource not found.";
+  if (statusCode >= 500) return "GraphQL service error. Please retry.";
+  return `GraphQL request failed (${statusCode}).`;
+}
 
 declare const process:
   | {
@@ -108,7 +136,9 @@ export async function hasuraGraphqlRequest<T>(
 ): Promise<T> {
   const endpoint = resolveConfiguredHasuraGraphqlUrl();
   if (!endpoint) {
-    throw new Error("Hasura GraphQL endpoint is not configured");
+    throw new HasuraGraphqlClientError("Hasura GraphQL endpoint is not configured", {
+      code: "HASURA_GRAPHQL_NOT_CONFIGURED"
+    });
   }
 
   const headers = new Headers({ "content-type": "application/json" });
@@ -130,7 +160,10 @@ export async function hasuraGraphqlRequest<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`GraphQL request failed: ${response.status}`);
+    throw new HasuraGraphqlClientError(toStatusFallbackMessage(response.status), {
+      statusCode: response.status,
+      code: "HASURA_GRAPHQL_HTTP_ERROR"
+    });
   }
 
   const body = (await response.json()) as {
@@ -139,11 +172,15 @@ export async function hasuraGraphqlRequest<T>(
   };
 
   if (Array.isArray(body.errors) && body.errors.length > 0) {
-    throw new Error(body.errors[0]?.message || "GraphQL request failed");
+    throw new HasuraGraphqlClientError("Unable to complete this request right now.", {
+      code: "HASURA_GRAPHQL_ERROR"
+    });
   }
 
   if (body.data === undefined) {
-    throw new Error("GraphQL request returned no data");
+    throw new HasuraGraphqlClientError("GraphQL request returned no data", {
+      code: "HASURA_GRAPHQL_NO_DATA"
+    });
   }
 
   return body.data;

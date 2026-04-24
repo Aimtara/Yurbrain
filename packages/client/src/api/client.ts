@@ -10,6 +10,92 @@ const CURRENT_USER_STORAGE_KEY = "yurbrain.currentUserId";
 const ACCESS_TOKEN_STORAGE_KEY = "yurbrain.accessToken";
 const GLOBAL_CURRENT_USER_KEY = "__YURBRAIN_CURRENT_USER_ID";
 const GLOBAL_ACCESS_TOKEN_KEY = "__YURBRAIN_ACCESS_TOKEN";
+const FALLBACK_API_ERROR_CODE = "API_REQUEST_FAILED";
+
+type ApiErrorPayload = {
+  message?: unknown;
+  requestId?: unknown;
+  error?: {
+    code?: unknown;
+    message?: unknown;
+    correlationId?: unknown;
+  };
+};
+
+export class ApiClientError extends Error {
+  statusCode: number;
+  code: string;
+  requestId?: string;
+  correlationId?: string;
+
+  constructor(
+    message: string,
+    input: {
+      statusCode: number;
+      code?: string;
+      requestId?: string;
+      correlationId?: string;
+    }
+  ) {
+    super(message);
+    this.name = "ApiClientError";
+    this.statusCode = input.statusCode;
+    this.code = input.code ?? FALLBACK_API_ERROR_CODE;
+    this.requestId = input.requestId;
+    this.correlationId = input.correlationId;
+  }
+}
+
+function asNonEmptyString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function toStatusFallbackMessage(statusCode: number): string {
+  if (statusCode === 400) return "Validation failed.";
+  if (statusCode === 401) return "Authentication required.";
+  if (statusCode === 403) return "Access denied.";
+  if (statusCode === 404) return "The requested resource was not found.";
+  if (statusCode >= 500) return "Server error. Please try again.";
+  return `Request failed (${statusCode}).`;
+}
+
+function parseErrorPayload(body: unknown): ApiErrorPayload | null {
+  if (!body || typeof body !== "object") return null;
+  return body as ApiErrorPayload;
+}
+
+async function parseApiClientError(response: Response): Promise<ApiClientError> {
+  let parsedPayload: ApiErrorPayload | null = null;
+  try {
+    parsedPayload = parseErrorPayload(await response.clone().json());
+  } catch {
+    parsedPayload = null;
+  }
+
+  const payloadMessage =
+    asNonEmptyString(parsedPayload?.message) ??
+    asNonEmptyString(parsedPayload?.error?.message);
+  const payloadCode = asNonEmptyString(parsedPayload?.error?.code);
+  const payloadRequestId = asNonEmptyString(parsedPayload?.requestId);
+  const payloadCorrelationId = asNonEmptyString(parsedPayload?.error?.correlationId);
+
+  return new ApiClientError(payloadMessage ?? toStatusFallbackMessage(response.status), {
+    statusCode: response.status,
+    code: payloadCode ?? FALLBACK_API_ERROR_CODE,
+    requestId: payloadRequestId ?? asNonEmptyString(response.headers.get("x-request-id")),
+    correlationId: payloadCorrelationId ?? asNonEmptyString(response.headers.get("x-correlation-id"))
+  });
+}
+
+export function isApiClientError(error: unknown): error is ApiClientError {
+  return error instanceof ApiClientError;
+}
+
+export function isUnauthorizedApiError(error: unknown): boolean {
+  return isApiClientError(error) && error.statusCode === 401;
+}
 
 declare const process: {
   env?: {
@@ -262,7 +348,7 @@ export async function apiClient<T>(path: string, init?: RequestInit): Promise<T>
     headers
   });
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    throw await parseApiClientError(response);
   }
   return (await response.json()) as T;
 }

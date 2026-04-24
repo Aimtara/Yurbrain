@@ -151,6 +151,39 @@ export function markAuthenticatedNhostSession(
   cachedConfigured = true;
 }
 
+export function clearAuthenticatedNhostSession() {
+  configureIdentityResolutionMode("strict");
+  configureAccessToken(null);
+  configureCurrentUserId(null);
+  bootstrapped = true;
+  cachedConfigured = true;
+}
+
+export function syncAuthenticatedNhostSession(
+  session: BrowserNhostSession | null
+): { authenticated: boolean; userId?: string } {
+  const { accessToken, userId } = resolveSessionIdentity(session);
+  if (accessToken && userId) {
+    markAuthenticatedNhostSession(accessToken, userId);
+    return { authenticated: true, userId };
+  }
+  clearAuthenticatedNhostSession();
+  return { authenticated: false };
+}
+
+export function syncAuthenticatedTokenOnlySession(
+  session: { accessToken?: string; user?: { id?: string } | null; decodedToken?: { sub?: string } | null } | null
+): { authenticated: boolean; userId?: string } {
+  const bridgedSession: BrowserNhostSession | null = session
+    ? {
+        accessToken: session.accessToken,
+        user: session.user ? { id: session.user.id } : null,
+        decodedToken: session.decodedToken ? { sub: session.decodedToken.sub } : null
+      }
+    : null;
+  return syncAuthenticatedNhostSession(bridgedSession);
+}
+
 export function resetNhostBootstrapStateForTests() {
   bootstrapped = false;
   cachedConfigured = false;

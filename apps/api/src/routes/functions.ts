@@ -15,6 +15,7 @@ import {
   type FounderReviewQuery
 } from "@yurbrain/contracts";
 import { canAccessUser, requireCurrentUser } from "../middleware/current-user";
+import { sendSafeErrorResponse } from "../middleware/observability";
 import { classifyItem } from "../services/ai/classify";
 import { queryItemAssistant } from "../services/ai/item-query";
 import { summarizeItem } from "../services/ai/summarize";
@@ -91,6 +92,14 @@ function hasScopedItemOwnership(
 }
 
 export async function registerFunctionRoutes(app: FastifyInstance, state: AppState) {
+  const sendRouteError = (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    statusCode: number,
+    message: string,
+    code: string
+  ) => sendSafeErrorResponse(request as FastifyRequest & { correlationId?: string }, reply, { statusCode, message, code });
+
   const handleFunctionFeedGet = async (request: FastifyRequest, reply: FastifyReply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
@@ -111,7 +120,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const { id } = request.params as { id: string };
     const result = await dismissFeedCardForUser(state, currentUser, id);
     if (!result) {
-      return reply.code(404).send({ message: "Feed card not found" });
+      return sendRouteError(request, reply, 404, "Feed card not found", "FEED_CARD_NOT_FOUND");
     }
     return reply.code(200).send(result);
   });
@@ -122,10 +131,10 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const { minutes } = (request.body as { minutes?: unknown }) ?? {};
     const result = await snoozeFeedCardForUser(state, currentUser, id, minutes);
     if (result.status === 404) {
-      return reply.code(404).send({ message: "Feed card not found" });
+      return sendRouteError(request, reply, 404, "Feed card not found", "FEED_CARD_NOT_FOUND");
     }
     if (result.status === 409) {
-      return reply.code(409).send({ message: "Cannot snooze a dismissed card" });
+      return sendRouteError(request, reply, 409, "Cannot snooze a dismissed card", "FEED_CARD_SNOOZE_CONFLICT");
     }
     return reply.code(200).send(result.response);
   });
@@ -135,7 +144,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const { id } = request.params as { id: string };
     const result = await refreshFeedCardForUser(state, currentUser, id);
     if (!result) {
-      return reply.code(404).send({ message: "Feed card not found" });
+      return sendRouteError(request, reply, 404, "Feed card not found", "FEED_CARD_NOT_FOUND");
     }
     return reply.code(200).send(result);
   });
@@ -146,7 +155,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const payload = SummarizeItemRequestSchema.parse(request.body);
     const item = await state.repo.getBrainItemById(payload.itemId);
     if (!item || !canAccessUser(currentUser, item.userId)) {
-      return reply.code(404).send({ message: "Brain item not found" });
+      return sendRouteError(request, reply, 404, "Brain item not found", "BRAIN_ITEM_NOT_FOUND");
     }
     const result = await summarizeItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     return reply.code(201).send(AiArtifactResponseSchema.parse(result));
@@ -158,7 +167,7 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const payload = ClassifyItemRequestSchema.parse(request.body);
     const item = await state.repo.getBrainItemById(payload.itemId);
     if (!item || !canAccessUser(currentUser, item.userId)) {
-      return reply.code(404).send({ message: "Brain item not found" });
+      return sendRouteError(request, reply, 404, "Brain item not found", "BRAIN_ITEM_NOT_FOUND");
     }
     const result = await classifyItem(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     return reply.code(201).send(AiArtifactResponseSchema.parse(result));
@@ -170,15 +179,15 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const payload = QueryItemRequestSchema.parse(request.body);
     const thread = await state.repo.getThreadById(payload.threadId);
     if (!thread) {
-      return reply.code(404).send({ message: "Thread not found" });
+      return sendRouteError(request, reply, 404, "Thread not found", "THREAD_NOT_FOUND");
     }
     const item = await state.repo.getBrainItemById(thread.targetItemId);
     if (!item || !canAccessUser(currentUser, item.userId)) {
-      return reply.code(404).send({ message: "Thread not found" });
+      return sendRouteError(request, reply, 404, "Thread not found", "THREAD_NOT_FOUND");
     }
     const result = await queryItemAssistant(state, payload, request.log, (request as { correlationId?: string }).correlationId);
     if (!result) {
-      return reply.code(404).send({ message: "Thread not found" });
+      return sendRouteError(request, reply, 404, "Thread not found", "THREAD_NOT_FOUND");
     }
     return reply.code(201).send(QueryItemResponseSchema.parse(result));
   });
@@ -203,16 +212,16 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const body = (request.body ?? {}) as Record<string, unknown>;
     const itemIds = parseSynthesisItemIds(body.itemIds);
     if (itemIds.length === 0) {
-      return reply.code(400).send({ message: "itemIds must include at least one item" });
+      return sendRouteError(request, reply, 400, "itemIds must include at least one item", "ITEM_IDS_REQUIRED");
     }
 
     const items = await Promise.all(itemIds.map((itemId) => state.repo.getBrainItemById(itemId)));
     const ownedItems = items.filter((item): item is NonNullable<typeof item> => Boolean(item));
     if (ownedItems.length !== itemIds.length) {
-      return reply.code(404).send({ message: "Brain item not found" });
+      return sendRouteError(request, reply, 404, "Brain item not found", "BRAIN_ITEM_NOT_FOUND");
     }
     if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
-      return reply.code(404).send({ message: "Brain item not found" });
+      return sendRouteError(request, reply, 404, "Brain item not found", "BRAIN_ITEM_NOT_FOUND");
     }
     const result = await buildSummarizeProgress(state.repo, itemIds, {
       log: request.log,
@@ -228,16 +237,16 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const body = (request.body ?? {}) as Record<string, unknown>;
     const itemIds = parseSynthesisItemIds(body.itemIds);
     if (itemIds.length === 0) {
-      return reply.code(400).send({ message: "itemIds must include at least one item" });
+      return sendRouteError(request, reply, 400, "itemIds must include at least one item", "ITEM_IDS_REQUIRED");
     }
 
     const items = await Promise.all(itemIds.map((itemId) => state.repo.getBrainItemById(itemId)));
     const ownedItems = items.filter((item): item is NonNullable<typeof item> => Boolean(item));
     if (ownedItems.length !== itemIds.length) {
-      return reply.code(404).send({ message: "Brain item not found" });
+      return sendRouteError(request, reply, 404, "Brain item not found", "BRAIN_ITEM_NOT_FOUND");
     }
     if (!hasScopedItemOwnership(currentUser.id, ownedItems.map((item) => item.userId))) {
-      return reply.code(404).send({ message: "Brain item not found" });
+      return sendRouteError(request, reply, 404, "Brain item not found", "BRAIN_ITEM_NOT_FOUND");
     }
     const result = await buildWhatShouldIDoNext(state.repo, itemIds, {
       log: request.log,
@@ -288,46 +297,46 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
 
     if (body.action === "start") {
       if (!body.taskId) {
-        return reply.code(400).send({ message: "taskId is required for start" });
+        return sendRouteError(request, reply, 400, "taskId is required for start", "TASK_ID_REQUIRED");
       }
       const task = await state.repo.getTaskById(body.taskId);
       if (!task || !canAccessUser(currentUser, task.userId)) {
-        return reply.code(404).send({ message: "Task not found" });
+        return sendRouteError(request, reply, 404, "Task not found", "TASK_NOT_FOUND");
       }
       const result = await buildStartSessionResult(state, body.taskId);
       if (!result.session) {
-        return reply.code(404).send({ message: "Task not found" });
+        return sendRouteError(request, reply, 404, "Task not found", "TASK_NOT_FOUND");
       }
       return reply.code(201).send(result.session);
     }
 
     if (body.action === "pause" || body.action === "finish") {
       if (!body.sessionId) {
-        return reply.code(400).send({ message: "sessionId is required for pause/finish" });
+        return sendRouteError(request, reply, 400, "sessionId is required for pause/finish", "SESSION_ID_REQUIRED");
       }
       const existingSession = await state.repo.getSessionById(body.sessionId);
       if (!existingSession) {
-        return reply.code(404).send({ message: "Session not found or already finished" });
+        return sendRouteError(request, reply, 404, "Session not found or already finished", "SESSION_NOT_FOUND");
       }
       const task = await state.repo.getTaskById(existingSession.taskId);
       if (!task || !canAccessUser(currentUser, task.userId)) {
-        return reply.code(404).send({ message: "Session not found or already finished" });
+        return sendRouteError(request, reply, 404, "Session not found or already finished", "SESSION_NOT_FOUND");
       }
       if (body.action === "pause") {
         const result = await buildPauseSessionResult(state, body.sessionId);
         if (!result.session) {
-          return reply.code(404).send({ message: "Session not found or already finished" });
+          return sendRouteError(request, reply, 404, "Session not found or already finished", "SESSION_NOT_FOUND");
         }
         return reply.code(200).send(result.session);
       }
       const result = await buildFinishSessionResult(state, body.sessionId);
       if (!result.session) {
-        return reply.code(404).send({ message: "Session not found or already finished" });
+        return sendRouteError(request, reply, 404, "Session not found or already finished", "SESSION_NOT_FOUND");
       }
       return reply.code(200).send(result.session);
     }
 
-    return reply.code(400).send({ message: "action must be one of start, pause, finish" });
+    return sendRouteError(request, reply, 400, "action must be one of start, pause, finish", "INVALID_SESSION_ACTION");
   });
 
 }

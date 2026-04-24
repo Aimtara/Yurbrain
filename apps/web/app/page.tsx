@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FinishRebalanceSheet, PlanPreviewSheet, PostponeRescheduleSheet, type TimeWindowOption } from "@yurbrain/ui";
 import { useYurbrainClient } from "@yurbrain/client";
+import { getWebAuthRedirectConfig } from "../src/nhost/auth-config";
+import { WebAuthPanel } from "../src/features/auth/WebAuthPanel";
 
 import { CapturePanel } from "../src/features/capture/CapturePanel";
 import { useCaptureController } from "../src/features/capture/useCaptureController";
@@ -26,6 +28,7 @@ import { useSessionController } from "../src/features/session/useSessionControll
 import type {
   ActiveTaskContextPeek,
   BrainItemDto,
+  BrainItemSearchQuery,
   CaptureDraft,
   ContinuityContext,
   FeedCardDto,
@@ -43,7 +46,19 @@ import { useNhostAuth } from "../src/nhost/useNhostAuth";
 
 export default function Page() {
   const yurbrainClient = useYurbrainClient();
-  const { isReady: authReady, isAuthenticated } = useNhostAuth();
+  const auth = useNhostAuth();
+  const {
+    isReady: authReady,
+    isAuthenticated,
+    isEmailVerified,
+    session,
+    sendVerificationEmail,
+    signOut,
+    clearAuthError
+  } = auth;
+  const [authStatusNotice, setAuthStatusNotice] = useState("");
+  const [authStatusLoading, setAuthStatusLoading] = useState(false);
+  const authRedirects = useMemo(() => getWebAuthRedirectConfig(), []);
   const {
     hydrated,
     activeLens,
@@ -80,6 +95,14 @@ export default function Page() {
   });
   const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [items, setItems] = useState<BrainItemDto[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemSearchQuery, setItemSearchQuery] = useState("");
+  const [itemSearchTypeFilter, setItemSearchTypeFilter] = useState<BrainItemDto["type"] | "">("");
+  const [itemSearchTagFilter, setItemSearchTagFilter] = useState("");
+  const [itemSearchFromDate, setItemSearchFromDate] = useState("");
+  const [itemSearchToDate, setItemSearchToDate] = useState("");
+  const [itemSearchStatusFilter, setItemSearchStatusFilter] = useState<BrainItemDto["status"] | "">("");
+  const [itemSearchProcessingStatusFilter, setItemSearchProcessingStatusFilter] = useState<BrainItemSearchQuery["processingStatus"] | "">("");
   const [selectedContinuity, setSelectedContinuity] = useState<ContinuityContext | null>(null);
   const [commentThreadId, setCommentThreadId] = useState("");
   const [chatThreadId, setChatThreadId] = useState("");
@@ -102,6 +125,7 @@ export default function Page() {
   const [, setChatFallbackNotice] = useState("");
   const [conversionNotice, setConversionNotice] = useState("");
   const [itemActionNotice, setItemActionNotice] = useState("");
+  const [itemSearchError, setItemSearchError] = useState("");
   const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
   const [pendingPostponeSheet, setPendingPostponeSheet] = useState<PostponeDraft | null>(null);
   const [pendingFinishRebalance, setPendingFinishRebalance] = useState<FinishRebalanceDraft | null>(null);
@@ -366,15 +390,28 @@ export default function Page() {
     formatRelative
   });
 
-  const { loadItems } = useBrainItemsController({
+  const { searchItems } = useBrainItemsController({
     yurbrainClient,
     selectedItemId,
     setItems,
-    setCaptureError,
-    setSelectedItemId
+    setItemsError: setItemSearchError,
+    setSelectedItemId,
+    setItemsLoading
   });
 
-  const { captureItem, openCaptureSheet, handleVoiceCaptureStub } = useCaptureController({
+  const semanticSearchNotice =
+    "Search currently uses keyword matching and filters. Semantic/vector search is post-alpha.";
+  const hasAppliedSearchFilters = Boolean(
+    itemSearchQuery.trim() ||
+      itemSearchTypeFilter ||
+      itemSearchTagFilter.trim() ||
+      itemSearchFromDate ||
+      itemSearchToDate ||
+      itemSearchStatusFilter ||
+      itemSearchProcessingStatusFilter
+  );
+
+  const { captureItem, openCaptureSheet } = useCaptureController({
     yurbrainClient,
     captureDraft,
     activeLens,
@@ -417,14 +454,46 @@ export default function Page() {
     runConvert
   });
 
+  const runItemSearch = useCallback(async () => {
+    await searchItems({
+      q: itemSearchQuery,
+      type: itemSearchTypeFilter || undefined,
+      tag: itemSearchTagFilter || undefined,
+      createdFrom: itemSearchFromDate || undefined,
+      createdTo: itemSearchToDate || undefined,
+      status: itemSearchStatusFilter || undefined,
+      processingStatus: itemSearchProcessingStatusFilter || undefined
+    });
+  }, [
+    itemSearchFromDate,
+    itemSearchProcessingStatusFilter,
+    itemSearchQuery,
+    itemSearchStatusFilter,
+    itemSearchTagFilter,
+    itemSearchToDate,
+    itemSearchTypeFilter,
+    searchItems
+  ]);
+
+  const resetItemSearch = useCallback(async () => {
+    setItemSearchQuery("");
+    setItemSearchTypeFilter("");
+    setItemSearchTagFilter("");
+    setItemSearchFromDate("");
+    setItemSearchToDate("");
+    setItemSearchStatusFilter("");
+    setItemSearchProcessingStatusFilter("");
+    await searchItems({});
+  }, [searchItems]);
+
   useEffect(() => {
     if (!hydrated) return;
     void (async () => {
       const preferredLens = await loadUserPreferences();
       const lensForInitialLoad = preferredLens ?? activeLens;
-      await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
+      await Promise.all([searchItems({}), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
     })();
-  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadItems, loadTasks, loadUserPreferences]);
+  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadTasks, loadUserPreferences, searchItems]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -494,18 +563,127 @@ export default function Page() {
   if (!isAuthenticated) {
     return (
       <main style={{ minHeight: "100vh", background: "#f1f5f9", padding: "48px 16px" }}>
-        <section style={{ margin: "0 auto", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
-          <p style={{ margin: 0 }}>
-            Yurbrain requires an authenticated Nhost session. Sign in or sign up, then reload this page.
-          </p>
-        </section>
+        <WebAuthPanel auth={auth} />
       </main>
     );
   }
 
+  const currentEmail = session?.user?.email;
+  const verificationBanner = !isEmailVerified ? (
+    <section
+      style={{
+        margin: "16px auto 0",
+        maxWidth: "960px",
+        padding: "0 16px"
+      }}
+    >
+      <div
+        style={{
+          borderRadius: "14px",
+          border: "1px solid #fde68a",
+          background: "#fffbeb",
+          padding: "12px",
+          display: "grid",
+          gap: "8px",
+          color: "#78350f"
+        }}
+      >
+        <p style={{ margin: 0, fontWeight: 700 }}>Email verification pending</p>
+        <p style={{ margin: 0 }}>
+          {currentEmail
+            ? `Signed in as ${currentEmail}. Verify this inbox for full account confidence.`
+            : "Verify your email inbox to complete account verification."}
+        </p>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            disabled={authStatusLoading}
+            onClick={() => {
+              void (async () => {
+                setAuthStatusLoading(true);
+                setAuthStatusNotice("");
+                clearAuthError();
+                try {
+                  await sendVerificationEmail(currentEmail);
+                  setAuthStatusNotice("Verification email sent.");
+                } catch {
+                  // useNhostAuth already stores a safe auth error message.
+                } finally {
+                  setAuthStatusLoading(false);
+                }
+              })();
+            }}
+          >
+            {authStatusLoading ? "Sending..." : "Resend verification email"}
+          </button>
+          <a
+            href={authRedirects.emailVerificationRedirectTo}
+            style={{
+              alignSelf: "center",
+              color: "#1d4ed8"
+            }}
+          >
+            Open verification page
+          </a>
+        </div>
+        {authStatusNotice ? <p style={{ margin: 0, color: "#0f766e" }}>{authStatusNotice}</p> : null}
+        {auth.error ? <p style={{ margin: 0, color: "#991b1b" }}>{auth.error}</p> : null}
+      </div>
+    </section>
+  ) : null;
+
+  const signedInBanner = (
+    <section
+      style={{
+        margin: "16px auto 0",
+        maxWidth: "960px",
+        padding: "0 16px"
+      }}
+    >
+      <div
+        style={{
+          borderRadius: "12px",
+          border: "1px solid #cbd5e1",
+          background: "#ffffff",
+          padding: "10px 12px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap",
+          color: "#334155"
+        }}
+      >
+        <span>
+          {currentEmail ? `Signed in as ${currentEmail}` : "Signed in"}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            void (async () => {
+              setAuthStatusNotice("");
+              clearAuthError();
+              try {
+                await signOut();
+              } catch {
+                // useNhostAuth already stores a safe auth error message.
+              }
+            })();
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+      {auth.error ? (
+        <p style={{ margin: "8px 0 0", color: "#991b1b", padding: "0 4px" }}>{auth.error}</p>
+      ) : null}
+    </section>
+  );
+
   return (
     <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
+      {signedInBanner}
+      {verificationBanner}
       {founderReviewUnauthorized ? (
         <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
           <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
@@ -547,7 +725,6 @@ export default function Page() {
                 setCaptureError("");
                 setCaptureSuccessNotice("");
               }}
-              onVoiceCaptureStub={handleVoiceCaptureStub}
             />
           }
           founderStats={founderStats}
@@ -728,6 +905,22 @@ export default function Page() {
       {activeSurface === "item" && !founderReviewUnauthorized ? (
         <ItemDetailSurface
           selectedItem={selectedItem}
+          items={items}
+          itemSearchQuery={itemSearchQuery}
+          itemSearchTag={itemSearchTagFilter}
+          itemSearchType={itemSearchTypeFilter || "all"}
+          itemSearchStatus={itemSearchStatusFilter || "all"}
+          itemSearchProcessingStatus={itemSearchProcessingStatusFilter || "all"}
+          itemSearchCreatedFrom={itemSearchFromDate}
+          itemSearchCreatedTo={itemSearchToDate}
+          itemSearchLoading={itemsLoading}
+          itemSearchError={itemSearchError}
+          semanticSearchNotice={semanticSearchNotice}
+          emptyStateMessage={
+            hasAppliedSearchFilters
+              ? "No captures match the current search filters."
+              : "No captures yet. Add a capture from Focus Feed."
+          }
           continuity={derivedItemContinuity}
           selectedArtifacts={selectedArtifacts}
           itemContextLoading={itemContextLoading}
@@ -738,6 +931,21 @@ export default function Page() {
           timelineEntries={timelineEntries}
           canStartSession={Boolean(selectedItemTask)}
           onBackToFeed={() => setActiveSurface("feed")}
+          onSearchQueryChange={setItemSearchQuery}
+          onSearchTagChange={setItemSearchTagFilter}
+          onSearchTypeChange={(value) => setItemSearchTypeFilter(value === "all" ? "" : value)}
+          onSearchStatusChange={(value) => setItemSearchStatusFilter(value === "all" ? "" : value)}
+          onSearchProcessingStatusChange={(value) =>
+            setItemSearchProcessingStatusFilter(value === "all" ? "" : value)
+          }
+          onSearchCreatedFromChange={setItemSearchFromDate}
+          onSearchCreatedToChange={setItemSearchToDate}
+          onSearchApply={() => void runItemSearch()}
+          onSearchReset={() => void resetItemSearch()}
+          onSelectSearchItem={(itemId) => {
+            setSelectedItemId(itemId);
+            setSelectedContinuity(null);
+          }}
           onQuickAction={(action) => void runQuickAction(action)}
           onAddComment={(itemId, comment) => void createComment(itemId, comment)}
           onConvertCommentToTask={(itemId, comment) =>

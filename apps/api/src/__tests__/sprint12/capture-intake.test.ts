@@ -138,6 +138,92 @@ test("capture enrichment failures do not block persistence", async () => {
   assert.equal(fetched.statusCode, 200);
 });
 
+test("capture intake stores image reference metadata without faking file upload", async () => {
+  const userId = "89999999-8999-4899-8999-899999999999";
+  const headers = { "x-yurbrain-user-id": userId };
+  const response = await app.inject({
+    method: "POST",
+    url: "/capture/intake",
+    headers,
+    payload: {
+      userId,
+      type: "image",
+      content: "https://example.com/assets/product-screenshot.png",
+      source: {
+        app: "Mobile share sheet",
+        link: "https://example.com/assets/product-screenshot.png"
+      },
+      note: "Screenshot to revisit after standup"
+    }
+  });
+
+  assert.equal(response.statusCode, 201);
+  const body = response.json<{
+    itemId: string;
+    item: {
+      id: string;
+      type: string;
+      contentType: string;
+      sourceApp: string | null;
+      sourceLink: string | null;
+      previewImageUrl: string | null;
+      note: string | null;
+      rawContent: string;
+    };
+    preview: {
+      contentType: string;
+      source: string | null;
+      note: string | null;
+      snippet: string;
+    };
+  }>();
+
+  assert.equal(body.itemId, body.item.id);
+  assert.equal(body.item.type, "file");
+  assert.equal(body.item.contentType, "image");
+  assert.equal(body.item.sourceApp, "Mobile share sheet");
+  assert.equal(body.item.sourceLink, "https://example.com/assets/product-screenshot.png");
+  assert.equal(body.item.previewImageUrl, "https://example.com/assets/product-screenshot.png");
+  assert.equal(body.item.note, "Screenshot to revisit after standup");
+  assert.equal(body.item.rawContent, "https://example.com/assets/product-screenshot.png");
+  assert.equal(body.preview.contentType, "image");
+  assert.equal(body.preview.source, "Mobile share sheet");
+  assert.equal(body.preview.note, "Screenshot to revisit after standup");
+  assert.ok(body.preview.snippet.length > 0);
+});
+
+test("capture intake rejects empty payload with graceful validation error", async () => {
+  const userId = "8a8a8a8a-8a8a-48a8-8a8a-8a8a8a8a8a8a";
+  const headers = { "x-yurbrain-user-id": userId };
+  const response = await app.inject({
+    method: "POST",
+    url: "/capture/intake",
+    headers,
+    payload: {
+      userId,
+      type: "text",
+      source: "empty-capture-test"
+    }
+  });
+
+  assert.equal(response.statusCode, 400);
+  const body = response.json<{
+    message?: string;
+    issues?: Array<{ path: string; message: string }>;
+    error?: { details?: Array<{ path: string; message: string }> };
+  }>();
+  const issueMessages = [
+    ...(body.issues ?? []).map((issue) => issue.message),
+    ...((body.error?.details ?? []).map((issue) => issue.message))
+  ];
+  assert.ok((body.message ?? "").includes("Validation failed"));
+  assert.ok(
+    issueMessages.some((message) =>
+      message.includes("At least one of content, text, link, or image is required")
+    )
+  );
+});
+
 test("capture intake creates relation artifacts and a cluster feed card at threshold", async () => {
   const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const headers = { "x-yurbrain-user-id": userId };

@@ -1,17 +1,13 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
+import { createTestJwt } from "../helpers/auth-token";
 import { createServer } from "../../server";
 
-function createUnsignedJwt(sub: string): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
-  return `${header}.${payload}.`;
-}
-
-function strictHeaders(userId: string): Record<string, string> {
+async function strictHeaders(userId: string): Promise<Record<string, string>> {
+  const token = await createTestJwt(userId);
   return {
-    authorization: `Bearer ${createUnsignedJwt(userId)}`,
+    authorization: `Bearer ${token}`,
     "x-yurbrain-auth-mode": "strict"
   };
 }
@@ -21,7 +17,7 @@ test("function next-step stays grounded with thread/task/session context in stri
     databasePath: path.resolve(process.cwd(), ".yurbrain-data", `sprint12-ai-cluster-${process.pid}`)
   });
   const userId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
-  const headers = strictHeaders(userId);
+  const headers = await strictHeaders(userId);
 
   try {
     const intake = await server.app.inject({
