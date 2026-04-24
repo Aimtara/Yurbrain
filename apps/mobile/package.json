@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "expo start",
     "start": "expo start",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/__tests__/*.test.ts"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "typescript": "^5.8.3",
     "tsx": "^4.21.0"
   }
 }

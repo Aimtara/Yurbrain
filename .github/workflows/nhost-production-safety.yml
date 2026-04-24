@@ -1,0 +1,44 @@
+name: Nhost Production Safety
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - cursor/**
+
+jobs:
+  nhost-safety:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Nhost secret/env safety check
+        run: pnpm check:nhost-safety
+
+      - name: Typecheck (TypeScript safety gate)
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Nhost targeted tests
+        run: pnpm test:nhost-safety
+
+      - name: Nhost targeted build check
+        run: pnpm build:nhost-safety

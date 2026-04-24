@@ -6,6 +6,8 @@ dist/
 .expo/
 .yurbrain-data/
 .DS_Store
+# Local environment files (keep examples committed)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!**/.env.example

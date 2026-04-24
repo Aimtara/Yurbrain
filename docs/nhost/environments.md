@@ -202,3 +202,4 @@ Secret rotation:
 - Auth behavior + redirect semantics: `docs/nhost/auth.md`
 - Storage hardening: `docs/nhost/storage.md`
 - Permissions model: `docs/nhost/permissions.md`
+- Production safety checks and CI gate: `docs/nhost/production-safety-checks.md`
