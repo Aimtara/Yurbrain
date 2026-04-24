@@ -91,3 +91,28 @@ Set environment variables per deployment target:
 - server docs/ops reference: `NHOST_AUTH_REDIRECT_SIGN_IN_URL`, `NHOST_AUTH_REDIRECT_SIGN_OUT_URL`, `NHOST_AUTH_REDIRECT_PASSWORD_RESET_URL`, `NHOST_AUTH_REDIRECT_EMAIL_VERIFICATION_URL`
 
 These should match the exact values allowed in the Nhost dashboard auth settings.
+
+## Storage hardening notes (buckets + ownership + limits)
+
+Storage baseline is now defined for production-safe usage with additive DB + Hasura metadata:
+
+- Buckets: `avatars`, `capture_assets`, `imports`
+- Ownership:
+  - Object keys must be namespaced as `user/{user_id}/...`
+  - DB linkage uses `attachments.user_id`
+  - Hasura `user` role is owner-scoped on `attachments` (`user_id = X-Hasura-User-Id`)
+- Privacy defaults:
+  - `capture_assets` and `imports` are private (signed URL access only)
+  - `avatars` should be private by default; public profile avatars are opt-in only
+- MIME + size policies are documented in `docs/nhost/storage.md` and must be enforced in Nhost bucket settings and upload paths.
+
+### Required Nhost dashboard storage setup
+
+1. Create/configure buckets:
+   - `avatars`
+   - `capture_assets`
+   - `imports`
+2. Apply per-bucket MIME allowlists and max object sizes from `docs/nhost/storage.md`.
+3. Keep `capture_assets` and `imports` non-public.
+4. Only enable public avatar access if product policy explicitly allows it.
+5. Keep upload/delete operations owner-scoped (never grant anonymous write access).

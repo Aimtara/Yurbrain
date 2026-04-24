@@ -1,5 +1,6 @@
 - "!include public_profiles.yaml"
 - "!include public_brain_items.yaml"
+- "!include public_attachments.yaml"
 - "!include public_item_artifacts.yaml"
 - "!include public_item_threads.yaml"
 - "!include public_thread_messages.yaml"

@@ -203,7 +203,7 @@ Variables:
 mutation CreateAttachment($object: attachments_insert_input!) {
   insert_attachments_one(object: $object) {
     id
-    capture_id
+    item_id
     bucket
     object_key
     mime_type
@@ -219,7 +219,7 @@ Variables:
 ```json
 {
   "object": {
-    "capture_id": "00000000-0000-4000-8000-000000000001",
+    "item_id": "00000000-0000-4000-8000-000000000001",
     "bucket": "capture_assets",
     "object_key": "user/00000000-0000-4000-8000-000000000099/captures/00000000-0000-4000-8000-000000000001/asset-1234.png",
     "kind": "image",
@@ -236,7 +236,134 @@ Variables:
 
 ---
 
-## 9) List captures by tag
+## 9) Nhost storage SDK upload examples
+
+### Web/mobile client upload to private `capture_assets` bucket
+
+```ts
+import { getWebNhostClient } from "@/src/nhost/client";
+
+const nhost = getWebNhostClient();
+const session = nhost.getUserSession();
+if (!session?.user?.id) throw new Error("User session required");
+
+const userId = session.user.id;
+const captureId = "00000000-0000-4000-8000-000000000001";
+const file = new File(["hello"], "note.txt", { type: "text/plain" });
+const objectKey = `user/${userId}/captures/${captureId}/${crypto.randomUUID()}-note.txt`;
+
+const upload = await nhost.storage.upload({
+  bucketId: "capture_assets",
+  file,
+  id: objectKey
+});
+if (upload.error) throw new Error(upload.error.message);
+```
+
+### Client-side signed download URL (private buckets)
+
+```ts
+const signed = await nhost.storage.getPresignedUrl({
+  bucketId: "capture_assets",
+  fileId: objectKey
+});
+if (signed.error) throw new Error(signed.error.message);
+console.log(signed.presignedUrl);
+```
+
+### Client-side delete (owner-only)
+
+```ts
+const deleted = await nhost.storage.delete({
+  bucketId: "capture_assets",
+  fileId: objectKey
+});
+if (deleted.error) throw new Error(deleted.error.message);
+```
+
+---
+
+## 10) Link uploaded object to `attachments` row
+
+```graphql
+mutation CreateAttachment($object: attachments_insert_input!) {
+  insert_attachments_one(object: $object) {
+    id
+    user_id
+    item_id
+    bucket
+    object_key
+    kind
+    mime_type
+    size_bytes
+    status
+    created_at
+  }
+}
+```
+
+Variables:
+
+```json
+{
+  "object": {
+    "item_id": "00000000-0000-4000-8000-000000000001",
+    "bucket": "capture_assets",
+    "object_key": "user/00000000-0000-4000-8000-000000000099/captures/00000000-0000-4000-8000-000000000001/asset-1234.png",
+    "kind": "image",
+    "mime_type": "image/png",
+    "size_bytes": 248190,
+    "status": "uploaded",
+    "metadata": {
+      "width": 1170,
+      "height": 2532
+    }
+  }
+}
+```
+
+---
+
+## 11) List my attachments for a capture
+
+```graphql
+query ListCaptureAttachments($captureId: uuid!) {
+  attachments(
+    where: { item_id: { _eq: $captureId } }
+    order_by: { created_at: desc }
+  ) {
+    id
+    bucket
+    object_key
+    kind
+    mime_type
+    size_bytes
+    status
+    created_at
+  }
+}
+```
+
+---
+
+## 12) Soft-delete attachment metadata
+
+```graphql
+mutation MarkAttachmentDeleted($id: uuid!) {
+  update_attachments_by_pk(
+    pk_columns: { id: $id }
+    _set: { status: "deleted" }
+  ) {
+    id
+    status
+    updated_at
+  }
+}
+```
+
+---
+
+## 13) List captures by tag
 
 ```graphql
 query ListCapturesByTag($tagId: uuid!, $limit: Int = 30) {
@@ -259,7 +386,7 @@ query ListCapturesByTag($tagId: uuid!, $limit: Int = 30) {
 
 ---
 
-## 10) List collection items
+## 14) List collection items
 
 ```graphql
 query ListCollectionItems($collectionId: uuid!, $limit: Int = 100) {
