@@ -8,7 +8,7 @@ Before starting, make sure you have:
 
 - **Docker Desktop** installed and running (required for local Nhost services).
 - **Git** installed (required for migrations and metadata tracking).
-- **Node.js + npm or yarn** installed (for frontend app integration).
+- **Node.js + pnpm** installed (for frontend app integration).
 
 ## 1) Install the Nhost CLI
 
@@ -46,36 +46,52 @@ On first boot, image pulls can take a few minutes.
 
 After startup, the CLI prints local service URLs. The key one for schema and GraphQL inspection is the Hasura Console (commonly `http://localhost:9695`).
 
-## 4) Connect your frontend to local Nhost
+## 4) Environment files
 
-Install the base SDK dependencies in your frontend package:
+At minimum, provide root shared values in `.env` and app-level public examples:
+
+- Root `.env`
+- `apps/web/.env.local.example`
+- `apps/mobile/.env.example`
+
+Root keys include Nhost connection values (`NHOST_*`) plus public app keys (`NEXT_PUBLIC_*` and `EXPO_PUBLIC_*`) and Yurbrain runtime aliases (`YURBRAIN_*`).
+
+## 5) Install Nhost packages
+
+From repo root:
 
 ```bash
-npm install @nhost/nhost-js graphql
+pnpm add -w @nhost/nhost-js
+pnpm --filter web add @nhost/react @nhost/nhost-js @nhost/nextjs
+pnpm --filter mobile add @nhost/react @nhost/nhost-js
 ```
 
-Initialize the client:
+## 6) Connect your frontend to local Nhost
 
-```ts
-import { NhostClient } from '@nhost/nhost-js';
+The `@yurbrain/nhost` shared package provides an env-driven client factory. App-specific wrappers live at:
 
-const nhost = new NhostClient({
-  backendUrl: 'http://localhost:1337'
-});
+- Shared package: `packages/nhost/src/client.ts`
+- Web wrapper: `apps/web/src/nhost/client.ts`
+- Mobile wrapper: `apps/mobile/src/nhost/client.ts`
 
-const { session, error } = await nhost.auth.signIn({
-  email: 'test@example.com',
-  password: 'securepassword123'
-});
-```
+Provider scaffolds:
+
+- Web provider wrapper: `apps/web/src/nhost/provider.tsx`
+- Mobile provider wrapper: `apps/mobile/src/nhost/provider.tsx`
 
 Use the exact `backendUrl` printed by your local `nhost up` output.
 
-## 5) Workflow after setup
+## 7) Workflow after setup
 
 - **Manage data** in Hasura Console (tables, relationships, permissions).
 - **Track changes** by committing migration/metadata updates under `nhost/`.
 - **Deploy** by pushing repository changes to your linked Nhost project workflow.
+
+For migration cutover to standard Nhost migration/metadata folders, follow `docs/nhost-baseline-cutover-checklist.md`.
+
+## 8) Existing `apps/api` strategy
+
+Keep `apps/api` as a compatibility path during migration. Only remove or tighten legacy API routes after web and mobile parity is validated on Nhost-backed flows.
 
 ## Notes for this repository
 
