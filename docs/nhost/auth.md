@@ -38,6 +38,13 @@ Each hook also exposes:
 
 - Session restore is delegated to the Nhost auth client.
 - `useNhostAuth` performs initial `nhost.refreshSession()` and explicit session reads.
+- Root screen (`apps/web/app/page.tsx`) now provides minimal interactive auth UX:
+  - sign in
+  - sign up
+  - password reset request
+  - auth error display
+  - authenticated sign-out action
+  - email verification pending banner + resend action
 
 ### Mobile
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { syncAuthenticatedTokenOnlySession } from "@yurbrain/client";
 import { toUserSafeNhostAuthMessage } from "@yurbrain/nhost";
 import { useWebNhostClient } from "./provider";
 import { getWebAuthRedirectConfig } from "./auth-config";
@@ -8,9 +9,13 @@ import { getWebAuthRedirectConfig } from "./auth-config";
 type SessionLike = {
   accessToken?: string;
   user?: {
+    id?: string;
     email?: string;
     emailVerified?: boolean;
     email_verified?: boolean;
+  };
+  decodedToken?: {
+    sub?: string;
   };
 } | null;
 
@@ -28,6 +33,7 @@ export function useNhostAuth() {
 
   const syncSessionState = useCallback(() => {
     const nextSession = (nhost?.getUserSession() ?? null) as SessionLike;
+    syncAuthenticatedTokenOnlySession(nextSession);
     setSession(nextSession);
     const authenticated = Boolean(nextSession?.accessToken);
     setIsAuthenticated(authenticated);
@@ -96,6 +102,7 @@ export function useNhostAuth() {
       signIn: (email: string, password: string) =>
         withErrorHandling(async () => {
           if (!nhost) throw new Error("Nhost client is not initialized");
+          await nhost.auth.signOut({});
           const result = await nhost.auth.signInEmailPassword({
             email,
             password
@@ -106,9 +113,19 @@ export function useNhostAuth() {
       signOut: () =>
         withErrorHandling(async () => {
           if (!nhost) throw new Error("Nhost client is not initialized");
-          const result = await nhost.auth.signOut({});
-          nhost.clearSession();
-          syncSessionState();
+          let result: unknown = null;
+          let signOutError: unknown = null;
+          try {
+            result = await nhost.auth.signOut({});
+          } catch (caught) {
+            signOutError = caught;
+          } finally {
+            nhost.clearSession();
+            syncSessionState();
+          }
+          if (signOutError) {
+            throw signOutError;
+          }
           return result;
         }, "Unable to sign out right now."),
       requestPasswordReset: (email: string) =>

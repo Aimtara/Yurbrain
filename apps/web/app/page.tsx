@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { FinishRebalanceSheet, PlanPreviewSheet, PostponeRescheduleSheet, type TimeWindowOption } from "@yurbrain/ui";
 import { useYurbrainClient } from "@yurbrain/client";
+import { getWebAuthRedirectConfig } from "../src/nhost/auth-config";
+import { WebAuthPanel } from "../src/features/auth/WebAuthPanel";
 
 import { CapturePanel } from "../src/features/capture/CapturePanel";
 import { useCaptureController } from "../src/features/capture/useCaptureController";
@@ -43,7 +45,19 @@ import { useNhostAuth } from "../src/nhost/useNhostAuth";
 
 export default function Page() {
   const yurbrainClient = useYurbrainClient();
-  const { isReady: authReady, isAuthenticated } = useNhostAuth();
+  const auth = useNhostAuth();
+  const {
+    isReady: authReady,
+    isAuthenticated,
+    isEmailVerified,
+    session,
+    sendVerificationEmail,
+    signOut,
+    clearAuthError
+  } = auth;
+  const [authStatusNotice, setAuthStatusNotice] = useState("");
+  const [authStatusLoading, setAuthStatusLoading] = useState(false);
+  const authRedirects = useMemo(() => getWebAuthRedirectConfig(), []);
   const {
     hydrated,
     activeLens,
@@ -494,18 +508,127 @@ export default function Page() {
   if (!isAuthenticated) {
     return (
       <main style={{ minHeight: "100vh", background: "#f1f5f9", padding: "48px 16px" }}>
-        <section style={{ margin: "0 auto", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
-          <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
-          <p style={{ margin: 0 }}>
-            Yurbrain requires an authenticated Nhost session. Sign in or sign up, then reload this page.
-          </p>
-        </section>
+        <WebAuthPanel auth={auth} />
       </main>
     );
   }
 
+  const currentEmail = session?.user?.email;
+  const verificationBanner = !isEmailVerified ? (
+    <section
+      style={{
+        margin: "16px auto 0",
+        maxWidth: "960px",
+        padding: "0 16px"
+      }}
+    >
+      <div
+        style={{
+          borderRadius: "14px",
+          border: "1px solid #fde68a",
+          background: "#fffbeb",
+          padding: "12px",
+          display: "grid",
+          gap: "8px",
+          color: "#78350f"
+        }}
+      >
+        <p style={{ margin: 0, fontWeight: 700 }}>Email verification pending</p>
+        <p style={{ margin: 0 }}>
+          {currentEmail
+            ? `Signed in as ${currentEmail}. Verify this inbox for full account confidence.`
+            : "Verify your email inbox to complete account verification."}
+        </p>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            disabled={authStatusLoading}
+            onClick={() => {
+              void (async () => {
+                setAuthStatusLoading(true);
+                setAuthStatusNotice("");
+                clearAuthError();
+                try {
+                  await sendVerificationEmail(currentEmail);
+                  setAuthStatusNotice("Verification email sent.");
+                } catch {
+                  // useNhostAuth already stores a safe auth error message.
+                } finally {
+                  setAuthStatusLoading(false);
+                }
+              })();
+            }}
+          >
+            {authStatusLoading ? "Sending..." : "Resend verification email"}
+          </button>
+          <a
+            href={authRedirects.emailVerificationRedirectTo}
+            style={{
+              alignSelf: "center",
+              color: "#1d4ed8"
+            }}
+          >
+            Open verification page
+          </a>
+        </div>
+        {authStatusNotice ? <p style={{ margin: 0, color: "#0f766e" }}>{authStatusNotice}</p> : null}
+        {auth.error ? <p style={{ margin: 0, color: "#991b1b" }}>{auth.error}</p> : null}
+      </div>
+    </section>
+  ) : null;
+
+  const signedInBanner = (
+    <section
+      style={{
+        margin: "16px auto 0",
+        maxWidth: "960px",
+        padding: "0 16px"
+      }}
+    >
+      <div
+        style={{
+          borderRadius: "12px",
+          border: "1px solid #cbd5e1",
+          background: "#ffffff",
+          padding: "10px 12px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap",
+          color: "#334155"
+        }}
+      >
+        <span>
+          {currentEmail ? `Signed in as ${currentEmail}` : "Signed in"}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            void (async () => {
+              setAuthStatusNotice("");
+              clearAuthError();
+              try {
+                await signOut();
+              } catch {
+                // useNhostAuth already stores a safe auth error message.
+              }
+            })();
+          }}
+        >
+          Sign out
+        </button>
+      </div>
+      {auth.error ? (
+        <p style={{ margin: "8px 0 0", color: "#991b1b", padding: "0 4px" }}>{auth.error}</p>
+      ) : null}
+    </section>
+  );
+
   return (
     <main style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: "48px" }}>
+      {signedInBanner}
+      {verificationBanner}
       {founderReviewUnauthorized ? (
         <section style={{ margin: "48px auto 0", maxWidth: "720px", borderRadius: "16px", border: "1px solid #fecaca", background: "#fef2f2", padding: "20px", color: "#7f1d1d" }}>
           <h1 style={{ margin: "0 0 8px", fontSize: "20px", lineHeight: "28px" }}>Sign in required</h1>
