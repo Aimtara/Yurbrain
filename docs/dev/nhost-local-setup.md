@@ -1,83 +1,133 @@
-# Nhost Local Setup (From Scratch)
+# Nhost Local Setup (Yurbrain)
 
-This guide explains how to run Nhost locally for Yurbrain migration work. Because Nhost stitches together multiple services (Hasura, Postgres, Auth, storage, functions), you must run a local orchestrator via the Nhost CLI.
+This guide is the local-development workflow for running Yurbrain with Nhost services.
+It covers Nhost CLI setup, env wiring, and how to run the existing monorepo dev scripts.
 
 ## Prerequisites
 
-Before starting, make sure you have:
+- Docker Desktop running (required for `nhost up`).
+- Node.js + pnpm installed.
+- Nhost CLI installed.
 
-- **Docker Desktop** installed and running (required for local Nhost services).
-- **Git** installed (required for migrations and metadata tracking).
-- **Node.js + npm or yarn** installed (for frontend app integration).
-
-## 1) Install the Nhost CLI
-
-The CLI manages your local Nhost stack, migration files, and Hasura metadata.
-
-macOS / Linux:
+Install Nhost CLI (macOS/Linux):
 
 ```bash
 sudo curl -L https://raw.githubusercontent.com/nhost/cli/main/get.sh | bash
 ```
 
-If you are on Windows (or prefer another install flow), use the binaries from Nhost CLI GitHub releases.
+## 1) Initialize and link Nhost project
 
-## 2) Initialize Nhost in your repository
-
-From your project root, run:
+From repo root:
 
 ```bash
 nhost init
 ```
 
-This creates an `nhost/` directory containing configuration, migrations, and metadata.
+If this repo is already initialized, `nhost init` is a no-op.
 
-It also generates a `.secrets` file. Keep `.secrets` out of version control by ensuring it is included in `.gitignore`.
+Link to an existing remote project when needed:
 
-## 3) Start local Nhost services
+```bash
+nhost link
+```
 
-With Docker running, start the local stack:
+You can also link directly by project reference:
+
+```bash
+nhost link --project "<project-ref>"
+```
+
+## 2) Start local Nhost stack
 
 ```bash
 nhost up
 ```
 
-On first boot, image pulls can take a few minutes.
+Keep this running in its own terminal.
 
-After startup, the CLI prints local service URLs. The key one for schema and GraphQL inspection is the Hasura Console (commonly `http://localhost:9695`).
+After startup, note these values from CLI output:
+- `NHOST_BACKEND_URL` (often `http://localhost:1337`)
+- GraphQL/Auth/Storage/Functions URLs
+- local anon/admin secrets (if shown)
 
-## 4) Connect your frontend to local Nhost
+## 3) Configure Yurbrain env files
 
-Install the base SDK dependencies in your frontend package:
+From repo root:
 
 ```bash
-npm install @nhost/nhost-js graphql
+cp apps/web/.env.example apps/web/.env.local
+cp apps/mobile/.env.example apps/mobile/.env
+cp apps/api/.env.example apps/api/.env
 ```
 
-Initialize the client:
+Then fill values from `nhost up` output.
 
-```ts
-import { NhostClient } from '@nhost/nhost-js';
+### Web (`apps/web/.env.local`)
 
-const nhost = new NhostClient({
-  backendUrl: 'http://localhost:1337'
-});
+- `NEXT_PUBLIC_NHOST_BACKEND_URL`
+- `NEXT_PUBLIC_NHOST_GRAPHQL_URL`
+- `NEXT_PUBLIC_NHOST_AUTH_URL`
+- `NEXT_PUBLIC_NHOST_STORAGE_URL`
+- `NEXT_PUBLIC_NHOST_FUNCTIONS_URL`
+- `NEXT_PUBLIC_NHOST_ANON_KEY`
 
-const { session, error } = await nhost.auth.signIn({
-  email: 'test@example.com',
-  password: 'securepassword123'
-});
+### Mobile (`apps/mobile/.env`)
+
+- `EXPO_PUBLIC_NHOST_BACKEND_URL`
+- `EXPO_PUBLIC_NHOST_GRAPHQL_URL`
+- `EXPO_PUBLIC_NHOST_AUTH_URL`
+- `EXPO_PUBLIC_NHOST_STORAGE_URL`
+- `EXPO_PUBLIC_NHOST_FUNCTIONS_URL`
+- `EXPO_PUBLIC_NHOST_ANON_KEY`
+
+### API (`apps/api/.env`)
+
+- `NHOST_BACKEND_URL`
+- `NHOST_GRAPHQL_URL`
+- `NHOST_AUTH_URL`
+- `NHOST_STORAGE_URL`
+- `NHOST_FUNCTIONS_URL`
+- `NHOST_ANON_KEY`
+- `NHOST_ADMIN_SECRET` (server-only; never use in web/mobile env files)
+
+## 4) Run Yurbrain with existing dev scripts
+
+In separate terminals from repo root:
+
+```bash
+pnpm dev:api
+pnpm dev:web
+pnpm dev:mobile
 ```
 
-Use the exact `backendUrl` printed by your local `nhost up` output.
+Notes:
+- `pnpm dev:web` and `pnpm dev:mobile` are the canonical scripts.
+- If `pnpm dev:api` hits the known `ts-node-dev` ESM mismatch, run:
 
-## 5) Workflow after setup
+```bash
+pnpm --filter api exec tsx --watch src/index.ts
+```
 
-- **Manage data** in Hasura Console (tables, relationships, permissions).
-- **Track changes** by committing migration/metadata updates under `nhost/`.
-- **Deploy** by pushing repository changes to your linked Nhost project workflow.
+## 5) New contributor quick-start
 
-## Notes for this repository
+```bash
+pnpm install
+nhost init
+nhost link   # optional if using a remote project
+nhost up
+cp apps/web/.env.example apps/web/.env.local
+cp apps/mobile/.env.example apps/mobile/.env
+cp apps/api/.env.example apps/api/.env
+# fill env values from nhost up output
+pnpm reset && pnpm seed
+pnpm dev:api
+pnpm dev:web
+pnpm dev:mobile
+```
 
-- Yurbrain still has a working local Fastify + PGlite path for non-Nhost development.
-- Use this Nhost setup guide when working on migration/cutover tasks described in `docs/nhost-migration-runbook.md`.
+## Local vs production env differences
+
+- Local: usually `localhost` service URLs from `nhost up`.
+- Production: Nhost cloud URLs and production secrets from deployment env.
+- `NHOST_ADMIN_SECRET` is API-only in all environments.
+- Web/mobile should only receive public env keys (`NEXT_PUBLIC_*`, `EXPO_PUBLIC_*`).
