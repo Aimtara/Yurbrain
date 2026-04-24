@@ -182,6 +182,7 @@ Use this checklist as the final release gate for Yurbrain's Nhost-backed product
 | Required server-only `NHOST_*` vars are present |  | [ ] |  |  |
 | Admin secret is server-side only (never in client env files) |  | [ ] |  |  |
 | Issuer/audience/JWKS auth settings are validated in production-like env |  | [ ] |  |  |
+| `API_ALLOWED_ORIGINS` / `YURBRAIN_ALLOWED_ORIGINS` are explicit and contain no wildcard fallback for staging/production |  | [ ] |  |  |
 | Legacy aliases (if present) are consistent and intentionally retained |  | [ ] |  |  |
 
 ## 15) CI checks
