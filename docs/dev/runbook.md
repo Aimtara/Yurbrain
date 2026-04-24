@@ -21,6 +21,13 @@ pnpm test:e2e
 
 If any command fails, stop and reconcile `docs/product/current-state.md` before proceeding.
 
+
+## Nhost local orchestrator setup
+
+If you are working on Nhost migration slices, use `docs/dev/nhost-local-setup.md` for a clean from-scratch setup with Docker + Nhost CLI.
+
+If Nhost reports missing standard Hasura migrations/metadata folders, complete `docs/nhost-baseline-cutover-checklist.md` before expecting schema pushes through Nhost deploy flows.
+
 ## 1) Prerequisites
 
 - Node.js 22.x (verified with Node `v22.22.2` in this audit run).

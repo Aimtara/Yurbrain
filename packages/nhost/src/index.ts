@@ -1,0 +1,1 @@
+export { nhost } from "./client";

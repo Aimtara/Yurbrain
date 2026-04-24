@@ -8,16 +8,19 @@
     "start": "next start"
   },
   "dependencies": {
+    "@nhost/nextjs": "^2.3.1",
+    "@nhost/nhost-js": "^4.7.0",
+    "@nhost/react": "^3.11.2",
+    "@yurbrain/client": "workspace:*",
+    "@yurbrain/ui": "workspace:*",
     "next": "15.3.0",
     "react": "19.0.0",
-    "react-dom": "19.0.0",
-    "@yurbrain/ui": "workspace:*",
-    "@yurbrain/client": "workspace:*"
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.3",
     "@types/node": "^22.15.3",
     "@types/react": "^19.0.4",
-    "@types/react-dom": "^19.0.2"
+    "@types/react-dom": "^19.0.2",
+    "typescript": "^5.8.3"
   }
 }
