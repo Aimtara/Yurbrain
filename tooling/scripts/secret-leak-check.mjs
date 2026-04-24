@@ -40,7 +40,15 @@ function isCandidateTextPath(filePath) {
 }
 
 async function getTrackedFiles() {
-  const { stdout } = await execFileAsync("git", ["ls-files"]);
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync("git", ["ls-files"]));
+  } catch (error) {
+    throw new Error(
+      "[secret-leak-check] This script must run from a git checkout with git available because it scans tracked files only.",
+      { cause: error }
+    );
+  }
   return stdout
     .split("\n")
     .map((line) => line.trim())

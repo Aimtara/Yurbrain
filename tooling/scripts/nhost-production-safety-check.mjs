@@ -21,6 +21,14 @@ const DISALLOWED_CLIENT_PATTERNS = [
   "EXPO_PUBLIC_NHOST_ADMIN_SECRET"
 ];
 
+function toGitCheckoutPrerequisiteError(error) {
+  const details = error instanceof Error ? error.message : String(error);
+  return new Error(
+    "[nhost-safety] This check must run from a git checkout because it inspects tracked files via `git ls-files`. " +
+      `Original error: ${details}`
+  );
+}
+
 async function collectFiles(rootDirectories) {
   const files = new Set();
   for (const rootDirectory of rootDirectories) {
@@ -82,9 +90,14 @@ async function findTrackedRuntimeEnvFiles() {
     (entry) => !gitIgnore.includes(entry)
   );
 
-  const { stdout } = await execFileAsync("git", ["ls-files"], {
-    cwd: WORKSPACE_ROOT
-  });
+  let stdout = "";
+  try {
+    ({ stdout } = await execFileAsync("git", ["ls-files"], {
+      cwd: WORKSPACE_ROOT
+    }));
+  } catch (error) {
+    throw toGitCheckoutPrerequisiteError(error);
+  }
 
   const disallowedEnvFiles = stdout
     .split("\n")
