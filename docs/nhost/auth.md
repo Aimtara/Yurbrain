@@ -9,6 +9,8 @@ This document defines the auth behavior and configuration for Yurbrain web/mobil
 - Shared runtime config: `packages/nhost/src/client.ts`
 - Mobile token persistence: `apps/mobile/src/nhost/storage.ts`
 
+Environment-specific deployment values (local/preview/staging/production) are documented centrally in `docs/nhost/environments.md`.
+
 ## Supported flows
 
 The auth hooks expose the following actions:

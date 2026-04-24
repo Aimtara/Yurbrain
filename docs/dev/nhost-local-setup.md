@@ -131,3 +131,7 @@ pnpm dev:mobile
 - Production: Nhost cloud URLs and production secrets from deployment env.
 - `NHOST_ADMIN_SECRET` is API-only in all environments.
 - Web/mobile should only receive public env keys (`NEXT_PUBLIC_*`, `EXPO_PUBLIC_*`).
+
+For full local/preview/staging/production variable and deployment matrix, see:
+
+- `docs/nhost/environments.md`
