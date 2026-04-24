@@ -1,17 +1,12 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
+import { createTestJwt } from "../helpers/auth-token";
 import { createServer } from "../../server";
 
-function createUnsignedJwt(sub: string): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
-  return `${header}.${payload}.`;
-}
-
-function strictHeaders(userId: string): Record<string, string> {
+async function strictHeaders(userId: string): Promise<Record<string, string>> {
   return {
-    authorization: `Bearer ${createUnsignedJwt(userId)}`,
+    authorization: `Bearer ${await createTestJwt(userId)}`,
     "x-yurbrain-auth-mode": "strict"
   };
 }
@@ -21,7 +16,7 @@ test("function summarize-progress returns concise grounded synthesis in strict m
     databasePath: path.resolve(process.cwd(), ".yurbrain-data", `sprint12-ai-synthesis-${process.pid}`)
   });
   const userId = "12121212-1212-4212-8212-121212121212";
-  const headers = strictHeaders(userId);
+  const headers = await strictHeaders(userId);
 
   try {
     const responses = await Promise.all(
@@ -77,7 +72,7 @@ test("function next-step returns one grounded action in strict mode", async () =
     databasePath: path.resolve(process.cwd(), ".yurbrain-data", `sprint12-ai-next-step-${process.pid}`)
   });
   const userId = "13131313-1313-4313-8313-131313131313";
-  const headers = strictHeaders(userId);
+  const headers = await strictHeaders(userId);
 
   try {
     const responses = await Promise.all(

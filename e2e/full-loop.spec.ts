@@ -2,16 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { app } from "../apps/api/src/server";
+import { createTestJwt } from "../apps/api/src/__tests__/helpers/auth-token";
 
-function createUnsignedJwt(sub: string): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
-  return `${header}.${payload}.`;
-}
-
-function buildStrictHeaders(userId: string): Record<string, string> {
+async function buildStrictHeaders(userId: string): Promise<Record<string, string>> {
   return {
-    authorization: `Bearer ${createUnsignedJwt(userId)}`,
+    authorization: `Bearer ${await createTestJwt(userId)}`,
     "x-yurbrain-auth-mode": "strict"
   };
 }
@@ -22,7 +17,7 @@ test.after(async () => {
 
 test("full loop: capture -> feed -> comment/query -> convert -> act", async () => {
   const userId = "77777777-7777-4777-8777-777777777777";
-  const strictHeaders = buildStrictHeaders(userId);
+  const strictHeaders = await buildStrictHeaders(userId);
 
   const createdItem = await app.inject({
     method: "POST",

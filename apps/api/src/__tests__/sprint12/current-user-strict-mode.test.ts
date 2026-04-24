@@ -3,13 +3,8 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
+import { createTestJwt } from "../helpers/auth-token";
 import { createServer } from "../../server";
-
-function createUnsignedJwt(sub: string): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
-  return `${header}.${payload}.`;
-}
 
 test("current user resolution prefers bearer identity and ignores query spoofing", async () => {
   const dbPath = path.resolve(process.cwd(), ".yurbrain-data", `strict-current-user-${process.pid}-${Date.now()}`);
@@ -17,7 +12,7 @@ test("current user resolution prefers bearer identity and ignores query spoofing
   const server = createServer({ databasePath: dbPath });
   const authUserId = "11111111-1111-4111-8111-111111111111";
   const fallbackUserId = "22222222-2222-4222-8222-222222222222";
-  const bearerToken = createUnsignedJwt(authUserId);
+  const bearerToken = await createTestJwt(authUserId);
 
   try {
     const strictWithBearerAndHeader = await server.app.inject({

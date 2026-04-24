@@ -2,17 +2,12 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 
+import { createTestJwt } from "../helpers/auth-token";
 import { createServer } from "../../server";
 
-function createUnsignedJwt(sub: string): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
-  return `${header}.${payload}.`;
-}
-
-function buildStrictHeaders(userId: string): Record<string, string> {
+async function buildStrictHeaders(userId: string): Promise<Record<string, string>> {
   return {
-    authorization: `Bearer ${createUnsignedJwt(userId)}`,
+    authorization: `Bearer ${await createTestJwt(userId)}`,
     "x-yurbrain-auth-mode": "strict"
   };
 }
@@ -22,7 +17,7 @@ test("strict auth core loop smoke: capture -> feed -> item detail -> comments ->
     databasePath: path.resolve(process.cwd(), ".yurbrain-data", `strict-auth-core-loop-${process.pid}`)
   });
   const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const strictHeaders = buildStrictHeaders(userId);
+  const strictHeaders = await buildStrictHeaders(userId);
 
   try {
     const authMe = await server.app.inject({
