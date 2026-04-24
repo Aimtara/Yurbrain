@@ -1,0 +1,13 @@
+table:
+  name: events
+  schema: public
+select_permissions:
+  - role: user
+    permission:
+      columns: "*"
+      filter:
+        user_id:
+          _eq: X-Hasura-User-Id
+insert_permissions: []
+update_permissions: []
+delete_permissions: []
