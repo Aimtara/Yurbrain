@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FinishRebalanceSheet, PlanPreviewSheet, PostponeRescheduleSheet, type TimeWindowOption } from "@yurbrain/ui";
 import { useYurbrainClient } from "@yurbrain/client";
 import { getWebAuthRedirectConfig } from "../src/nhost/auth-config";
@@ -28,6 +28,7 @@ import { useSessionController } from "../src/features/session/useSessionControll
 import type {
   ActiveTaskContextPeek,
   BrainItemDto,
+  BrainItemSearchQuery,
   CaptureDraft,
   ContinuityContext,
   FeedCardDto,
@@ -94,6 +95,14 @@ export default function Page() {
   });
   const [captureSheetOpen, setCaptureSheetOpen] = useState(false);
   const [items, setItems] = useState<BrainItemDto[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemSearchQuery, setItemSearchQuery] = useState("");
+  const [itemSearchTypeFilter, setItemSearchTypeFilter] = useState<BrainItemDto["type"] | "">("");
+  const [itemSearchTagFilter, setItemSearchTagFilter] = useState("");
+  const [itemSearchFromDate, setItemSearchFromDate] = useState("");
+  const [itemSearchToDate, setItemSearchToDate] = useState("");
+  const [itemSearchStatusFilter, setItemSearchStatusFilter] = useState<BrainItemDto["status"] | "">("");
+  const [itemSearchProcessingStatusFilter, setItemSearchProcessingStatusFilter] = useState<BrainItemSearchQuery["processingStatus"] | "">("");
   const [selectedContinuity, setSelectedContinuity] = useState<ContinuityContext | null>(null);
   const [commentThreadId, setCommentThreadId] = useState("");
   const [chatThreadId, setChatThreadId] = useState("");
@@ -116,6 +125,7 @@ export default function Page() {
   const [, setChatFallbackNotice] = useState("");
   const [conversionNotice, setConversionNotice] = useState("");
   const [itemActionNotice, setItemActionNotice] = useState("");
+  const [itemSearchError, setItemSearchError] = useState("");
   const [pendingPlanPreview, setPendingPlanPreview] = useState<PlanPreviewDraft | null>(null);
   const [pendingPostponeSheet, setPendingPostponeSheet] = useState<PostponeDraft | null>(null);
   const [pendingFinishRebalance, setPendingFinishRebalance] = useState<FinishRebalanceDraft | null>(null);
@@ -380,13 +390,26 @@ export default function Page() {
     formatRelative
   });
 
-  const { loadItems } = useBrainItemsController({
+  const { searchItems } = useBrainItemsController({
     yurbrainClient,
     selectedItemId,
     setItems,
-    setCaptureError,
-    setSelectedItemId
+    setItemsError: setItemSearchError,
+    setSelectedItemId,
+    setItemsLoading
   });
+
+  const semanticSearchNotice =
+    "Search currently uses keyword matching and filters. Semantic/vector search is post-alpha.";
+  const hasAppliedSearchFilters = Boolean(
+    itemSearchQuery.trim() ||
+      itemSearchTypeFilter ||
+      itemSearchTagFilter.trim() ||
+      itemSearchFromDate ||
+      itemSearchToDate ||
+      itemSearchStatusFilter ||
+      itemSearchProcessingStatusFilter
+  );
 
   const { captureItem, openCaptureSheet } = useCaptureController({
     yurbrainClient,
@@ -431,14 +454,46 @@ export default function Page() {
     runConvert
   });
 
+  const runItemSearch = useCallback(async () => {
+    await searchItems({
+      q: itemSearchQuery,
+      type: itemSearchTypeFilter || undefined,
+      tag: itemSearchTagFilter || undefined,
+      createdFrom: itemSearchFromDate || undefined,
+      createdTo: itemSearchToDate || undefined,
+      status: itemSearchStatusFilter || undefined,
+      processingStatus: itemSearchProcessingStatusFilter || undefined
+    });
+  }, [
+    itemSearchFromDate,
+    itemSearchProcessingStatusFilter,
+    itemSearchQuery,
+    itemSearchStatusFilter,
+    itemSearchTagFilter,
+    itemSearchToDate,
+    itemSearchTypeFilter,
+    searchItems
+  ]);
+
+  const resetItemSearch = useCallback(async () => {
+    setItemSearchQuery("");
+    setItemSearchTypeFilter("");
+    setItemSearchTagFilter("");
+    setItemSearchFromDate("");
+    setItemSearchToDate("");
+    setItemSearchStatusFilter("");
+    setItemSearchProcessingStatusFilter("");
+    await searchItems({});
+  }, [searchItems]);
+
   useEffect(() => {
     if (!hydrated) return;
     void (async () => {
       const preferredLens = await loadUserPreferences();
       const lensForInitialLoad = preferredLens ?? activeLens;
-      await Promise.all([loadItems(), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
+      await Promise.all([searchItems({}), loadFeed(lensForInitialLoad), loadTasks(), loadAllSessionsForUser()]);
     })();
-  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadItems, loadTasks, loadUserPreferences]);
+  }, [activeLens, hydrated, loadAllSessionsForUser, loadFeed, loadTasks, loadUserPreferences, searchItems]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -850,6 +905,22 @@ export default function Page() {
       {activeSurface === "item" && !founderReviewUnauthorized ? (
         <ItemDetailSurface
           selectedItem={selectedItem}
+          items={items}
+          itemSearchQuery={itemSearchQuery}
+          itemSearchTag={itemSearchTagFilter}
+          itemSearchType={itemSearchTypeFilter || "all"}
+          itemSearchStatus={itemSearchStatusFilter || "all"}
+          itemSearchProcessingStatus={itemSearchProcessingStatusFilter || "all"}
+          itemSearchCreatedFrom={itemSearchFromDate}
+          itemSearchCreatedTo={itemSearchToDate}
+          itemSearchLoading={itemsLoading}
+          itemSearchError={itemSearchError}
+          semanticSearchNotice={semanticSearchNotice}
+          emptyStateMessage={
+            hasAppliedSearchFilters
+              ? "No captures match the current search filters."
+              : "No captures yet. Add a capture from Focus Feed."
+          }
           continuity={derivedItemContinuity}
           selectedArtifacts={selectedArtifacts}
           itemContextLoading={itemContextLoading}
@@ -860,6 +931,21 @@ export default function Page() {
           timelineEntries={timelineEntries}
           canStartSession={Boolean(selectedItemTask)}
           onBackToFeed={() => setActiveSurface("feed")}
+          onSearchQueryChange={setItemSearchQuery}
+          onSearchTagChange={setItemSearchTagFilter}
+          onSearchTypeChange={(value) => setItemSearchTypeFilter(value === "all" ? "" : value)}
+          onSearchStatusChange={(value) => setItemSearchStatusFilter(value === "all" ? "" : value)}
+          onSearchProcessingStatusChange={(value) =>
+            setItemSearchProcessingStatusFilter(value === "all" ? "" : value)
+          }
+          onSearchCreatedFromChange={setItemSearchFromDate}
+          onSearchCreatedToChange={setItemSearchToDate}
+          onSearchApply={() => void runItemSearch()}
+          onSearchReset={() => void resetItemSearch()}
+          onSelectSearchItem={(itemId) => {
+            setSelectedItemId(itemId);
+            setSelectedContinuity(null);
+          }}
           onQuickAction={(action) => void runQuickAction(action)}
           onAddComment={(itemId, comment) => void createComment(itemId, comment)}
           onConvertCommentToTask={(itemId, comment) =>

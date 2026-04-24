@@ -1,40 +1,56 @@
 import { useCallback } from "react";
 import { type YurbrainClient } from "@yurbrain/client";
 
-import type { BrainItemDto } from "../shared/types";
+import type { BrainItemDto, BrainItemSearchQuery } from "../shared/types";
 
 type UseBrainItemsControllerInput = {
   yurbrainClient: YurbrainClient;
   selectedItemId: string;
   setItems: (items: BrainItemDto[]) => void;
-  setCaptureError: (error: string) => void;
+  setItemsError: (error: string) => void;
   setSelectedItemId: (itemId: string) => void;
+  setItemsLoading: (loading: boolean) => void;
 };
 
 export function useBrainItemsController({
   yurbrainClient,
   selectedItemId,
   setItems,
-  setCaptureError,
-  setSelectedItemId
+  setItemsError,
+  setSelectedItemId,
+  setItemsLoading
 }: UseBrainItemsControllerInput) {
-  const loadItems = useCallback(async () => {
-    try {
-      const response = await yurbrainClient.listBrainItems<BrainItemDto[]>();
-      const nextItems = [...response].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-      setItems(nextItems);
-      setCaptureError("");
-      if (nextItems.length === 0) {
-        setSelectedItemId("");
-        return;
+  const searchItems = useCallback(
+    async (filters: BrainItemSearchQuery = {}) => {
+      setItemsLoading(true);
+      try {
+        const response = await yurbrainClient.listBrainItems<BrainItemDto[]>({
+          q: filters.q?.trim() || undefined,
+          type: filters.type || undefined,
+          tag: filters.tag?.trim() || undefined,
+          status: filters.status || undefined,
+          processingStatus: filters.processingStatus || undefined,
+          createdFrom: filters.createdFrom || undefined,
+          createdTo: filters.createdTo || undefined
+        });
+        const nextItems = [...response].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        setItems(nextItems);
+        setItemsError("");
+        if (nextItems.length === 0) {
+          setSelectedItemId("");
+          return;
+        }
+        if (!nextItems.some((item) => item.id === selectedItemId)) {
+          setSelectedItemId(nextItems[0].id);
+        }
+      } catch {
+        setItemsError("Could not load captured items.");
+      } finally {
+        setItemsLoading(false);
       }
-      if (!nextItems.some((item) => item.id === selectedItemId)) {
-        setSelectedItemId(nextItems[0].id);
-      }
-    } catch {
-      setCaptureError("Could not load captured items.");
-    }
-  }, [selectedItemId, setCaptureError, setItems, setSelectedItemId, yurbrainClient]);
+    },
+    [selectedItemId, setItems, setItemsError, setItemsLoading, setSelectedItemId, yurbrainClient]
+  );
 
-  return { loadItems };
+  return { loadItems: searchItems, searchItems };
 }

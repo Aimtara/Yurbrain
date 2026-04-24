@@ -2,6 +2,7 @@ export const endpoints = {
   authMe: "/auth/me",
   captureIntake: "/capture/intake",
   brainItems: "/brain-items",
+  brainItemsSearch: "/brain-items",
   feed: "/feed",
   threads: "/threads",
   messages: "/messages",

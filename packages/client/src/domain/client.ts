@@ -66,6 +66,17 @@ type FeedQuery = {
   includeSnoozed?: boolean;
 };
 
+type BrainItemSearchQuery = {
+  q?: string;
+  type?: "note" | "link" | "idea" | "quote" | "file";
+  tag?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  status?: "active" | "archived";
+  processingStatus?: "processed" | "pending";
+  limit?: number;
+};
+
 type TaskListQuery = {
   status?: "todo" | "in_progress" | "done";
   userId?: string;
@@ -103,6 +114,7 @@ export type YurbrainDomainClient = {
   snoozeFeedCard: <T>(cardId: string, minutes?: number) => Promise<T>;
   refreshFeedCard: <T>(cardId: string) => Promise<T>;
   listBrainItems: <T>() => Promise<T>;
+  searchBrainItems: <T>(query?: BrainItemSearchQuery) => Promise<T>;
   getBrainItem: <T>(itemId: string) => Promise<T>;
   createBrainItem: <T>(payload: unknown) => Promise<T>;
   updateBrainItem: <T>(itemId: string, payload: unknown) => Promise<T>;
@@ -173,6 +185,8 @@ function createRestDomainClient(): YurbrainDomainClient {
     snoozeFeedCard,
     refreshFeedCard,
     listBrainItems: () => apiClient(endpoints.brainItems),
+    searchBrainItems: (query = {}) =>
+      apiClient(`${endpoints.brainItemsSearch}${renderQuery(query)}`),
     getBrainItem,
     createBrainItem,
     updateBrainItem: (itemId, payload) =>
@@ -333,6 +347,7 @@ function createGraphqlCrudOverrides(restClient: YurbrainDomainClient): Partial<Y
 
   return {
     listBrainItems: () => (useGraphql() ? listBrainItemsGraphql() : restClient.listBrainItems()),
+    searchBrainItems: (query = {}) => restClient.searchBrainItems(query),
     getBrainItem: (itemId) => (useGraphql() ? getBrainItemGraphql(itemId) : restClient.getBrainItem(itemId)),
     updateBrainItem: (itemId, payload) =>
       useGraphql() ? updateBrainItemGraphql(itemId, payload) : restClient.updateBrainItem(itemId, payload),
