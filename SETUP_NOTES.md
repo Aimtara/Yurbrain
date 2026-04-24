@@ -1,7 +1,7 @@
 # Nhost integration setup notes
 
 This repository already contained partial Nhost migration scaffolding in `packages/client` and docs.
-The implementation here adds a dedicated `@yurbrain/nhost` package and app-local providers/wrappers without changing the existing shared domain client transport flow.
+The implementation here adds a dedicated `@yurbrain/nhost` package and app-local client wrappers without changing the existing shared domain client transport flow.
 
 ## Ambiguities and least-risk choices
 
@@ -14,7 +14,7 @@ The implementation here adds a dedicated `@yurbrain/nhost` package and app-local
    The new shared package resolves and exposes functions/storage/graphql/auth URLs from either explicit URLs or backend/subdomain+region inputs, but does not force usage where existing code does not require it.
 
 3. Existing shared client package (`@yurbrain/client`) already initializes Nhost bootstrap.
-   To avoid risk, this integration does not replace that flow; it adds app-local Nhost providers to make Nhost access explicit at app roots and introduces reusable env validation helpers in `@yurbrain/nhost`.
+   To avoid risk, this integration does not replace that flow; it adds app-local Nhost client setup and reusable env validation helpers in `@yurbrain/nhost`.
 
 ## Security guardrails in this change
 
