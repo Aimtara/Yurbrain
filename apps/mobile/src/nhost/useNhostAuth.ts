@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { syncAuthenticatedTokenOnlySession } from "@yurbrain/client";
 import { toUserSafeNhostAuthMessage } from "@yurbrain/nhost";
 import { useMobileNhostClient } from "./provider";
 import { resolveMobileNhostAuthConfig } from "./auth-config";
@@ -12,6 +13,7 @@ type Session = ReturnType<MobileNhostClient["getUserSession"]>;
 type AuthState = {
   session: Session | null;
   isAuthenticated: boolean;
+  isEmailVerified: boolean;
   isInitializing: boolean;
   loading: boolean;
   error: string | null;
@@ -21,10 +23,10 @@ type AuthState = {
 type AuthActions = {
   signUp: (email: string, password: string) => Promise<{ success: boolean }>;
   signIn: (email: string, password: string) => Promise<{ success: boolean }>;
-  signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>;
-  sendVerificationEmail: (email?: string) => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<void>;
+  signOut: () => Promise<{ success: boolean }>;
+  refreshSession: () => Promise<{ success: boolean }>;
+  sendVerificationEmail: (email?: string) => Promise<{ success: boolean }>;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean }>;
 };
 
 export type MobileNhostAuth = AuthState &
@@ -65,26 +67,45 @@ export function useNhostAuth(): MobileNhostAuth {
     setError(null);
   }, []);
 
+  const syncSessionState = useCallback(
+    (nextSession: Session | null) => {
+      syncAuthenticatedTokenOnlySession(nextSession);
+      setSession(nextSession);
+    },
+    []
+  );
+
   useEffect(() => {
     let mounted = true;
-    void hydrateMobileNhostSessionStorage().finally(() => {
-      if (!mounted) return;
-      if (nhost) {
-        setSession(nhost.getUserSession());
-      } else {
-        setSession(null);
+    void (async () => {
+      try {
+        await hydrateMobileNhostSessionStorage();
+        if (!nhost) {
+          syncSessionState(null);
+          return;
+        }
+        await nhost.refreshSession(0).catch(() => {
+          // Ignore refresh failures during bootstrap and fall back to stored session.
+        });
+        syncSessionState(nhost.getUserSession());
+      } finally {
+        if (mounted) {
+          setIsInitializing(false);
+        }
       }
-      setIsInitializing(false);
-    });
+    })();
     return () => {
       mounted = false;
     };
-  }, [nhost]);
+  }, [nhost, syncSessionState]);
 
   useEffect(() => {
-    if (!nhost) return;
-    setSession(nhost.getUserSession());
-  }, [nhost]);
+    if (!nhost) {
+      syncSessionState(null);
+      return;
+    }
+    syncSessionState(nhost.getUserSession());
+  }, [nhost, syncSessionState]);
 
   const withLoading = useCallback(
     async <T,>(operation: () => Promise<T>): Promise<T> => {
@@ -114,14 +135,14 @@ export function useNhostAuth(): MobileNhostAuth {
           }
         });
         assertFetchSuccess(result, "Unable to create account right now.");
-        setSession(nhost.getUserSession());
+        syncSessionState(nhost.getUserSession());
         return { success: true };
       }).catch((authError) => {
         const message = toErrorMessage(authError, "Unable to create account right now.");
         setError(message);
         return { success: false };
       }),
-    [nhost, withLoading]
+    [nhost, syncSessionState, withLoading]
   );
 
   const signIn = useCallback(
@@ -135,14 +156,14 @@ export function useNhostAuth(): MobileNhostAuth {
           password
         });
         assertFetchSuccess(result, "Unable to sign in right now.");
-        setSession(nhost.getUserSession());
+        syncSessionState(nhost.getUserSession());
         return { success: true };
       }).catch((authError) => {
         const message = toErrorMessage(authError, "Unable to sign in right now.");
         setError(message);
         return { success: false };
       }),
-    [nhost, withLoading]
+    [nhost, syncSessionState, withLoading]
   );
 
   const signOut = useCallback(
@@ -152,17 +173,28 @@ export function useNhostAuth(): MobileNhostAuth {
           throw new Error("Nhost client is not available yet.");
         }
         const current = nhost.getUserSession();
-        const result = await nhost.auth.signOut({
-          refreshToken: current?.refreshToken,
-          all: false
-        });
-        assertFetchSuccess(result, "Unable to sign out right now.");
-        nhost.clearSession();
-        setSession(null);
+        let signOutError: unknown = null;
+        try {
+          const result = await nhost.auth.signOut({
+            refreshToken: current?.refreshToken,
+            all: false
+          });
+          assertFetchSuccess(result, "Unable to sign out right now.");
+        } catch (caught) {
+          signOutError = caught;
+        } finally {
+          nhost.clearSession();
+          syncSessionState(null);
+        }
+        if (signOutError) {
+          throw signOutError;
+        }
+        return { success: true };
       }).catch((authError) => {
         setError(toErrorMessage(authError, "Unable to sign out right now."));
+        return { success: false };
       }),
-    [nhost, withLoading]
+    [nhost, syncSessionState, withLoading]
   );
 
   const refreshSession = useCallback(
@@ -172,11 +204,13 @@ export function useNhostAuth(): MobileNhostAuth {
           throw new Error("Nhost client is not available yet.");
         }
         await nhost.refreshSession(0);
-        setSession(nhost.getUserSession());
+        syncSessionState(nhost.getUserSession());
+        return { success: true };
       }).catch((authError) => {
         setError(toErrorMessage(authError, "Unable to refresh session right now."));
+        return { success: false };
       }),
-    [nhost, withLoading]
+    [nhost, syncSessionState, withLoading]
   );
 
   const sendVerificationEmail = useCallback(
@@ -197,12 +231,14 @@ export function useNhostAuth(): MobileNhostAuth {
           }
         });
         assertFetchSuccess(result, "Unable to send verification email right now.");
+        return { success: true };
       }).catch((authError) => {
         setError(
           toErrorMessage(authError, "Unable to send verification email right now.")
         );
+        return { success: false };
       }),
-    [nhost, withLoading]
+    [nhost, syncSessionState, withLoading]
   );
 
   const requestPasswordReset = useCallback(
@@ -219,10 +255,12 @@ export function useNhostAuth(): MobileNhostAuth {
           }
         });
         assertFetchSuccess(result, "Unable to request password reset right now.");
+        return { success: true };
       }).catch((authError) => {
         setError(toErrorMessage(authError, "Unable to request password reset right now."));
+        return { success: false };
       }),
-    [nhost, withLoading]
+    [nhost, syncSessionState, withLoading]
   );
 
   return useMemo(
@@ -230,7 +268,8 @@ export function useNhostAuth(): MobileNhostAuth {
       nhost,
       getSession: () => session,
       session,
-      isAuthenticated: Boolean(session),
+      isAuthenticated: Boolean(session?.accessToken),
+      isEmailVerified: Boolean(session?.user?.emailVerified ?? session?.user?.email_verified),
       isInitializing,
       loading,
       error,

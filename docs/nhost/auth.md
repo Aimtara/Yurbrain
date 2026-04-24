@@ -50,7 +50,14 @@ Each hook also exposes:
 
 - Session persistence uses AsyncStorage-backed session storage.
 - `hydrateMobileNhostSessionStorage()` is called explicitly before protected screens are evaluated.
-- `useNhostAuth` waits for hydration and then performs explicit `nhost.refreshSession()` + session reads.
+- `useNhostAuth` waits for hydration, performs a best-effort `nhost.refreshSession()`, then syncs the latest access token into the shared client transport boundary.
+- Root app (`apps/mobile/src/App.tsx`) now provides minimal interactive auth UX:
+  - sign in
+  - sign up
+  - password reset request
+  - auth error display
+  - authenticated sign-out action
+  - email verification pending banner + resend action
 
 ## Protected route/screen behavior
 

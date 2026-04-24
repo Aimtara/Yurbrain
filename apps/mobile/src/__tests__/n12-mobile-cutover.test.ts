@@ -35,6 +35,9 @@ test("mobile app roots UI under local Yurbrain client provider wrapper", () => {
   assert.ok(appSource.includes("<YurbrainClientProvider>"));
   assert.ok(!appSource.includes("NhostProvider"));
   assert.ok(!appSource.includes("NhostClient"));
+  assert.ok(appSource.includes("<MobileAuthScreen auth={auth} />"));
+  assert.ok(appSource.includes("Restoring Nhost session..."));
+  assert.ok(appSource.includes("Resend verification email"));
 });
 
 test("mobile loop controller enforces verified-current-user bootstrap gate", () => {
