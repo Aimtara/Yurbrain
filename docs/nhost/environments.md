@@ -14,6 +14,7 @@ App-level `.env.example` files intentionally stay concise and point here to avoi
   - JWT verification settings (`NHOST_JWKS_URL`, `NHOST_JWT_ISSUER`, `NHOST_JWT_AUDIENCE`)
   - server GraphQL/storage/functions URLs where needed
 - `API_ALLOWED_ORIGINS` (API CORS allowlist)
+- `YURBRAIN_ALLOWED_ORIGINS` (legacy compatibility alias for `API_ALLOWED_ORIGINS`)
 - Operational/test-only API variables (`PORT`, `YURBRAIN_DB_PATH`, `YURBRAIN_TEST_MODE`, etc.)
 
 ### Public web variables (browser bundle)
@@ -100,6 +101,7 @@ Required vars:
   - `NHOST_ANON_KEY`
   - `NHOST_ADMIN_SECRET` (server-only)
   - `API_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,exp://localhost:8081`
+  - optional compatibility alias: `YURBRAIN_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,exp://localhost:8081`
   - Optional explicit service URLs:
     - `NHOST_GRAPHQL_URL`
     - `NHOST_AUTH_URL`
@@ -123,7 +125,7 @@ Redirect URLs:
 CORS / domains:
 
 - Allow `http://localhost:3000`, Expo local origin(s), and API dev origin.
-- Keep wildcard CORS disabled in deployed environments; local-only wildcard is acceptable for dev bootstrap.
+- Keep wildcard CORS disabled in all environments; local/dev may allow localhost and Expo origins, but unknown origins should still be rejected rather than reflected as `"*"`.
 - Keep `API_ALLOWED_ORIGINS` aligned with actual local web/mobile origins used in testing.
 
 Nhost dashboard settings:
@@ -190,6 +192,7 @@ Yurbrain API + client routing:
 - Mobile staging builds should set `EXPO_PUBLIC_YURBRAIN_API_URL` to the same deployed staging API origin when the app is not using same-host web rewrites.
 - Optional `NEXT_PUBLIC_YURBRAIN_API_URL` may be set for browser/client-side direct API calls when same-origin proxying is not used.
 - `API_ALLOWED_ORIGINS` must include the staging web origin and any mobile callback/browser origins used during QA.
+- `YURBRAIN_ALLOWED_ORIGINS` may be retained temporarily as a compatibility alias, but `API_ALLOWED_ORIGINS` is the canonical key used by CORS hardening.
 
 Redirect URLs:
 
@@ -200,6 +203,7 @@ CORS / domains:
 
 - Restrict to staging web domain(s), staging mobile callback hosts, and staging API origin.
 - Validate auth redirect allowlist and CORS list together to avoid mismatch.
+- Unknown origins must be rejected with a 403 response. Do not use wildcard origins when credentials are enabled.
 
 Nhost dashboard settings:
 
@@ -239,6 +243,7 @@ Required vars:
   - `NHOST_JWT_ISSUER`
   - optional `NHOST_JWT_AUDIENCE` (recommended)
   - `API_ALLOWED_ORIGINS=<comma-separated production origins>`
+  - optional compatibility alias: `YURBRAIN_ALLOWED_ORIGINS=<comma-separated production origins>`
   - Optional explicit service URLs
   - Optional operational redirect refs:
     - `NHOST_AUTH_REDIRECT_SIGN_IN_URL`
@@ -257,6 +262,7 @@ CORS / domains:
 - Allow only production web/mobile origins.
 - Avoid wildcard `*` for authenticated API traffic.
 - Validate API CORS list and Nhost redirect/domain allowlists on each release.
+- Unknown origins must not receive `Access-Control-Allow-Origin: *` when credentials are allowed.
 
 Nhost dashboard settings:
 
@@ -294,6 +300,7 @@ Recommended:
 
 - `NHOST_JWT_AUDIENCE`
 - explicit `NHOST_GRAPHQL_URL`, `NHOST_AUTH_URL`, `NHOST_STORAGE_URL`, `NHOST_FUNCTIONS_URL`
+- `YURBRAIN_ALLOWED_ORIGINS` only while legacy env rollout is still in progress
 
 ### Web (public vars)
 

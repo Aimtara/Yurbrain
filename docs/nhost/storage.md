@@ -8,6 +8,8 @@ This document defines the exact storage bucket rules required for Alpha safety, 
 - Attachment ownership metadata is repository-managed in:
   - `packages/db/migrations/0012_nhost_storage_attachments.sql`
   - `nhost/metadata/databases/default/tables/public_attachments.yaml`
+- Current codebase status: attachment/storage is still primarily a metadata + dashboard-hardening path in this repo snapshot.
+  There is no confirmed end-to-end API/client upload/download/delete implementation wired into capture yet, so do not claim production-ready file handling until staged smoke evidence proves the real object flow.
 
 ## Required bucket rules (exact)
 

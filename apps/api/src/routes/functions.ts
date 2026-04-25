@@ -196,6 +196,12 @@ export async function registerFunctionRoutes(app: FastifyInstance, state: AppSta
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;
     const payload = AiConvertRequestSchema.parse(request.body);
+    if (payload.sourceItemId) {
+      const sourceItem = await state.repo.getBrainItemById(payload.sourceItemId);
+      if (!sourceItem || !canAccessUser(currentUser, sourceItem.userId)) {
+        return sendRouteError(request, reply, 404, "Brain item not found", "BRAIN_ITEM_NOT_FOUND");
+      }
+    }
     const decision = convertToTaskDecision({ ...payload, userId: currentUser.id });
 
     if (decision.outcome === "task_created") {

@@ -1,18 +1,18 @@
-import { readFile } from "node:fs/promises";
-import { glob } from "node:fs/promises";
-import { relative } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import path, { relative } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const WORKSPACE_ROOT = process.cwd();
 const execFileAsync = promisify(execFile);
 
-const CLIENT_TARGET_GLOBS = [
-  "apps/web/**/*.{ts,tsx,js,jsx,mjs,cjs}",
-  "apps/mobile/**/*.{ts,tsx,js,jsx,mjs,cjs}",
-  "packages/client/**/*.{ts,tsx,js,jsx,mjs,cjs}",
-  "packages/ui/**/*.{ts,tsx,js,jsx,mjs,cjs}"
+const CLIENT_TARGET_DIRECTORIES = [
+  "apps/web",
+  "apps/mobile",
+  "packages/client",
+  "packages/ui"
 ];
+const CLIENT_TARGET_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 
 const DISALLOWED_CLIENT_PATTERNS = [
   "NHOST_ADMIN_SECRET",
@@ -21,18 +21,47 @@ const DISALLOWED_CLIENT_PATTERNS = [
   "EXPO_PUBLIC_NHOST_ADMIN_SECRET"
 ];
 
-async function collectFiles(globs) {
+function toGitCheckoutPrerequisiteError(error) {
+  const details = error instanceof Error ? error.message : String(error);
+  return new Error(
+    "[nhost-safety] This check must run from a git checkout because it inspects tracked files via `git ls-files`. " +
+      `Original error: ${details}`
+  );
+}
+
+async function collectFiles(rootDirectories) {
   const files = new Set();
-  for (const fileGlob of globs) {
-    for await (const filePath of glob(fileGlob)) {
-      files.add(filePath);
-    }
+  for (const rootDirectory of rootDirectories) {
+    const absoluteRoot = path.resolve(WORKSPACE_ROOT, rootDirectory);
+    await walkDirectory(absoluteRoot, files);
   }
   return [...files];
 }
 
+async function walkDirectory(directoryPath, files) {
+  let entries = [];
+  try {
+    entries = await readdir(directoryPath, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const entryPath = path.join(directoryPath, entry.name);
+
+    if (entry.isDirectory()) {
+      await walkDirectory(entryPath, files);
+      continue;
+    }
+
+    if (entry.isFile() && CLIENT_TARGET_EXTENSIONS.has(path.extname(entry.name))) {
+      files.add(entryPath);
+    }
+  }
+}
+
 async function findClientSecretViolations() {
-  const files = await collectFiles(CLIENT_TARGET_GLOBS);
+  const files = await collectFiles(CLIENT_TARGET_DIRECTORIES);
   const violations = [];
 
   for (const absolutePath of files) {
@@ -61,9 +90,14 @@ async function findTrackedRuntimeEnvFiles() {
     (entry) => !gitIgnore.includes(entry)
   );
 
-  const { stdout } = await execFileAsync("git", ["ls-files"], {
-    cwd: WORKSPACE_ROOT
-  });
+  let stdout = "";
+  try {
+    ({ stdout } = await execFileAsync("git", ["ls-files"], {
+      cwd: WORKSPACE_ROOT
+    }));
+  } catch (error) {
+    throw toGitCheckoutPrerequisiteError(error);
+  }
 
   const disallowedEnvFiles = stdout
     .split("\n")

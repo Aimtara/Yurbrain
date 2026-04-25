@@ -1,6 +1,6 @@
 import { createSecretKey } from "node:crypto";
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+import { createRemoteJWKSet, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from "jose";
 import { z } from "zod";
 import { sendSafeErrorResponse } from "./observability";
 
@@ -99,6 +99,9 @@ function buildNhostIssuers(): string[] {
   if (authUrl.endsWith("/auth")) {
     issuers.add(authUrl.slice(0, -"/auth".length));
   }
+  if (authUrl.endsWith("/v1/auth")) {
+    issuers.add(authUrl.slice(0, -"/auth".length));
+  }
   return [...issuers];
 }
 
@@ -162,16 +165,34 @@ function resolveVerifiedJwtUserId(payload: JWTPayload): string | null {
   return subjectUserId;
 }
 
-let cachedJwksResolver: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedJwksResolver: JWTVerifyGetKey | null = null;
 let cachedJwksUrl: string | null = null;
+let jwksResolverOverride: JWTVerifyGetKey | null = null;
 
-function getJwksResolver(jwksUrl: string): ReturnType<typeof createRemoteJWKSet> {
+function getJwksResolver(jwksUrl: string): JWTVerifyGetKey {
+  if (jwksResolverOverride) {
+    return jwksResolverOverride;
+  }
   if (cachedJwksResolver && cachedJwksUrl === jwksUrl) {
     return cachedJwksResolver;
   }
   cachedJwksResolver = createRemoteJWKSet(new URL(jwksUrl));
   cachedJwksUrl = jwksUrl;
   return cachedJwksResolver;
+}
+
+export function setJwksResolverForTests(resolver: JWTVerifyGetKey | null) {
+  jwksResolverOverride = resolver;
+  if (resolver) {
+    cachedJwksResolver = null;
+    cachedJwksUrl = null;
+  }
+}
+
+export function resetCurrentUserAuthCachesForTests() {
+  cachedJwksResolver = null;
+  cachedJwksUrl = null;
+  jwksResolverOverride = null;
 }
 
 async function verifyBearerTokenAndResolveUserId(token: string, log?: FastifyBaseLogger): Promise<string | null> {

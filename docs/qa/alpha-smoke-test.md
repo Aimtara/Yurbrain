@@ -21,6 +21,17 @@ This runbook defines repeatable Alpha go/no-go checks across auth, capture, feed
 Run the consolidated command:
 
 - `pnpm check:alpha-smoke`
+- `pnpm check:alpha`
+- `pnpm check:production-safety`
+
+Recommended prep:
+
+- `pnpm install --frozen-lockfile`
+
+Prerequisites:
+
+- Run from a real git checkout. The safety scripts intentionally fail with a clear prerequisite error outside git because they inspect tracked files.
+- Use the same repo root for all commands so env examples, `.gitignore`, and tracked-file checks resolve correctly.
 
 What it covers:
 
@@ -30,7 +41,9 @@ What it covers:
 - AI summarize/classify/query/convert + graceful fallback
 - Search keyword/filter/isolation behavior
 - JWT/auth invalid-token and strict-mode enforcement
+- Real production-mode JWKS validation scaffold (`apps/api/src/__tests__/sprint15/jwt-nhost-production-validation.test.ts`)
 - Cross-user spoof/identity enforcement checks
+- High-value two-user isolation across capture/brain-items/search/AI/feed (`apps/api/src/__tests__/sprint15/two-user-isolation-high-value.test.ts`)
 - Mobile cutover/provider/session wiring tests
 
 ### 2) Manual smoke checks
@@ -205,7 +218,7 @@ Expected:
 - Automated backing:
   - View/edit: `src/__tests__/sprint2/brain-items.test.ts`
   - Comments/messages: `src/__tests__/sprint2/routes.test.ts`, `src/__tests__/sprint12/strict-auth-core-loop.test.ts`
-  - Delete: manual only (or N/A if not currently supported in product)
+  - Delete: currently `N/A` for MVP/Alpha unless implemented later; brain-item/capture hard delete is not shipped in the current product surface
 
 ---
 
@@ -266,10 +279,12 @@ Expected:
     - `src/__tests__/sprint15/brain-items-search.test.ts`
     - `src/__tests__/sprint14/strict-current-user-enforcement.test.ts`
     - `src/__tests__/sprint12/function-routes.test.ts` (owner-only feed actions)
+    - `src/__tests__/sprint15/two-user-isolation-high-value.test.ts` (capture, brain-items, search, summarize/classify/query/convert, feed)
   - Unauthenticated request rejection:
     - `src/__tests__/sprint14/strict-current-user-enforcement.test.ts`
   - Invalid/forged/expired token rejection:
     - `src/__tests__/sprint15/current-user-jwt-validation.test.ts`
+    - `src/__tests__/sprint15/jwt-nhost-production-validation.test.ts`
 
 ---
 
@@ -282,6 +297,8 @@ These are acceptable during Alpha if documented and understood:
 - Some flows are validated primarily at API level; full UI automation is intentionally limited to avoid flaky browser/mobile CI.
 - Email verification/reset rely on Nhost external mail/deep-link infrastructure and remain manual smoke checks.
 - Semantic/vector search is deferred; keyword/filter search is the Alpha baseline.
+- Attachment/storage is still dashboard- and metadata-driven in this repo snapshot; real upload/download/delete must be validated in staging before claiming Alpha storage parity.
+- Brain-item/capture delete is currently an explicit limitation unless archive-via-status is sufficient for the release scope.
 
 ---
 
