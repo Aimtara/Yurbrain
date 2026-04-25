@@ -30,6 +30,7 @@ type FocusFeedSurfaceProps = {
   onOpenTask: (taskId: string) => void;
   onConvertToTask: (itemId: string, body: string) => void;
   onStartSession: (card: FeedCardDto) => void;
+  onExploreCard: (model: FeedCardModel) => void;
   onDismiss: (cardId: string) => void;
   onSnooze: (card: FeedCardDto) => void;
   onRefresh: (cardId: string) => void;
@@ -60,6 +61,7 @@ export function FocusFeedSurface({
   onOpenTask,
   onConvertToTask,
   onStartSession,
+  onExploreCard,
   onDismiss,
   onSnooze,
   onRefresh
@@ -100,6 +102,7 @@ export function FocusFeedSurface({
             onOpenTask={onOpenTask}
             onConvertToTask={onConvertToTask}
             onStartSession={onStartSession}
+            onExplore={onExploreCard}
             onDismiss={onDismiss}
             onSnooze={onSnooze}
             onRefresh={onRefresh}

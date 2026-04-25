@@ -45,6 +45,7 @@ type ItemDetailScreenProps = {
   onAskYurbrain?: (question: string) => void;
   onConvertCommentToTask?: (comment: string) => void;
   onOpenRelatedItem?: (itemId: string) => void;
+  onExploreWithRelated?: () => void;
   onStartSession?: () => void;
   canStartSession?: boolean;
 };
@@ -174,6 +175,7 @@ export function ItemDetailScreen({
   onAskYurbrain,
   onConvertCommentToTask,
   onOpenRelatedItem,
+  onExploreWithRelated,
   onStartSession,
   canStartSession = false
 }: ItemDetailScreenProps) {
@@ -296,6 +298,11 @@ export function ItemDetailScreen({
           <button type="button" onClick={() => setShowAllRelated(true)} style={styles.secondaryAction}>
             Show related items
           </button>
+          {onExploreWithRelated ? (
+            <button type="button" onClick={onExploreWithRelated} style={styles.secondaryAction}>
+              Explore with related
+            </button>
+          ) : null}
         </div>
         {!canStartSession ? (
           <p style={{ margin: 0, color: "#475569", fontSize: "13px" }}>Start Session appears after this item is planned into a task.</p>

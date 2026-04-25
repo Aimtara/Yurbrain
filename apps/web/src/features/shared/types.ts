@@ -1,6 +1,6 @@
 import type { FeedCardVariant, FeedLens } from "@yurbrain/ui";
 
-export type Surface = "feed" | "item" | "session" | "time" | "me" | "founder_review";
+export type Surface = "feed" | "item" | "session" | "time" | "me" | "founder_review" | "explore";
 
 export type CaptureDraft = {
   type: "text" | "link" | "image";
@@ -11,7 +11,7 @@ export type CaptureDraft = {
 
 export type FeedCardDto = {
   id: string;
-  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume" | "connection";
   lens: FeedLens;
   itemId: string | null;
   taskId: string | null;
@@ -24,7 +24,7 @@ export type FeedCardDto = {
   lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
   availableActions: Array<
-    "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh"
+    "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh" | "explore"
   >;
   stateFlags: {
     dismissed: boolean;
@@ -48,9 +48,20 @@ export type FeedAction = FeedCardDto["availableActions"][number];
 
 export type ItemArtifactDto = {
   id: string;
-  type: "summary" | "classification" | "relation" | "feed_card";
+  type: "summary" | "classification" | "relation" | "related_items" | "task_conversion" | "connection" | "feed_card" | "feed_card_suggestion";
   payload: Record<string, unknown>;
   createdAt: string;
+};
+
+export type ConnectionMode = "pattern" | "idea" | "plan" | "question";
+
+export type ExploreConnectionCandidateDto = {
+  title: string;
+  summary: string;
+  whyTheseConnect: string[];
+  suggestedNextActions: string[];
+  confidence: number;
+  sourceItemIds?: string[];
 };
 
 export type BrainItemDto = {

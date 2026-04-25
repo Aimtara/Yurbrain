@@ -2,7 +2,7 @@ import React, { useId } from "react";
 
 import { tokens } from "../../design/tokens";
 
-type ClusterCardAction = "see_highlights" | "compare" | "try_one_today" | "dismiss";
+type ClusterCardAction = "see_highlights" | "compare" | "try_one_today" | "explore" | "dismiss";
 
 type ClusterCardProps = {
   title: string;
@@ -14,6 +14,7 @@ type ClusterCardProps = {
   onSeeHighlights?: () => void;
   onCompare?: () => void;
   onTryOneToday?: () => void;
+  onExplore?: () => void;
   onDismiss?: () => void;
   availableActions?: ClusterCardAction[];
 };
@@ -28,6 +29,7 @@ export function ClusterCard({
   onSeeHighlights,
   onCompare,
   onTryOneToday,
+  onExplore,
   onDismiss,
   availableActions
 }: ClusterCardProps) {
@@ -92,6 +94,11 @@ export function ClusterCard({
         {onTryOneToday && canUse("try_one_today") ? (
           <button type="button" onClick={onTryOneToday} style={actionStyles.primary}>
             Try One Today
+          </button>
+        ) : null}
+        {onExplore && canUse("explore") ? (
+          <button type="button" onClick={onExplore} style={actionStyles.secondary}>
+            Explore
           </button>
         ) : null}
         {onDismiss && canUse("dismiss") ? (

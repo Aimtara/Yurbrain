@@ -50,6 +50,7 @@ type ItemDetailSurfaceProps = {
   onConvertCommentToTask: (itemId: string, comment: string) => void;
   onAskYurbrain: (question: string) => void;
   onOpenRelatedItem: (itemId: string) => void;
+  onExploreWithRelated: (itemId: string, relatedItemIds: string[]) => void;
   onStartSession: () => void;
 };
 
@@ -92,6 +93,7 @@ export function ItemDetailSurface({
   onConvertCommentToTask,
   onAskYurbrain,
   onOpenRelatedItem,
+  onExploreWithRelated,
   onStartSession
 }: ItemDetailSurfaceProps) {
   return (
@@ -144,6 +146,7 @@ export function ItemDetailSurface({
           onConvertCommentToTask={(comment) => onConvertCommentToTask(selectedItem.id, comment)}
           onAskYurbrain={onAskYurbrain}
           onOpenRelatedItem={onOpenRelatedItem}
+          onExploreWithRelated={() => onExploreWithRelated(selectedItem.id, relatedItemsForDetail.map((item) => item.id))}
           onStartSession={onStartSession}
           canStartSession={canStartSession}
           artifactHistory={

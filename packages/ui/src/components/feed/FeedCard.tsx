@@ -2,8 +2,8 @@ import React, { useId } from "react";
 import { tokens } from "../../design/tokens";
 
 export type FeedCardVariant = "default" | "execution" | "blocked" | "done" | "resume";
-export type FeedCardAction = "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh";
-type FeedCardType = "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+export type FeedCardAction = "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh" | "explore";
+type FeedCardType = "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume" | "connection";
 type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
 
 export function FeedCard({
@@ -27,6 +27,7 @@ export function FeedCard({
   onComment,
   onConvertToTask,
   onStartSession,
+  onExplore,
   onDismiss,
   onSnooze,
   onRefresh
@@ -51,6 +52,7 @@ export function FeedCard({
   onComment?: (value: string) => void;
   onConvertToTask?: () => void;
   onStartSession?: () => void;
+  onExplore?: () => void;
   onDismiss?: () => void;
   onSnooze?: (minutes: number) => void;
   onRefresh?: () => void;
@@ -178,6 +180,11 @@ export function FeedCard({
             Start Session
           </button>
         ) : null}
+        {onExplore ? (
+          <button type="button" onClick={onExplore} style={actionButtonStyles.secondary} aria-label={`Explore with ${title}`}>
+            Explore
+          </button>
+        ) : null}
         {onSnooze && canUseAction("snooze") ? (
           <button type="button" onClick={() => onSnooze(120)} style={actionButtonStyles.secondary} aria-label={`Snooze ${title} for two hours`}>
             Revisit Later
@@ -254,7 +261,8 @@ const cardTypeLabels: Record<FeedCardType, string> = {
   cluster: "Theme",
   opportunity: "Opportunity",
   open_loop: "Open Loop",
-  resume: "Resume Point"
+  resume: "Resume Point",
+  connection: "Connection"
 };
 
 function normalizeCardTypeLabel(cardType: string): string {

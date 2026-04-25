@@ -8,6 +8,7 @@ export * from "./components/feed/FeedCard";
 export * from "./components/feed/ClusterCard";
 export * from "./components/feed/FocusFeedScreen";
 export * from "./components/feed/PostponeRescheduleSheet";
+export * from "./components/explore/ExplorePrototypeScreen";
 export * from "./components/brain/BrainItemDetail";
 export * from "./components/brain/ItemChatPanel";
 export * from "./components/brain/ItemDetailScreen";
