@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { AuthMeResponseSchema } from "@yurbrain/contracts";
 import { registerCurrentUserResolution, requireCurrentUser } from "./middleware/current-user";
 import { registerObservability, sendSafeErrorResponse } from "./middleware/observability";
+import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerCaptureRoutes } from "./routes/capture";
 import { registerFunctionRoutes } from "./routes/functions";
@@ -230,6 +231,7 @@ export function createServer(options: ServerOptions = {}) {
   registerTaskRoutes(app, state);
   registerSessionRoutes(app, state);
   registerFunctionRoutes(app, state);
+  registerAiRoutes(app, state);
   registerExploreRoutes(app, state);
 
   app.get("/auth/me", async (request, reply) => {

@@ -26,6 +26,8 @@ test("endpoints cover the documented core loop surface", () => {
     "functionQueryItem",
     "functionNextStep",
     "functionConvert",
+    "aiConvert",
+    "feedRemindLater",
     "functionFeedGenerateCard",
     "exploreConnectionPreview",
     "exploreConnectionSave"
@@ -45,6 +47,8 @@ test("function endpoint aliases resolve to canonical paths", () => {
   assert.equal(endpoints.functionClassifyItem, "/functions/classify");
   assert.equal(endpoints.functionQueryItem, "/functions/query");
   assert.equal(endpoints.functionConvert, "/functions/convert");
+  assert.equal(endpoints.aiConvert, "/ai/convert");
+  assert.equal(endpoints.feedRemindLater, "/feed/:id/remind-later");
   assert.equal(endpoints.exploreConnectionPreview, "/explore/connections/preview");
   assert.equal(endpoints.exploreConnectionSave, "/explore/connections/save");
 });

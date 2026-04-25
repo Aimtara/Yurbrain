@@ -4,6 +4,7 @@ export const endpoints = {
   brainItems: "/brain-items",
   brainItemsSearch: "/brain-items",
   feed: "/feed",
+  feedRemindLater: "/feed/:id/remind-later",
   threads: "/threads",
   messages: "/messages",
   preferences: "/preferences",
@@ -21,6 +22,7 @@ export const endpoints = {
   functionClassifyItem: "/functions/classify",
   functionQueryItem: "/functions/query",
   functionConvert: "/functions/convert",
+  aiConvert: "/ai/convert",
   functionSummarizeProgress: "/functions/summarize-progress",
   functionNextStep: "/functions/what-should-i-do-next",
   functionSessionHelper: "/functions/session-helper"

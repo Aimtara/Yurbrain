@@ -59,3 +59,13 @@ Explore prototype:
 - POST /explore/connections/save
 
 Explore preview must not persist by default. Save persists an `ItemArtifact(type="connection")` plus a `FeedCard(cardType="connection")`; it must not introduce an ExploreBoard or separate object universe.
+
+Implemented compatibility aliases:
+
+- `POST /ai/brain-items/:id/summarize`
+- `POST /ai/brain-items/:id/classify`
+- `POST /ai/brain-items/:id/query`
+- `POST /ai/convert`
+- `POST /feed/:id/remind-later`
+
+The older `/functions/*` routes remain supported for current clients.
