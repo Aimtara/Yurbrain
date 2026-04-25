@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "tsx --watch src/index.ts",
     "start": "tsx src/index.ts",
     "founder-review:mock": "tsx src/services/founder-review/dev-runner.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",

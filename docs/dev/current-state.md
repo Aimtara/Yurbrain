@@ -63,7 +63,7 @@ This is the implementation-truth audit for the current repository. It is intenti
 
 - Some accumulated founder/Nhost hardening surfaces can feel operational if overemphasized. They should remain available but must not become the default product metaphor.
 - Existing enum names are older than the latest product model. A big-bang migration would risk breaking working persistence and UI; compatibility-first expansion is safer.
-- `apps/api` still defines a `dev` script using `ts-node-dev`, while local guidance requires `tsx --watch` for ESM reliability.
+- `apps/api` now uses `tsx --watch` for its `dev` script so it matches the ESM-safe local guidance.
 - `apps/web/src/App.tsx` is a stale scaffold and should not be treated as runtime truth; Next uses `apps/web/app/page.tsx`.
 
 ## 7. What can be reused?
@@ -98,10 +98,9 @@ This is the implementation-truth audit for the current repository. It is intenti
 ## 10. Safest next implementation step
 
 1. Freeze docs and guardrails in the requested paths.
-2. Align API dev script/runbook with the ESM-safe `tsx --watch` workflow.
-3. Add minimal Connection Card contracts and DB enum support.
-4. Add deterministic preview/save endpoints that reuse BrainItems, ItemArtifacts, and FeedCards.
-5. Wire web Explore prototype from Focus and Item Detail.
-6. Add tests and only then broaden mobile parity and event taxonomy.
+2. Add minimal Connection Card contracts and DB enum support.
+3. Add deterministic preview/save endpoints that reuse BrainItems, ItemArtifacts, and FeedCards.
+4. Wire web Explore prototype from Focus and Item Detail.
+5. Add tests and only then broaden mobile parity and event taxonomy.
 
 The guiding implementation constraint is: **Focus brings thoughts back; Explore helps thoughts combine; Time helps thoughts become action only when ready.**
