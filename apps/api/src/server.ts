@@ -7,6 +7,7 @@ import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerCaptureRoutes } from "./routes/capture";
 import { registerFunctionRoutes } from "./routes/functions";
 import { registerFeedRoutes } from "./routes/feed";
+import { registerExploreRoutes } from "./routes/explore";
 import { registerMessageRoutes } from "./routes/messages";
 import { registerPreferenceRoutes } from "./routes/preferences";
 import { registerSessionRoutes } from "./routes/sessions";
@@ -229,6 +230,7 @@ export function createServer(options: ServerOptions = {}) {
   registerTaskRoutes(app, state);
   registerSessionRoutes(app, state);
   registerFunctionRoutes(app, state);
+  registerExploreRoutes(app, state);
 
   app.get("/auth/me", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);

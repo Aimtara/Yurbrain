@@ -10,6 +10,8 @@ export const endpoints = {
   preferencesMe: "/preferences/me",
   tasks: "/tasks",
   sessions: "/sessions",
+  exploreConnectionPreview: "/explore/connections/preview",
+  exploreConnectionSave: "/explore/connections/save",
   manualConvertTask: "/tasks/manual-convert",
   functionFeed: "/functions/feed",
   functionFeedGenerateCard: "/functions/feed/generate-card",

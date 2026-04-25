@@ -297,9 +297,33 @@ export const ExploreConnectionSaveRequestSchema = z
   .object({
     sourceItemIds: z.array(z.string().uuid()).min(2).max(5),
     mode: ConnectionModeSchema,
-    candidate: ExploreConnectionCandidateSchema
+    candidate: ExploreConnectionCandidateSchema.optional(),
+    title: ExploreConnectionCandidateSchema.shape.title.optional(),
+    summary: ExploreConnectionCandidateSchema.shape.summary.optional(),
+    whyTheseConnect: ExploreConnectionCandidateSchema.shape.whyTheseConnect.optional(),
+    suggestedNextActions: ExploreConnectionCandidateSchema.shape.suggestedNextActions.optional(),
+    confidence: ExploreConnectionCandidateSchema.shape.confidence.optional()
   })
-  .strict();
+  .strict()
+  .transform((value, ctx) => {
+    if (value.candidate) return value;
+    const candidateResult = ExploreConnectionCandidateSchema.safeParse({
+      title: value.title,
+      summary: value.summary,
+      whyTheseConnect: value.whyTheseConnect,
+      suggestedNextActions: value.suggestedNextActions,
+      confidence: value.confidence
+    });
+    if (!candidateResult.success) {
+      candidateResult.error.issues.forEach((issue) => ctx.addIssue(issue));
+      return z.NEVER;
+    }
+    return {
+      sourceItemIds: value.sourceItemIds,
+      mode: value.mode,
+      candidate: candidateResult.data
+    };
+  });
 
 export const AiSynthesisRequestSchema = z
   .object({

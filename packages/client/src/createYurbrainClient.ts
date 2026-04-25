@@ -71,6 +71,8 @@ export type YurbrainClient = {
     question: string;
     timeoutMs?: number;
   }) => Promise<T>;
+  previewExploreConnection: <T>(payload: unknown) => Promise<T>;
+  saveExploreConnection: <T>(payload: unknown) => Promise<T>;
   getFounderReview: <T>(query?: FounderReviewQuery) => Promise<T>;
   getFounderDiagnostics: <T>(query?: FounderReviewQuery) => Promise<T>;
 };
@@ -154,6 +156,8 @@ function createDomainBackedClient(domainClient: YurbrainDomainClient): YurbrainC
     getNextStep: (payload) => domainClient.getWhatShouldIDoNext(payload),
     classifyBrainItem: (payload) => domainClient.classifyBrainItem(payload),
     queryBrainItemThread: (payload) => domainClient.queryBrainItemThread(payload),
+    previewExploreConnection: (payload) => domainClient.previewExploreConnection(payload),
+    saveExploreConnection: (payload) => domainClient.saveExploreConnection(payload),
     getFounderReview: (query = {}) => domainClient.getFounderReview(query),
     getFounderDiagnostics: (query = {}) =>
       domainClient.getFounderDiagnostics(query)

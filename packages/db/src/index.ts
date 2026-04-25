@@ -740,29 +740,53 @@ export function createDbRepository(options: CreateRepositoryOptions = {}): DbRep
         return rows.map(toMessageRecord);
       }),
     createFeedCard: (card) =>
-      withDb(async ({ db }) => {
-        const [row] = await db
-          .insert(schema.feedCards)
-          .values({
-            id: card.id,
-            userId: card.userId,
-            cardType: card.cardType,
-            lens: card.lens,
-            itemId: card.itemId,
-            taskId: card.taskId,
-            title: card.title,
-            body: card.body,
-            dismissed: card.dismissed,
-            snoozedUntil: toDate(card.snoozedUntil),
-            refreshCount: card.refreshCount ?? 0,
-            postponeCount: card.postponeCount ?? 0,
-            relatedCount: card.relatedCount ?? null,
-            lastPostponedAt: toDate(card.lastPostponedAt),
-            lastRefreshedAt: toDate(card.lastRefreshedAt),
-            lastTouched: toDate(card.lastTouched),
-            createdAt: toDate(card.createdAt) ?? undefined
-          })
-          .returning();
+      withDb(async ({ client, db }) => {
+        await client.query(
+          `INSERT INTO "feed_cards" (
+            "id",
+            "user_id",
+            "card_type",
+            "lens",
+            "item_id",
+            "task_id",
+            "title",
+            "body",
+            "dismissed",
+            "snoozed_until",
+            "refresh_count",
+            "postpone_count",
+            "related_count",
+            "last_postponed_at",
+            "last_refreshed_at",
+            "last_touched",
+            "created_at"
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+          )`,
+          [
+            card.id,
+            card.userId,
+            card.cardType,
+            card.lens,
+            card.itemId,
+            card.taskId,
+            card.title,
+            card.body,
+            card.dismissed,
+            toDate(card.snoozedUntil),
+            card.refreshCount ?? 0,
+            card.postponeCount ?? 0,
+            card.relatedCount ?? null,
+            toDate(card.lastPostponedAt),
+            toDate(card.lastRefreshedAt),
+            toDate(card.lastTouched),
+            toDate(card.createdAt) ?? new Date()
+          ]
+        );
+        const [row] = await db.select().from(schema.feedCards).where(eq(schema.feedCards.id, card.id)).limit(1);
+        if (!row) {
+          throw new Error("Failed to insert feed card");
+        }
         return toFeedCardRecord(row);
       }),
     getFeedCardById: (id) =>
