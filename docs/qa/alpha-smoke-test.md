@@ -82,7 +82,7 @@ Use this table during execution. Mark each row `PASS`, `FAIL`, or `N/A` and atta
 | Capture | Duplicate capture behavior (if supported) | Manual |  |  |
 | Feed | New item appears | Manual + Auto |  |  |
 | Feed | Dismiss | Manual + Auto |  |  |
-| Feed | Snooze/remind-later (if supported) | Manual + Auto |  |  |
+| Feed | Snooze/remind-later | Manual + Auto |  | `POST /feed/:id/remind-later` aliases snooze |
 | Feed | Refresh | Manual + Auto |  |  |
 | Detail | View item | Manual + Auto |  |  |
 | Detail | Edit item | Manual + Auto |  |  |
@@ -93,6 +93,8 @@ Use this table during execution. Mark each row `PASS`, `FAIL`, or `N/A` and atta
 | AI | Ask question | Auto (+manual optional) |  |  |
 | AI | Convert to task | Auto (+manual optional) |  |  |
 | AI | Graceful AI failure/fallback | Auto |  |  |
+| Explore | Feed → Explore → preview → save | Manual + Auto |  | Saved connection should return to Focus |
+| Explore | Connection Card in Focus | Manual + Auto |  | `cardType=connection`, source lineage visible |
 | Search | Keyword search | Manual + Auto |  |  |
 | Search | Empty search | Manual + Auto |  |  |
 | Search | No results | Manual + Auto |  |  |

@@ -1,9 +1,9 @@
 # Yurbrain Monorepo Starter
 
-This monorepo contains a **Sprint 6 engineering prototype** of the Yurbrain MVP loop.
+This monorepo contains a Yurbrain MVP continuity-loop prototype with a lightweight Explore connection mode.
 
 
-> Status note (April 14, 2026): route/service and test implementation breadth is strong, but runtime persistence and product-grade UX are still in progress. See `docs/product/current-state.md` for the authoritative status.
+> Status note (April 25, 2026): the core loop is DB-backed and Explore now supports prototype preview/save flows without a persistent canvas. See `docs/dev/current-state.md` and `docs/product/current-state.md` for the authoritative status.
 
 For remaining gaps and an explicit checklist of unresolved items, see `docs/product/current-state.md`.
 
@@ -36,8 +36,10 @@ Included:
 - Threads/messages (`/threads`, `/messages`)
 - Feed generation/ranking loop (`/feed`, `/functions/feed/generate-card`)
 - AI summarize/classify/item-query (`/functions/summarize`, `/functions/classify`, `/functions/query`)
+- Prompt-compatible AI aliases (`/ai/brain-items/:id/summarize`, `/ai/brain-items/:id/classify`, `/ai/brain-items/:id/query`, `/ai/convert`)
 - Task conversion + CRUD (`/functions/convert`, `/tasks`, `/tasks/manual-convert`)
 - Session lifecycle (`/tasks/:id/start`, `/sessions/:id/pause`, `/sessions/:id/finish`)
+- Explore prototype (`/explore/connections/preview`, `/explore/connections/save`) that saves Connection Cards back into Focus
 - Observability middleware (`x-correlation-id`, structured error envelopes, request timing logs)
 
 ## Sprint 6 QA + observability hardening runbook

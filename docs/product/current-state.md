@@ -1,8 +1,10 @@
 # Yurbrain Current Implementation State
 
-_Last audited: April 16, 2026 (UTC)._
+_Last audited: April 25, 2026 (UTC)._
 
 This document is factual current state after code inspection plus command verification.
+
+For implementation-truth details and known package-boundary notes, see `docs/dev/current-state.md`.
 
 ## Verified command evidence
 
@@ -16,6 +18,12 @@ Passing in this audit:
 - `pnpm lint`
 - `pnpm build`
 - `pnpm test`
+- `pnpm --filter @yurbrain/ai test`
+- `pnpm --filter @yurbrain/client test`
+- `pnpm --filter @yurbrain/db test`
+- `pnpm --filter @yurbrain/ui test`
+- `pnpm --filter mobile test`
+- `pnpm typecheck`
 
 Not used for runtime truth:
 - `pnpm --filter @yurbrain/db db:migrate` (Drizzle CLI workflow; local runtime uses startup SQL migrations in `@yurbrain/db` repository initialization).
