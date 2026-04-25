@@ -78,6 +78,15 @@ Rules:
 - Save persists an `ItemArtifact(type="connection")` plus a `FeedCard(type="connection")`.
 - Deterministic fallback must be available when no model key exists.
 
+Current implementation:
+
+- `packages/ai/src/connection.ts` exports `buildConnectionFallback`,
+  `buildConnectionCandidates`, and `validateConnectionCandidates`.
+- The API Explore preview route uses that deterministic fallback so Explore
+  works without provider credentials.
+- Fallback outputs are marked with `modelName = "local-stub"` and
+  `promptVersion = "connection-fallback-v1"`.
+
 ## Provider integration foundation (L1)
 
 The API now includes an isolated provider/config foundation under:

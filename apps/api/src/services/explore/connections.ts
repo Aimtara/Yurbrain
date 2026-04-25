@@ -6,6 +6,7 @@ import type {
   ExploreConnectionSaveResponse
 } from "@yurbrain/contracts";
 import { ConnectionArtifactContentSchema, FeedCardSchema } from "@yurbrain/contracts";
+import { buildConnectionFallback, type ConnectionSource } from "@yurbrain/ai";
 import type { AppState, BrainItemRecord } from "../../state";
 import type { FeedWhyShown, StoredFeedCard } from "../feed/static-feed";
 import { toFeedCardResponse } from "../feed/static-feed";
@@ -17,7 +18,7 @@ export type ExploreConnectionInput = {
 };
 
 export type SaveExploreConnectionInput = ExploreConnectionInput & {
-  candidate: ExploreConnectionCandidate;
+  candidate: ExploreConnectionPreviewResponse["candidates"][number];
 };
 
 function compact(value: string, limit: number): string {
