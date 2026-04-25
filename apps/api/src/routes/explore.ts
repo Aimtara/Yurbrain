@@ -7,6 +7,7 @@ import {
 } from "@yurbrain/contracts";
 import { requireCurrentUser } from "../middleware/current-user";
 import { sendSafeErrorResponse } from "../middleware/observability";
+import { recordEvent } from "../services/events/policy";
 import { previewExploreConnection, loadOwnedSourceItems, saveExploreConnection } from "../services/explore/connections";
 import type { AppState } from "../state";
 
@@ -20,6 +21,17 @@ export async function registerExploreRoutes(app: FastifyInstance, state: AppStat
     if (!result) {
       return reply.code(404).send({ message: "Source items not found" });
     }
+    await recordEvent(state.repo, {
+      userId: currentUser.id,
+      eventType: "connection_preview_requested",
+      targetType: "brain_item",
+      targetId: payload.sourceItemIds[0] ?? null,
+      metadata: {
+        sourceItemIds: payload.sourceItemIds,
+        mode: payload.mode,
+        candidateCount: result.candidates.length
+      }
+    });
     return reply.code(200).send(ExploreConnectionPreviewResponseSchema.parse(result));
   });
 
@@ -50,6 +62,18 @@ export async function registerExploreRoutes(app: FastifyInstance, state: AppStat
     if (!result) {
       return reply.code(404).send({ message: "Source items not found" });
     }
+    await recordEvent(state.repo, {
+      userId: currentUser.id,
+      eventType: "connection_saved",
+      targetType: "artifact",
+      targetId: result.artifact.id,
+      metadata: {
+        sourceItemIds: payload.sourceItemIds,
+        mode: payload.mode,
+        feedCardId: result.feedCard.id,
+        confidence: result.connection.confidence
+      }
+    });
     return reply.code(201).send(ExploreConnectionSaveResponseSchema.parse(result));
   });
 }

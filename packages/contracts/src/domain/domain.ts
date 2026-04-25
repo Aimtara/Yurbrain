@@ -30,7 +30,30 @@ export const FeedActionSchema = z.enum([
 ]);
 export const TaskStatusSchema = z.enum(["todo", "in_progress", "done"]);
 export const SessionStateSchema = z.enum(["running", "paused", "finished"]);
-export const EventTypeSchema = z.enum(["brain_item_created", "brain_item_updated"]);
+export const EventTypeSchema = z.enum([
+  "brain_item_created",
+  "brain_item_updated",
+  "capture_created",
+  "brain_item_opened",
+  "feed_card_shown",
+  "feed_card_opened",
+  "feed_card_acted_on",
+  "feed_card_dismissed",
+  "feed_card_snoozed",
+  "comment_created",
+  "ai_summary_requested",
+  "ai_summary_saved",
+  "item_chat_started",
+  "item_chat_message_sent",
+  "plan_requested",
+  "task_created",
+  "session_started",
+  "session_paused",
+  "session_finished",
+  "connection_preview_requested",
+  "connection_saved",
+  "connection_dismissed"
+]);
 export const RenderModeSchema = z.enum(["focus", "explore"]);
 export const AiSummaryModeSchema = z.enum(["concise", "balanced", "detailed"]);
 export const FeedDensitySchema = z.enum(["comfortable", "compact"]);

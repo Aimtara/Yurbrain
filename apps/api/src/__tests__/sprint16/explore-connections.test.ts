@@ -15,7 +15,7 @@ async function strictHeaders(userId: string) {
 }
 
 test("explore preview is non-persistent and save returns connection to Focus", async () => {
-  const { app } = createServer({
+  const { app, state } = createServer({
     databasePath: path.resolve(process.cwd(), ".yurbrain-data", `explore-connections-${process.pid}-a`)
   });
   test.after(async () => {
@@ -86,6 +86,10 @@ test("explore preview is non-persistent and save returns connection to Focus", a
   assert.equal(saved.artifact.type, "connection");
   assert.deepEqual(saved.artifact.payload.sourceItemIds, [first.id, second.id]);
   assert.equal(saved.feedCard.cardType, "connection");
+
+  const events = await state.repo.listEventsByUser(userId);
+  assert.ok(events.some((event) => event.eventType === "connection_preview_requested"));
+  assert.ok(events.some((event) => event.eventType === "connection_saved"));
 
   const feed = await app.inject({ method: "GET", url: "/feed?lens=all&limit=10", headers });
   assert.equal(feed.statusCode, 200);

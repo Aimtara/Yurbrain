@@ -14,7 +14,30 @@ import {
 
 export const brainItemTypeEnum = pgEnum("brain_item_type", ["note", "link", "idea", "quote", "file"]);
 export const brainItemStatusEnum = pgEnum("brain_item_status", ["active", "archived"]);
-export const eventTypeEnum = pgEnum("event_type", ["brain_item_created", "brain_item_updated"]);
+export const eventTypeEnum = pgEnum("event_type", [
+  "brain_item_created",
+  "brain_item_updated",
+  "capture_created",
+  "brain_item_opened",
+  "feed_card_shown",
+  "feed_card_opened",
+  "feed_card_acted_on",
+  "feed_card_dismissed",
+  "feed_card_snoozed",
+  "comment_created",
+  "ai_summary_requested",
+  "ai_summary_saved",
+  "item_chat_started",
+  "item_chat_message_sent",
+  "plan_requested",
+  "task_created",
+  "session_started",
+  "session_paused",
+  "session_finished",
+  "connection_preview_requested",
+  "connection_saved",
+  "connection_dismissed"
+]);
 export const artifactTypeEnum = pgEnum("artifact_type", [
   "summary",
   "classification",
