@@ -4,6 +4,7 @@ import { configureApiBaseUrl } from "@yurbrain/client";
 
 import { MobileAuthScreen } from "./features/auth/MobileAuthScreen";
 import { AppCaptureSheet } from "./features/capture/AppCaptureSheet";
+import { ExploreSurface } from "./features/explore/ExploreSurface";
 import { FocusFeedSurface } from "./features/feed/FocusFeedSurface";
 import { ItemDetailSurface } from "./features/item/ItemDetailSurface";
 import { MeSurface } from "./features/me/MeSurface";
@@ -198,6 +199,7 @@ function MobileAuthenticatedShell({
       </View>
       <View style={{ flex: 1 }}>
         {controller.activeSurface === "feed" ? <FocusFeedSurface controller={controller} /> : null}
+        {controller.activeSurface === "explore" ? <ExploreSurface controller={controller} /> : null}
         {controller.activeSurface === "item" ? <ItemDetailSurface controller={controller} /> : null}
         {controller.activeSurface === "session" ? <SessionSurface controller={controller} /> : null}
         {controller.activeSurface === "time" ? <TimeSurface controller={controller} /> : null}

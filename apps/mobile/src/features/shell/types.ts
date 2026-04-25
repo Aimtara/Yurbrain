@@ -12,7 +12,7 @@ import type {
   TaskDto
 } from "../shared/types";
 
-export type MobilePrimarySurface = "feed" | "time" | "session" | "me";
+export type MobilePrimarySurface = "feed" | "time" | "session" | "me" | "explore";
 
 export type MobileLoopController = {
   hydrated: boolean;
@@ -49,6 +49,23 @@ export type MobileLoopController = {
   selectedTask: TaskDto | null;
   selectedTaskSession: SessionDto | null;
   relatedItems: Array<{ id: string; title: string; hint: string }>;
+  exploreAvailableItems: Array<{ id: string; title: string; rawContent: string; topicGuess?: string | null }>;
+  exploreSelectedItems: Array<{ id: string; title: string; rawContent: string; topicGuess?: string | null }>;
+  exploreSourceIds: string[];
+  exploreSelectedItemIds: string[];
+  exploreMode: "pattern" | "idea" | "plan" | "question";
+  exploreCandidates: Array<{
+    title: string;
+    summary: string;
+    whyTheseConnect: string[];
+    suggestedNextActions: string[];
+    confidence: number;
+  }>;
+  exploreSelectedCandidateIndex: number;
+  exploreLoading: boolean;
+  exploreSaving: boolean;
+  exploreNotice: string;
+  exploreError: string;
   timelineEntries: Array<{ id: string; role: "user" | "assistant" | "system"; label: string; timestamp?: string }>;
   itemContinuity: {
     whyShown?: string;
@@ -75,6 +92,17 @@ export type MobileLoopController = {
   setExecutionLens: (lens: ExecutionLens) => void;
   captureItem: (intent: CaptureSubmitIntent) => Promise<void>;
   openItemFromFeed: (card: FeedCardDto) => void;
+  openExploreFromCard: (card: FeedCardDto) => void;
+  openExploreFromItem: () => void;
+  toggleExploreItem: (itemId: string) => void;
+  toggleExploreSource: (itemId: string) => void;
+  removeExploreItem: (itemId: string) => void;
+  removeExploreSource: (itemId: string) => void;
+  setExploreMode: (mode: "pattern" | "idea" | "plan" | "question") => void;
+  previewExploreConnection: () => Promise<void>;
+  selectExploreCandidate: (index: number) => void;
+  saveExploreConnection: () => Promise<void>;
+  dismissExplore: () => void;
   openTask: (taskId: string) => void;
   updateFounderProgressFromCard: (card: FeedCardDto) => Promise<void>;
   runFeedAction: (card: FeedCardDto, action: "continue" | "keep_in_focus" | "revisit_later" | "dismiss") => Promise<void>;

@@ -65,6 +65,7 @@ export function ItemDetailSurface({ controller }: Props) {
               <ActionChip label="Summarize Progress" onPress={() => void controller.runQuickAction("summarize_progress")} disabled={controller.aiBusy} />
               <ActionChip label="What Should I Do Next?" onPress={() => void controller.runQuickAction("next_step")} disabled={controller.aiBusy} />
               <ActionChip label="Plan This" onPress={() => void controller.runQuickAction("convert_to_task")} disabled={controller.aiBusy} />
+              <ActionChip label="Explore with related" onPress={() => controller.openExploreFromItem()} />
               <ActionChip label={canStartSession ? "Start Session" : "Plan first"} onPress={() => void controller.startSessionFromItem()} disabled={!canStartSession} />
             </View>
             {controller.aiBusy ? <Text style={{ color: "#065f46" }}>Yurbrain is thinking…</Text> : null}

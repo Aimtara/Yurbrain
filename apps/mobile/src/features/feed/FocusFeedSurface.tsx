@@ -181,6 +181,7 @@ export function FocusFeedSurface({ controller }: { controller: MobileLoopControl
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 <ActionButton label="Continue" onPress={() => controller.openItemFromFeed(model.card)} />
                 {model.card.taskId ? <ActionButton label="Session" onPress={() => controller.openTask(model.card.taskId ?? "")} /> : null}
+                {model.card.itemId ? <ActionButton label="Explore" onPress={() => controller.openExploreFromCard(model.card)} /> : null}
                 <ActionButton label="Keep Nearby" onPress={() => void controller.runFeedAction(model.card, "keep_in_focus")} />
                 <ActionButton label="Later" onPress={() => void controller.runFeedAction(model.card, "revisit_later")} />
                 <ActionButton label="Dismiss" onPress={() => void controller.runFeedAction(model.card, "dismiss")} />

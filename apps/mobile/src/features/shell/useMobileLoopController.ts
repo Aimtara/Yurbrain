@@ -6,7 +6,7 @@ import { getStoredState, setStoredState } from "../shared/storage";
 import { buildFounderSummary } from "../shared/founder";
 import { buildFeedCardModel } from "../shared/continuity";
 import { formatIsoRelative, formatSessionDuration } from "../shared/time";
-import type { BrainItemDto, CaptureDraft, CaptureSubmitIntent, ContinuityContext, FeedCardDto, FeedLens, ItemArtifactDto, MessageDto, MobileSurface, SessionDto, TaskDto, UserPreferenceDto } from "../shared/types";
+import type { BrainItemDto, CaptureDraft, CaptureSubmitIntent, ConnectionCandidateDto, ConnectionMode, ContinuityContext, ExploreSaveResponseDto, ExploreSourceCardDto, FeedCardDto, FeedLens, ItemArtifactDto, MessageDto, MobileSurface, SessionDto, TaskDto, UserPreferenceDto } from "../shared/types";
 import type { MobileLoopController } from "./types";
 
 type CaptureIntakeResponse = {
@@ -50,6 +50,15 @@ function buildContinuityFromFeedCard(card: FeedCardDto): ContinuityContext {
     nextStep: inferNextStep(card),
     lastTouched: formatIsoRelative(card.lastTouched ?? card.lastRefreshedAt ?? card.createdAt),
     sourceItemId: card.itemId ?? undefined
+  };
+}
+
+function toExploreSource(item: BrainItemDto): ExploreSourceCardDto {
+  return {
+    id: item.id,
+    title: item.title,
+    preview: clampText(compactText(item.rawContent), 180),
+    topic: item.topicGuess ?? item.type
   };
 }
 
@@ -126,10 +135,21 @@ export function useMobileLoopController(): MobileLoopController {
   const [timeNotice, setTimeNotice] = useState("");
   const [surfaceNotice, setSurfaceNotice] = useState("");
   const [stateRehydrated, setStateRehydrated] = useState(false);
+  const [exploreSourceIds, setExploreSourceIds] = useState<string[]>([]);
+  const [exploreMode, setExploreMode] = useState<ConnectionMode>("idea");
+  const [exploreCandidates, setExploreCandidates] = useState<ConnectionCandidateDto[]>([]);
+  const [exploreSelectedCandidateIndex, setExploreSelectedCandidateIndex] = useState(0);
+  const [exploreLoading, setExploreLoading] = useState(false);
+  const [exploreSaving, setExploreSaving] = useState(false);
+  const [exploreError, setExploreError] = useState("");
+  const [exploreNotice, setExploreNotice] = useState("Add 2–5 cards to make a connection.");
+  const [exploreSavedConnection, setExploreSavedConnection] = useState<ExploreSaveResponseDto | null>(null);
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
   const selectedItemTasks = useMemo(() => (selectedItem ? tasks.filter((task) => task.sourceItemId === selectedItem.id) : []), [selectedItem, tasks]);
+  const exploreSelectedItems = useMemo(() => items.filter((item) => exploreSourceIds.includes(item.id)), [exploreSourceIds, items]);
+  const exploreAvailableItems = useMemo(() => items.filter((item) => !exploreSourceIds.includes(item.id)).slice(0, 12), [exploreSourceIds, items]);
 
   const timelineEntries = useMemo(
     () =>
@@ -478,6 +498,125 @@ export function useMobileLoopController(): MobileLoopController {
     setActiveSurface("session");
   }, []);
 
+  const openExploreFromItemIds = useCallback((sourceIds: string[]) => {
+    const uniqueIds = Array.from(new Set(sourceIds.filter(Boolean))).slice(0, 5);
+    setExploreSourceIds(uniqueIds);
+    setExploreCandidates([]);
+    setExploreSelectedCandidateIndex(0);
+    setExploreSavedConnection(null);
+    setExploreError("");
+    setExploreNotice(uniqueIds.length >= 2 ? "Choose an angle to preview a connection." : "Add another card to make a connection.");
+    setActiveSurface("explore");
+  }, []);
+
+  const openExploreFromCard = useCallback(
+    (card: FeedCardDto) => {
+      if (!card.itemId) {
+        setSurfaceNotice("Open a source item before exploring this card.");
+        return;
+      }
+      openExploreFromItemIds([card.itemId]);
+    },
+    [openExploreFromItemIds]
+  );
+
+  const toggleExploreSource = useCallback(
+    (itemId: string) => {
+      setExploreSourceIds((current) => {
+        if (current.includes(itemId)) return current.filter((id) => id !== itemId);
+        if (current.length >= 5) return current;
+        return [...current, itemId];
+      });
+      setExploreCandidates([]);
+      setExploreSelectedCandidateIndex(0);
+      setExploreSavedConnection(null);
+      setExploreError("");
+      setExploreNotice("Selection updated. Preview again when ready.");
+    },
+    []
+  );
+
+  const removeExploreSource = useCallback(
+    (itemId: string) => {
+      setExploreSourceIds((current) => current.filter((id) => id !== itemId));
+      setExploreCandidates([]);
+      setExploreSelectedCandidateIndex(0);
+      setExploreSavedConnection(null);
+    },
+    []
+  );
+
+  const openExploreWithRelated = useCallback(() => {
+    if (!selectedItem) return;
+    const sourceIds = [selectedItem.id, ...relatedItems.slice(0, 4).map((item) => item.id)];
+    setExploreSourceIds(Array.from(new Set(sourceIds)).slice(0, 5));
+    setExploreCandidates([]);
+    setExploreSelectedCandidateIndex(0);
+    setExploreSavedConnection(null);
+    setExploreError("");
+    setExploreNotice(sourceIds.length > 1 ? "Choose a mode to preview a connection." : "Add another card to make a connection.");
+    setActiveSurface("explore");
+  }, [relatedItems, selectedItem]);
+
+  const previewExploreConnection = useCallback(async () => {
+    if (exploreSourceIds.length < 2) {
+      setExploreError("Add at least two cards to make a connection.");
+      return;
+    }
+    setExploreLoading(true);
+    setExploreError("");
+    setExploreNotice("Looking for the thread between these…");
+    try {
+      const response = await yurbrainClient.previewExploreConnection<{ candidates: ConnectionCandidateDto[] }>({
+        sourceItemIds: exploreSourceIds,
+        mode: exploreMode
+      });
+      setExploreCandidates(response.candidates);
+      setExploreSelectedCandidateIndex(0);
+      setExploreNotice("Yurbrain noticed a possible connection.");
+    } catch {
+      setExploreError("Yurbrain could not make a good connection yet. Your cards are still here.");
+    } finally {
+      setExploreLoading(false);
+    }
+  }, [exploreMode, exploreSourceIds, yurbrainClient]);
+
+  const saveExploreConnection = useCallback(async () => {
+    const candidate = exploreCandidates[exploreSelectedCandidateIndex] ?? exploreCandidates[0];
+    if (!candidate) {
+      setExploreError("Preview a connection before saving.");
+      return;
+    }
+    setExploreSaving(true);
+    setExploreError("");
+    try {
+      const response = await yurbrainClient.saveExploreConnection<ExploreSaveResponseDto>({
+        sourceItemIds: exploreSourceIds,
+        mode: exploreMode,
+        candidate
+      });
+      setExploreSavedConnection(response);
+      setFeedCards((current) => [response.feedCard, ...current.filter((card) => card.id !== response.feedCard.id)]);
+      setExploreNotice("Saved. Yurbrain can bring this back later.");
+    } catch {
+      setExploreError("Could not save this connection yet. Your cards are still here.");
+    } finally {
+      setExploreSaving(false);
+    }
+  }, [exploreCandidates, exploreMode, exploreSelectedCandidateIndex, exploreSourceIds, yurbrainClient]);
+
+  const selectExploreCandidate = useCallback((index: number) => {
+    setExploreSelectedCandidateIndex(Math.max(0, Math.min(index, Math.max(0, exploreCandidates.length - 1))));
+  }, [exploreCandidates.length]);
+
+  const dismissExplore = useCallback(() => {
+    setExploreCandidates([]);
+    setExploreSelectedCandidateIndex(0);
+    setExploreSavedConnection(null);
+    setExploreError("");
+    setExploreNotice("Your cards are still here. Add or remove cards when ready.");
+  }, []);
+
   const runFeedAction = useCallback(
     async (card: FeedCardDto, action: "continue" | "keep_in_focus" | "revisit_later" | "dismiss") => {
       setTaskError("");
@@ -501,7 +640,7 @@ export function useMobileLoopController(): MobileLoopController {
         setTaskError("Could not apply feed action right now.");
       }
     },
-    [activeLens, loadFeed, openItemFromFeed]
+    [activeLens, loadFeed, openItemFromFeed, yurbrainClient]
   );
 
   const updateLens = useCallback(
@@ -963,6 +1102,17 @@ export function useMobileLoopController(): MobileLoopController {
     selectedTask,
     selectedTaskSession,
     relatedItems,
+    exploreAvailableItems,
+    exploreSelectedItems,
+    exploreSourceIds,
+    exploreSelectedItemIds: exploreSourceIds,
+    exploreMode,
+    exploreCandidates,
+    exploreSelectedCandidateIndex,
+    exploreLoading,
+    exploreSaving,
+    exploreNotice,
+    exploreError,
     timelineEntries,
     itemContinuity,
     executionContext,
@@ -1001,6 +1151,17 @@ export function useMobileLoopController(): MobileLoopController {
     setCustomWindowMinutes,
     startWithoutPlanning,
     switchToFeedForReentry,
+    openExploreFromCard,
+    openExploreFromItem: openExploreWithRelated,
+    toggleExploreItem: toggleExploreSource,
+    toggleExploreSource,
+    removeExploreItem: removeExploreSource,
+    removeExploreSource,
+    setExploreMode,
+    previewExploreConnection,
+    selectExploreCandidate: setExploreSelectedCandidateIndex,
+    saveExploreConnection,
+    dismissExplore: () => setActiveSurface("feed"),
     refreshFeed: () => loadFeed(activeLens),
     dismissCard: async (cardId) => {
       const card = feedCards.find((entry) => entry.id === cardId);
