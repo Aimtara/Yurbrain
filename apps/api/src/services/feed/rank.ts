@@ -47,7 +47,8 @@ const cardTypeLabels: Record<StoredFeedCard["cardType"], string> = {
   cluster: "Cluster",
   opportunity: "Opportunity",
   open_loop: "Open loop",
-  resume: "Resume point"
+  resume: "Resume point",
+  connection: "Connection"
 };
 
 export function rankFeedCards(cards: StoredFeedCard[], options: RankOptions = {}): RankedFeedCard[] {

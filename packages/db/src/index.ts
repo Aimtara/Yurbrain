@@ -66,7 +66,7 @@ export type ResurfacingIntensity = "gentle" | "balanced" | "active";
 export type FeedCardRecord = {
   id: string;
   userId: string;
-  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume" | "connection";
   lens: FeedLens;
   itemId: string | null;
   taskId: string | null;
@@ -107,7 +107,7 @@ export type ArtifactRecord = {
   id: string;
   itemId: string;
   userId?: string | null;
-  type: "summary" | "classification" | "relation" | "feed_card";
+  type: "summary" | "classification" | "relation" | "feed_card" | "connection" | "related_items" | "task_conversion" | "feed_card_suggestion";
   payload: Record<string, unknown>;
   confidence: number;
   createdAt: string;

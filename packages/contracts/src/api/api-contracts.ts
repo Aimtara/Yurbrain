@@ -6,6 +6,8 @@ import {
   BrainItemStatusSchema,
   BrainItemTypeSchema,
   CaptureContentTypeSchema,
+  ConnectionArtifactContentSchema,
+  ConnectionModeSchema,
   FeedDensitySchema,
   FeedCardSchema,
   FeedLensSchema,
@@ -266,6 +268,39 @@ export const QueryItemRequestSchema = z
   })
   .strict();
 
+export const ExploreConnectionPreviewRequestSchema = z
+  .object({
+    sourceItemIds: z.array(z.string().uuid()).min(2).max(5),
+    mode: ConnectionModeSchema
+  })
+  .strict();
+
+export const ExploreConnectionCandidateSchema = ConnectionArtifactContentSchema.pick({
+  title: true,
+  summary: true,
+  whyTheseConnect: true,
+  suggestedNextActions: true,
+  confidence: true
+}).extend({
+  sourceItemIds: z.array(z.string().uuid()).min(2).max(5).optional()
+}).strict();
+
+export const ExploreConnectionPreviewResponseSchema = z
+  .object({
+    sourceItemIds: z.array(z.string().uuid()).min(2).max(5),
+    mode: ConnectionModeSchema,
+    candidates: z.array(ExploreConnectionCandidateSchema).min(1).max(3)
+  })
+  .strict();
+
+export const ExploreConnectionSaveRequestSchema = z
+  .object({
+    sourceItemIds: z.array(z.string().uuid()).min(2).max(5),
+    mode: ConnectionModeSchema,
+    candidate: ExploreConnectionCandidateSchema
+  })
+  .strict();
+
 export const AiSynthesisRequestSchema = z
   .object({
     itemIds: z.array(z.string().uuid()).min(1).max(24)
@@ -291,6 +326,14 @@ export const AiArtifactResponseSchema = ItemArtifactSchema.extend({
   fallbackUsed: z.boolean(),
   fallbackReason: z.enum(["timeout", "invalid_or_runner_error"]).optional()
 }).strict();
+
+export const ExploreConnectionSaveResponseSchema = z
+  .object({
+    artifact: ItemArtifactSchema,
+    feedCard: FeedCardSchema,
+    connection: ConnectionArtifactContentSchema
+  })
+  .strict();
 
 export const QueryItemResponseSchema = z
   .object({
@@ -354,6 +397,11 @@ export type AiConvertResponse = z.infer<typeof AiConvertResponseSchema>;
 export type SummarizeItemRequest = z.infer<typeof SummarizeItemRequestSchema>;
 export type ClassifyItemRequest = z.infer<typeof ClassifyItemRequestSchema>;
 export type QueryItemRequest = z.infer<typeof QueryItemRequestSchema>;
+export type ExploreConnectionPreviewRequest = z.infer<typeof ExploreConnectionPreviewRequestSchema>;
+export type ExploreConnectionCandidate = z.infer<typeof ExploreConnectionCandidateSchema>;
+export type ExploreConnectionPreviewResponse = z.infer<typeof ExploreConnectionPreviewResponseSchema>;
+export type ExploreConnectionSaveRequest = z.infer<typeof ExploreConnectionSaveRequestSchema>;
+export type ExploreConnectionSaveResponse = z.infer<typeof ExploreConnectionSaveResponseSchema>;
 export type AiSynthesisRequest = z.infer<typeof AiSynthesisRequestSchema>;
 export type AiSynthesisResponse = z.infer<typeof AiSynthesisResponseSchema>;
 export type RelatedItemsResponse = z.infer<typeof RelatedItemsResponseSchema>;

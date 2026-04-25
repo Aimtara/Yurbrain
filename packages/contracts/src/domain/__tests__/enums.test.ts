@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   AiSummaryModeSchema,
+  ArtifactTypeSchema,
   BrainItemTypeSchema,
+  ConnectionArtifactContentSchema,
+  ConnectionModeSchema,
   ExploreNodeSchema,
   FeedDensitySchema,
   FeedActionSchema,
@@ -22,6 +25,8 @@ test("BrainItemType enum accepts valid values", () => {
 test("Feed enums reject invalid values", () => {
   assert.throws(() => FeedLensSchema.parse("weekly"));
   assert.throws(() => FeedCardTypeSchema.parse("thread"));
+  assert.equal(FeedCardTypeSchema.parse("connection"), "connection");
+  assert.equal(ArtifactTypeSchema.parse("connection"), "connection");
 });
 
 test("MessageRole and TaskStatus enums stay strict", () => {
@@ -79,6 +84,37 @@ test("Explore node contract validates cluster and layout metadata", () => {
         manualGroupLabel: null
       },
       relationships: []
+    })
+  );
+});
+
+test("Connection artifact content validates source lineage", () => {
+  const parsed = ConnectionArtifactContentSchema.parse({
+    title: "Calming desk ritual",
+    summary: "These captures may connect around making Maya's desk feel calmer.",
+    sourceItemIds: [
+      "11111111-1111-1111-1111-111111111111",
+      "22222222-2222-4222-8222-222222222222"
+    ],
+    connectionMode: ConnectionModeSchema.parse("idea"),
+    whyTheseConnect: ["Both mention desk setup", "Both point toward a calm ritual"],
+    suggestedNextActions: ["Find three gift options", "Save the strongest option for later"],
+    confidence: 0.74,
+    createdAt: "2026-04-25T00:00:00.000Z"
+  });
+
+  assert.equal(parsed.connectionMode, "idea");
+  assert.equal(parsed.sourceItemIds.length, 2);
+  assert.throws(() =>
+    ConnectionArtifactContentSchema.parse({
+      title: "Too thin",
+      summary: "Missing enough source lineage.",
+      sourceItemIds: ["11111111-1111-1111-1111-111111111111"],
+      connectionMode: "pattern",
+      whyTheseConnect: [],
+      suggestedNextActions: ["Try again"],
+      confidence: 0.5,
+      createdAt: "2026-04-25T00:00:00.000Z"
     })
   );
 });

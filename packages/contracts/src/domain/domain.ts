@@ -2,10 +2,19 @@ import { z } from "zod";
 
 export const BrainItemTypeSchema = z.enum(["note", "link", "idea", "quote", "file"]);
 export const BrainItemStatusSchema = z.enum(["active", "archived"]);
-export const ArtifactTypeSchema = z.enum(["summary", "classification", "relation", "feed_card"]);
+export const ArtifactTypeSchema = z.enum([
+  "summary",
+  "classification",
+  "relation",
+  "related_items",
+  "task_conversion",
+  "connection",
+  "feed_card",
+  "feed_card_suggestion"
+]);
 export const ThreadKindSchema = z.enum(["item_comment", "item_chat"]);
 export const MessageRoleSchema = z.enum(["user", "assistant", "system"]);
-export const FeedCardTypeSchema = z.enum(["item", "digest", "cluster", "opportunity", "open_loop", "resume"]);
+export const FeedCardTypeSchema = z.enum(["item", "digest", "cluster", "opportunity", "open_loop", "resume", "connection"]);
 export const FeedLensSchema = z.enum(["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]);
 export const FeedActionSchema = z.enum([
   "open_item",
@@ -13,6 +22,7 @@ export const FeedActionSchema = z.enum([
   "comment",
   "ask_ai",
   "convert_to_task",
+  "explore",
   "start_session",
   "dismiss",
   "snooze",
@@ -26,6 +36,7 @@ export const AiSummaryModeSchema = z.enum(["concise", "balanced", "detailed"]);
 export const FeedDensitySchema = z.enum(["comfortable", "compact"]);
 export const ResurfacingIntensitySchema = z.enum(["gentle", "balanced", "active"]);
 export const CaptureContentTypeSchema = z.enum(["text", "link", "image"]);
+export const ConnectionModeSchema = z.enum(["pattern", "idea", "plan", "question"]);
 export const ExploreRelationKindSchema = z.enum(["related", "depends_on", "contrasts", "expands"]);
 export const FeedWhyShownSchema = z
   .object({
@@ -60,6 +71,21 @@ export const ExploreNodeSchema = z
     salience: z.number().min(0).max(1),
     grouping: ExploreNodeGroupingSchema,
     relationships: z.array(ExploreNodeRelationshipSchema).max(24)
+  })
+  .strict();
+
+export const ConnectionArtifactContentSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    summary: z.string().min(1).max(1_200),
+    sourceItemIds: z.array(z.string().uuid()).min(2).max(5),
+    sourceArtifactIds: z.array(z.string().uuid()).max(12).optional(),
+    sourceCommentIds: z.array(z.string().uuid()).max(12).optional(),
+    connectionMode: ConnectionModeSchema,
+    whyTheseConnect: z.array(z.string().min(1).max(240)).min(1).max(5),
+    suggestedNextActions: z.array(z.string().min(1).max(200)).min(1).max(5),
+    confidence: z.number().min(0).max(1),
+    createdAt: z.string().datetime()
   })
   .strict();
 
@@ -210,3 +236,5 @@ export type Task = z.infer<typeof TaskSchema>;
 export type Session = z.infer<typeof SessionSchema>;
 export type Event = z.infer<typeof EventSchema>;
 export type UserPreference = z.infer<typeof UserPreferenceSchema>;
+export type ConnectionMode = z.infer<typeof ConnectionModeSchema>;
+export type ConnectionArtifactContent = z.infer<typeof ConnectionArtifactContentSchema>;
