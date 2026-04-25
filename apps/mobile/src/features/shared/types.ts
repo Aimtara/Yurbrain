@@ -1,4 +1,4 @@
-export type MobileSurface = "feed" | "item" | "session" | "time" | "me";
+export type MobileSurface = "feed" | "item" | "session" | "time" | "me" | "explore";
 export type FeedLens = "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
 export type ExecutionLens = "all" | "ready_to_move" | "needs_unblock" | "momentum";
 export type TimeWindowOption = "2h" | "4h" | "6h" | "8h" | "24h" | "custom";
@@ -13,7 +13,7 @@ export type CaptureDraft = {
 
 export type FeedCardDto = {
   id: string;
-  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume" | "connection";
   lens: FeedLens;
   itemId: string | null;
   taskId: string | null;
@@ -26,7 +26,7 @@ export type FeedCardDto = {
   lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
   availableActions: Array<
-    "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh"
+    "open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh" | "explore"
   >;
   stateFlags: {
     dismissed: boolean;
@@ -63,9 +63,40 @@ export type BrainItemDto = {
 
 export type ItemArtifactDto = {
   id: string;
-  type: "summary" | "classification" | "relation" | "feed_card";
+  type: "summary" | "classification" | "relation" | "related_items" | "task_conversion" | "connection" | "feed_card" | "feed_card_suggestion";
   payload: Record<string, unknown>;
   createdAt: string;
+};
+
+export type ConnectionMode = "pattern" | "idea" | "plan" | "question";
+
+export type ConnectionCandidateDto = {
+  title: string;
+  summary: string;
+  whyTheseConnect: string[];
+  suggestedNextActions: string[];
+  confidence: number;
+};
+
+export type ExploreSourceCardDto = {
+  id: string;
+  title: string;
+  preview: string;
+  topic?: string | null;
+};
+
+export type ExploreSaveResponseDto = {
+  feedCard: FeedCardDto;
+  connection: {
+    title: string;
+    summary: string;
+    sourceItemIds: string[];
+    connectionMode: ConnectionMode;
+    whyTheseConnect: string[];
+    suggestedNextActions: string[];
+    confidence: number;
+    createdAt: string;
+  };
 };
 
 export type MessageDto = {

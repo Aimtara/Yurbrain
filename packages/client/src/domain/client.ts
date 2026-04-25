@@ -28,9 +28,11 @@ import {
   listSessions,
   manualConvertTask,
   pauseSession,
+  previewExploreConnection,
   queryItem,
   refreshFeedCard,
   requestNextStep,
+  saveExploreConnection,
   sendMessage,
   snoozeFeedCard,
   startTaskSession,
@@ -175,6 +177,8 @@ export type YurbrainDomainClient = {
   getWhatShouldIDoNext: <T>(payload: { itemIds: string[] }) => Promise<T>;
   getFounderReviewScored: <T>(query?: FounderReviewQuery) => Promise<T>;
   runSessionHelper: <T>(payload: FunctionSessionHelperPayload) => Promise<T>;
+  previewExploreConnection: <T>(payload: unknown) => Promise<T>;
+  saveExploreConnection: <T>(payload: unknown) => Promise<T>;
 };
 
 function createRestDomainClient(): YurbrainDomainClient {
@@ -245,6 +249,8 @@ function createRestDomainClient(): YurbrainDomainClient {
     getFeedRanked: (query = {}) => getFeed(query),
     summarizeProgress: (payload) => summarizeCluster(payload),
     getWhatShouldIDoNext: (payload) => requestNextStep(payload),
+    previewExploreConnection,
+    saveExploreConnection,
     getFounderReviewScored: (query = {}) =>
       apiClient(
         `${endpoints.functionFounderReview}${renderQuery({

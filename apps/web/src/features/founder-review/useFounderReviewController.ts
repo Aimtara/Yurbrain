@@ -10,10 +10,11 @@ import type {
   FounderReviewDiagnosticsModel,
   FounderReviewModel
 } from "./types";
+import type { Surface } from "../shared/types";
 
 type UseFounderReviewControllerInput = {
   yurbrainClient: YurbrainClient;
-  activeSurface: "feed" | "item" | "session" | "time" | "me" | "founder_review";
+  activeSurface: Surface;
   onRunAction: (action: FounderReviewActionModel) => Promise<{ notice: string }>;
 };
 

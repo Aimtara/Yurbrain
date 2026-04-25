@@ -9,6 +9,7 @@ type FeedCardRendererProps = {
   onOpenItem: (model: FeedCardModel) => void;
   onOpenTask: (taskId: string) => void;
   onConvertToTask: (itemId: string, body: string) => void;
+  onExplore: (model: FeedCardModel) => void;
   onStartSession: (card: FeedCardDto) => void;
   onDismiss: (cardId: string) => void;
   onSnooze: (card: FeedCardDto) => void;
@@ -44,6 +45,7 @@ function renderStandardCard({
   onOpenItem,
   onOpenTask,
   onConvertToTask,
+  onExplore,
   onStartSession,
   onDismiss,
   onSnooze,
@@ -69,6 +71,7 @@ function renderStandardCard({
       primaryActionLabel={inferPrimaryActionLabel(model.card, Boolean(model.continuity.sourceItemId))}
       onOpen={renderOpenHandler(model, onOpenItem, onOpenTask)}
       onConvertToTask={model.card.itemId ? () => onConvertToTask(model.card.itemId ?? "", model.card.body) : undefined}
+      onExplore={model.card.itemId ? () => onExplore(model) : undefined}
       onStartSession={
         model.card.itemId && supportsAction(model.card, "start_session")
           ? () => {
@@ -87,6 +90,7 @@ function renderClusterPlaceholderCard({
   model,
   onOpenItem,
   onConvertToTask,
+  onExplore,
   onDismiss,
   onRefresh
 }: FeedCardRendererProps) {
@@ -103,6 +107,7 @@ function renderClusterPlaceholderCard({
       onSeeHighlights={model.continuity.sourceItemId ? () => onOpenItem(model) : undefined}
       onCompare={model.continuity.sourceItemId ? () => onOpenItem(model) : undefined}
       onTryOneToday={model.card.itemId ? () => onConvertToTask(model.card.itemId ?? "", model.card.body) : undefined}
+      onExplore={model.card.itemId ? () => onExplore(model) : undefined}
       onDismiss={() => onDismiss(model.card.id)}
     />
   );

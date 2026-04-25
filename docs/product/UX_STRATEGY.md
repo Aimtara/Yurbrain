@@ -4,6 +4,24 @@ Version 1.0 — Foundational Experience Strategy
 
 This is a research-backed UX strategy artifact to guide future Yurbrain design and engineering decisions.
 
+## 0. Frozen product guardrails — April 25, 2026
+
+These decisions override older pitch language and any ambiguous implementation notes.
+
+1. **Focus Feed is the home.** Yurbrain opens on a calm resurfacing surface, not a dashboard, canvas, kanban board, task list, or chatbot.
+2. **Explore is an optional mode/prototype.** Explore helps saved thoughts combine, but it does not replace Focus and does not create a separate object universe.
+3. **BrainItem is the source of truth.** FeedCards, comments, AI artifacts, tasks, sessions, events, and saved connections all preserve lineage back to source material.
+4. **Comments are a core continuation primitive.** Continuing a thought must be lighter than organizing it.
+5. **AI is optional, concise, grounded, explainable, and dismissible.** AI outputs are persisted as artifacts or thread messages; they never silently rewrite source content.
+6. **Execution is downstream.** Not everything important is a task. “Plan this” is available when ready, never mandatory.
+7. **Capture must stay frictionless.** No required tags, folders, projects, due dates, or categorization before saving.
+8. **Every resurfaced card explains why it appeared.** The product should feel like recognition and re-entry, not an inbox to clear.
+9. **The product should feel calm and emotionally safe.** Avoid guilt, harsh urgency, productivity-bro language, points, leaderboards, dashboards, and heavy project-management metaphors.
+
+Product mantra:
+
+> Focus brings thoughts back. Explore helps thoughts combine. Time helps thoughts become action only when ready.
+
 ## 1. Product Vision (UX Translation)
 
 ### Core Vision

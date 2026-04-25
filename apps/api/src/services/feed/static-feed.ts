@@ -1,7 +1,7 @@
 export type StoredFeedCard = {
   id: string;
   userId: string;
-  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume" | "connection";
   lens: "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
   itemId: string | null;
   taskId: string | null;
@@ -29,7 +29,7 @@ export type FeedCardResponse = StoredFeedCard & {
   postponeCount: number;
   lastPostponedAt: string | null;
   lastRefreshedAt: string | null;
-  availableActions: Array<"open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh">;
+  availableActions: Array<"open_item" | "open_task" | "comment" | "ask_ai" | "convert_to_task" | "start_session" | "dismiss" | "snooze" | "refresh" | "explore">;
   stateFlags: {
     dismissed: boolean;
     snoozed: boolean;
@@ -61,7 +61,7 @@ export function toFeedCardResponse(card: StoredFeedCard, whyShown: FeedWhyShown,
   const hasSourceTask = Boolean(card.taskId);
   const availableActions: FeedCardResponse["availableActions"] = ["dismiss", "snooze", "refresh"];
   if (hasSourceItem) {
-    availableActions.unshift("open_item", "comment", "ask_ai", "convert_to_task");
+    availableActions.unshift("open_item", "comment", "ask_ai", "convert_to_task", "explore");
   }
   if (hasSourceTask) {
     availableActions.unshift("open_task", "start_session");

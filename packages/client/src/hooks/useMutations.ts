@@ -146,6 +146,14 @@ export async function queryItem<T>(payload: unknown) {
   return postJson<T>(endpoints.functionQueryItem, payload);
 }
 
+export async function previewExploreConnection<T>(payload: unknown) {
+  return postJson<T>(endpoints.exploreConnectionPreview, payload);
+}
+
+export async function saveExploreConnection<T>(payload: unknown) {
+  return postJson<T>(endpoints.exploreConnectionSave, payload);
+}
+
 export async function requestNextStep<T>(payload: unknown) {
   return postJson<T>(endpoints.functionNextStep, payload);
 }

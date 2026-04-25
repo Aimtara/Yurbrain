@@ -137,7 +137,9 @@ function buildMockRepo(overrides: {
       throw new Error("not used");
     },
     getArtifactById: async () => null,
-    listArtifactsByItem: overrides.listArtifactsByItem ?? (async () => [base.artifact]),
+    listArtifactsByItem:
+      (overrides.listArtifactsByItem as DbRepository["listArtifactsByItem"] | undefined) ??
+      (async () => [base.artifact]),
     getUserProfileById: async () => null,
     upsertUserProfile: async () => {
       throw new Error("not used");

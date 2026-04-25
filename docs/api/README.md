@@ -17,6 +17,7 @@
 - `POST /functions/feed/generate-card` stores a placeholder/generated feed card for deterministic retrieval.
 - `POST /feed/:id/dismiss` marks a feed card as dismissed.
 - `POST /feed/:id/snooze` snoozes a feed card until a future timestamp.
+- `POST /feed/:id/remind-later` is an alias for snooze with a default gentle delay.
 - `POST /feed/:id/refresh` increments refresh metadata and returns the new count.
 
 ## Task conversion and task loop
@@ -40,6 +41,20 @@
 - `POST /functions/classify` validates model envelope, persists a `classification` artifact, and falls back deterministically on timeout/invalid output.
 - `POST /functions/query` validates model envelope, appends both the user question and assistant reply to a thread, and falls back deterministically on timeout/invalid output.
 - AI responses include `fallbackUsed` and optional `fallbackReason` (`timeout` or `invalid_or_runner_error`).
+
+Prompt-aligned compatibility aliases are also available:
+
+- `POST /ai/brain-items/:id/summarize`
+- `POST /ai/brain-items/:id/classify`
+- `POST /ai/brain-items/:id/query`
+- `POST /ai/convert`
+
+These aliases preserve the same validation, ownership, persistence, and fallback behavior as the existing `/functions/*` routes.
+
+## Explore prototype
+
+- `POST /explore/connections/preview` returns deterministic, source-grounded connection candidates for 2–5 BrainItems. Preview does not persist.
+- `POST /explore/connections/save` persists the chosen connection as an `ItemArtifact(type="connection")` and returns a `FeedCard(cardType="connection")` so the saved connection can return to Focus.
 
 ## Summarize Progress (L2 real-provider thin slice)
 

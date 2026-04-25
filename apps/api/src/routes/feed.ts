@@ -304,6 +304,32 @@ export async function registerFeedRoutes(app: FastifyInstance, state: AppState) 
     return reply.send({ ok: true, id, snoozeMinutes, snoozedUntil, postponeCount, lastPostponedAt });
   });
 
+  app.post("/feed/:id/remind-later", async (request, reply) => {
+    const currentUser = requireCurrentUser(request, reply, request.log);
+    if (!currentUser) return;
+    const { id } = request.params as { id: string };
+    const { minutes } = (request.body as { minutes?: unknown }) ?? {};
+    const card = await state.repo.getFeedCardById(id);
+    if (!card) {
+      request.log.warn({ event: "feed_card_missing", action: "remind_later", cardId: id }, "feed remind later missing card");
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+    if (!canAccessUser(currentUser, card.userId)) {
+      return reply.code(404).send({ message: "Feed card not found" });
+    }
+
+    if (card.dismissed) {
+      return reply.code(409).send({ message: "Cannot snooze a dismissed card" });
+    }
+
+    const snoozeMinutes = parseSnoozeMinutes(minutes ?? 180);
+    const snoozedUntil = new Date(Date.now() + snoozeMinutes * 60_000).toISOString();
+    const postponeCount = (card.postponeCount ?? 0) + 1;
+    const lastPostponedAt = new Date().toISOString();
+    await state.repo.updateFeedCard(id, { snoozedUntil, postponeCount, lastPostponedAt });
+    return reply.send({ ok: true, id, snoozeMinutes, snoozedUntil, postponeCount, lastPostponedAt, mode: "remind_later" });
+  });
+
   app.post("/feed/:id/refresh", async (request, reply) => {
     const currentUser = requireCurrentUser(request, reply, request.log);
     if (!currentUser) return;

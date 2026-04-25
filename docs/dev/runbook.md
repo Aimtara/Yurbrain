@@ -1,6 +1,6 @@
 # Yurbrain Local Runbook (Current State)
 
-_Last updated: April 16, 2026 (UTC), after Wave 3 completion and docs sync._
+_Last updated: April 25, 2026 (UTC), after Yurbrain Explore/core-loop audit._
 
 This runbook lists only commands verified in the current repository state.
 
@@ -19,7 +19,7 @@ pnpm build
 pnpm test:e2e
 ```
 
-If any command fails, stop and reconcile `docs/product/current-state.md` before proceeding.
+If any command fails, stop and reconcile `docs/dev/current-state.md` before proceeding.
 
 
 ## Nhost local orchestrator setup
@@ -62,6 +62,7 @@ Use [cursor.com/onboard](https://cursor.com/onboard) and apply this prompt:
 pnpm --filter api exec tsx --watch src/index.ts
 ```
 - Runs Fastify on port `3001` with a watch loop that works with the monorepo ESM package setup.
+- Prefer this command over `pnpm --filter api dev` until the package script is aligned; the older `ts-node-dev` path has ESM compatibility issues with workspace packages.
 
 ### Web
 ```bash

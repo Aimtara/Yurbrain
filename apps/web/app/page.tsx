@@ -8,6 +8,8 @@ import { WebAuthPanel } from "../src/features/auth/WebAuthPanel";
 
 import { CapturePanel } from "../src/features/capture/CapturePanel";
 import { useCaptureController } from "../src/features/capture/useCaptureController";
+import { ExploreSurface } from "../src/features/explore/ExploreSurface";
+import { useExploreController } from "../src/features/explore/useExploreController";
 import { matchesExecutionLens, deriveFeedRequestLimit, formatRelative, inferBlockedState, inferContinuityNote, inferNextStep, inferVariant, inferWhereLeftOff, buildSyntheticDetailCard } from "../src/features/feed/feed-model";
 import { FocusFeedSurface } from "../src/features/feed/FocusFeedSurface";
 import { useFeedController } from "../src/features/feed/useFeedController";
@@ -31,6 +33,7 @@ import type {
   BrainItemSearchQuery,
   CaptureDraft,
   ContinuityContext,
+  Surface,
   FeedCardDto,
   FeedCardModel,
   FinishRebalanceDraft,
@@ -134,6 +137,15 @@ export default function Page() {
   const [lastAction, setLastAction] = useState("");
   const [, setLastQuestion] = useState("");
   const [feedCards, setFeedCards] = useState<FeedCardDto[]>([]);
+  const [exploreSourceIds, setExploreSourceIds] = useState<string[]>([]);
+  const [exploreMode, setExploreMode] = useState<"pattern" | "idea" | "plan" | "question">("idea");
+  const [exploreCandidates, setExploreCandidates] = useState<Array<{ title: string; summary: string; whyTheseConnect: string[]; suggestedNextActions: string[]; confidence: number }>>([]);
+  const [exploreSelectedCandidate, setExploreSelectedCandidate] = useState<{ title: string; summary: string; whyTheseConnect: string[]; suggestedNextActions: string[]; confidence: number } | null>(null);
+  const [exploreSavedConnection, setExploreSavedConnection] = useState<unknown | null>(null);
+  const [exploreLoading, setExploreLoading] = useState(false);
+  const [exploreSaving, setExploreSaving] = useState(false);
+  const [exploreNotice, setExploreNotice] = useState("");
+  const [exploreError, setExploreError] = useState("");
 
   const selectedItem = useMemo(() => items.find((item) => item.id === selectedItemId) ?? null, [items, selectedItemId]);
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [tasks, selectedTaskId]);
@@ -306,6 +318,7 @@ export default function Page() {
 
   const relatedItemsForDetail = useMemo(() => buildRelatedItems(selectedItem, items), [items, selectedItem]);
   const suggestedPromptsForDetail = useMemo(() => (selectedItem ? buildSuggestedPrompts(selectedItem, derivedItemContinuity.nextStep) : []), [derivedItemContinuity.nextStep, selectedItem]);
+  const exploreRelatedItemIds = useMemo(() => relatedItemsForDetail.map((item) => item.id), [relatedItemsForDetail]);
 
   const { handleLensChange, handleFounderModeToggle, handleRenderModeChange, handleAiSummaryModeChange, handleFeedDensityChange, handleResurfacingIntensityChange, loadUserPreferences } = usePreferenceController({
     yurbrainClient,
@@ -331,6 +344,55 @@ export default function Page() {
     setSelectedContinuity,
     setActiveSurface
   });
+
+  const {
+    sourceCards: exploreSourceCards,
+    selectedSourceCards: selectedExploreSourceCards,
+    openExploreWith,
+    toggleSource: toggleExploreSource,
+    removeSource: removeExploreSource,
+    previewConnection: previewExploreConnection,
+    saveConnection: saveExploreConnection
+  } = useExploreController({
+    yurbrainClient,
+    items,
+    selectedSourceIds: exploreSourceIds,
+    selectedMode: exploreMode,
+    setExploreSourceIds,
+    setExploreMode,
+    setExploreCandidates,
+    setExploreSelectedCandidate,
+    setExploreSavedConnection,
+    setExploreLoading,
+    setExploreSaving,
+    setExploreError,
+    setExploreNotice,
+    setFeedCards
+  });
+
+  const startExploreFromItemIds = useCallback(
+    (sourceItemIds: string[]) => {
+      openExploreWith(sourceItemIds);
+      setActiveSurface("explore");
+    },
+    [openExploreWith, setActiveSurface]
+  );
+
+  const startExploreFromFeedCard = useCallback(
+    (model: FeedCardModel) => {
+      const sourceItemId = model.continuity.sourceItemId ?? model.card.itemId;
+      if (!sourceItemId) return;
+      startExploreFromItemIds([sourceItemId]);
+    },
+    [startExploreFromItemIds]
+  );
+  const startExploreFromCard = useCallback(
+    (card: FeedCardDto) => {
+      if (!card.itemId) return;
+      startExploreFromItemIds([card.itemId]);
+    },
+    [startExploreFromItemIds]
+  );
   const founderActionHandlers = useMemo(
     () =>
       createFounderActionHandlers({
@@ -745,9 +807,33 @@ export default function Page() {
             })()
           }
           onStartSession={(card) => void startSessionFromFeedCard(card)}
+          onExploreCard={startExploreFromFeedCard}
           onDismiss={(cardId) => void dismissCard(cardId)}
           onSnooze={openPostponeSheet}
           onRefresh={(cardId) => void refreshCard(cardId)}
+        />
+      ) : null}
+
+      {activeSurface === "explore" && !founderReviewUnauthorized ? (
+        <ExploreSurface
+          sourceCards={exploreSourceCards}
+          selectedSourceCards={selectedExploreSourceCards}
+          selectedSourceIds={exploreSourceIds}
+          mode={exploreMode}
+          candidates={exploreCandidates}
+          selectedCandidate={exploreSelectedCandidate}
+          loading={exploreLoading}
+          saving={exploreSaving}
+          notice={exploreNotice}
+          error={exploreError}
+          onBackToFeed={() => setActiveSurface("feed")}
+          onToggleSource={toggleExploreSource}
+          onRemoveSource={removeExploreSource}
+          onModeChange={setExploreMode}
+          onPreview={() => void previewExploreConnection()}
+          onSelectCandidate={setExploreSelectedCandidate}
+          onSave={(candidate) => void saveExploreConnection(candidate)}
+          onTryAnotherAngle={() => void previewExploreConnection()}
         />
       ) : null}
 
@@ -958,6 +1044,10 @@ export default function Page() {
           }
           onAskYurbrain={(question) => void runAiQuery(question)}
           onOpenRelatedItem={handleOpenRelatedItem}
+          onExploreWithRelated={() => {
+            if (!selectedItem) return;
+            startExploreFromItemIds([selectedItem.id, ...relatedItemsForDetail.slice(0, 4).map((item) => item.id)]);
+          }}
           onStartSession={() =>
             void (async () => {
               if (!selectedItemTask) {

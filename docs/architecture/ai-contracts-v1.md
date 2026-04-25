@@ -1,5 +1,20 @@
 # AI Contracts v1
 
+## Product guardrails
+
+AI is optional intelligence layered on top of the continuity loop. It must not
+block capture, feed loading, item detail rendering, comments, or manual task
+creation.
+
+AI outputs are persisted only as:
+
+- `ItemArtifact` records (summary, classification, relation/connection, task conversion)
+- `ThreadMessage` records (user query + assistant reply)
+
+AI must never silently mutate `BrainItem.rawContent`, force task conversion, or
+invent unsupported context. Every generated recommendation must remain concise,
+source-grounded, confidence-calibrated, and dismissible.
+
 ## Envelope (required)
 
 All AI-backed routes use a strict envelope before persistence:
@@ -16,6 +31,13 @@ If the model output fails envelope validation or exceeds timeout budget, the API
 - `POST /functions/classify` → persists a `classification` artifact.
 - `POST /functions/query` → appends both user question and assistant reply into an existing thread.
 
+Compatibility aliases planned for the product route surface:
+
+- `POST /ai/brain-items/:id/summarize`
+- `POST /ai/brain-items/:id/classify`
+- `POST /ai/brain-items/:id/query`
+- `POST /ai/convert`
+
 ## Fallback policy
 
 - **Summarize:** deterministic preview from source content.
@@ -27,6 +49,43 @@ If the model output fails envelope validation or exceeds timeout budget, the API
 - All AI responses are validated before persistence.
 - Timeout budget defaults to `800ms` and is overridable per request (`timeoutMs`).
 - Failed AI calls never block user flow; fallback response is persisted/sent instead.
+
+## ConnectionContract (Explore prototype target)
+
+Explore connection previews use the same AI rules as the rest of Yurbrain, but
+preview generation does not persist by default.
+
+Input:
+
+- `sourceItemIds`: 2–5 source BrainItems owned by the current user
+- `mode`: `pattern | idea | plan | question`
+- grounded source snippets from item title/content/topic and optional artifacts/comments
+
+Output:
+
+- `candidates[]`
+  - `title`
+  - `summary`
+  - `whyTheseConnect[]`
+  - `suggestedNextActions[]`
+  - `confidence`
+
+Rules:
+
+- Each candidate must reference details from source cards/items.
+- Results are framed as possible connections, not facts.
+- Preview responses are not persisted until the user chooses Save Connection.
+- Save persists an `ItemArtifact(type="connection")` plus a `FeedCard(type="connection")`.
+- Deterministic fallback must be available when no model key exists.
+
+Current implementation:
+
+- `packages/ai/src/connection.ts` exports `buildConnectionFallback`,
+  `buildConnectionCandidates`, and `validateConnectionCandidates`.
+- The API Explore preview route uses that deterministic fallback so Explore
+  works without provider credentials.
+- Fallback outputs are marked with `modelName = "local-stub"` and
+  `promptVersion = "connection-fallback-v1"`.
 
 ## Provider integration foundation (L1)
 

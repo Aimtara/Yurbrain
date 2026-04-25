@@ -14,7 +14,7 @@ export type FounderSignalFeedCard = {
   id: string;
   itemId: string | null;
   taskId: string | null;
-  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume";
+  cardType: "item" | "digest" | "cluster" | "opportunity" | "open_loop" | "resume" | "connection";
   lens: "all" | "keep_in_mind" | "open_loops" | "learning" | "in_progress" | "recently_commented";
   createdAt: string;
   dismissed: boolean;
@@ -56,7 +56,7 @@ export type FounderSignalMessage = {
 export type FounderSignalArtifact = {
   id: string;
   itemId: string;
-  type: "summary" | "classification" | "relation" | "feed_card";
+  type: "summary" | "classification" | "relation" | "related_items" | "task_conversion" | "connection" | "feed_card" | "feed_card_suggestion";
   createdAt: string;
 };
 

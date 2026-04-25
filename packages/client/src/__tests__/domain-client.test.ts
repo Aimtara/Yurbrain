@@ -55,6 +55,38 @@ test("domain client addComment writes user message payload", async () => {
   );
 });
 
+test("domain client routes Explore connection preview and save", async () => {
+  const calls = installFetch(() => new Response(JSON.stringify({ candidates: [] }), { status: 200 }));
+  const client = createYurbrainDomainClient();
+
+  await client.previewExploreConnection({
+    sourceItemIds: [
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222"
+    ],
+    mode: "pattern"
+  });
+  await client.saveExploreConnection({
+    sourceItemIds: [
+      "11111111-1111-4111-8111-111111111111",
+      "22222222-2222-4222-8222-222222222222"
+    ],
+    mode: "pattern",
+    candidate: {
+      title: "Shared thread",
+      summary: "These notes point at the same theme.",
+      whyTheseConnect: ["Both mention re-entry."],
+      suggestedNextActions: ["Save the pattern."],
+      confidence: 0.7
+    }
+  });
+
+  assert.equal(calls[0]?.url, "/explore/connections/preview");
+  assert.equal(calls[0]?.init?.method, "POST");
+  assert.equal(calls[1]?.url, "/explore/connections/save");
+  assert.equal(calls[1]?.init?.method, "POST");
+});
+
 test("domain client supports per-method overrides", async () => {
   const client = createYurbrainDomainClient({
     getFeed: async () => [{ id: "override-card" }]

@@ -15,6 +15,7 @@ It is not:
 - opportunity
 - open_loop
 - resume
+- connection
 
 ## Lenses
 - all
@@ -67,3 +68,16 @@ It is not:
 - reversible
 - why-shown always available
 - diversity to avoid topic flooding
+
+## Explore and Connection Cards
+
+Explore does not own a separate feed. Saved Explore results re-enter Focus as normal `FeedCard` rows with `cardType = connection` and an `ItemArtifact(type = connection)` source payload.
+
+Connection cards must:
+- explain why the source cards connect,
+- expose source lineage,
+- remain dismissible/snoozable like other feed cards,
+- support optional Plan This conversion,
+- never require a persistent board or graph editor for MVP.
+
+The current implementation has not yet shipped connection card generation; this document records the target behavior for the next feature slice.
