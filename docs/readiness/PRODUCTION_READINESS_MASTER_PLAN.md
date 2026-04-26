@@ -79,12 +79,18 @@ Exit criteria:
 
 | Gate | Local | Staging | Production |
 | --- | --- | --- | --- |
-| Security identity/authz | P0/P1 tests green | real JWT + two-user smoke | no known strict-mode bypass |
+| Security identity/authz | P0/P1 tests green; rate-limit baseline present | real JWT + two-user smoke; limit thresholds verified | no known strict-mode bypass |
 | Data/storage | DB tests green; storage decision made | storage lifecycle smoke if in scope | backup snapshot + restore path |
-| Quality | full local gate green | CI green | deploy from clean verified artifact |
+| Quality | full local gate green | CI green on Node 22 with frozen install and split gate steps | deploy from clean verified artifact |
 | Ops | docs complete | alerts/game-days exercised | watch window staffed |
 | Product | vision checklist passes | web smoke validates calm loop | no dashboard/kanban/chatbot drift |
 | Support | docs drafted | escalation dry-run | comms templates ready |
+
+## Current implementation progress
+
+- P0 local verification is green: strict identity, web build, root scripts, package typecheck/lint/build parity, and local production-safety gate pass.
+- P1 security sweep is partially green: authz matrix exists, high-risk denial smoke is expanded, and rate limiting is implemented for route classes.
+- P2/P4/P5 remain blocked on evidence rather than code claims: storage object lifecycle, staging signoff, backup/restore, rollback, alert firing, support dry-run, and compliance workflow rehearsal are still required.
 
 ## Evidence policy
 

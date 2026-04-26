@@ -79,6 +79,12 @@ Additional P1 security hardening evidence:
 | `pnpm lint && pnpm --filter api test` | Passed | API typecheck/lint and full API regression suite after rate limiting. |
 | `pnpm check:production-safety` | Passed | Final composite local safety gate after rate limiting. |
 
+Additional CI/compliance/support hardening:
+
+- CI workflow now uses Node 22 and runs frozen install, typecheck, lint, tests, build, security, authz smoke, storage smoke, and production safety.
+- Compliance docs now include vendor inventory, privacy workflows, access/deletion requests, secrets/environment, and AI provider disclosure.
+- Support docs now include support runbook, severity matrix, incident communication templates, known issues, and user-impact assessment.
+
 ## Remaining production blockers
 
 - Staging signoff evidence is still absent.
