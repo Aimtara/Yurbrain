@@ -1,6 +1,6 @@
 # Yurbrain Release Checklist
 
-_Created: April 26, 2026._
+_Created: April 26, 2026. Last updated: April 26, 2026._
 
 This checklist prevents production-sensitive releases from being promoted on claims alone. Attach command logs, CI run links, staging smoke notes, screenshots, or incident-drill records before marking any evidence field complete.
 
@@ -39,9 +39,15 @@ Required commands:
 
 Evidence:
 
-- Local run date:
-- Operator:
+- Local run date: 2026-04-26
+- Operator: Cursor production-readiness audit agent
+- Release candidate/audit commit: `8ae8d635e3fadf63fa0c78e98d1023b04446e622`
 - Logs / summary:
+  - Local verification evidence only; not staging or production proof.
+  - `pnpm check:production-safety && pnpm test:e2e` passed locally with exit 0.
+  - E2E final section confirmed `full loop: capture -> feed -> comment/query -> convert -> act`, pass 1, fail 0.
+  - Prior local gate evidence also records `pnpm install`, `pnpm reset`, `pnpm seed`, `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm check:security`, `pnpm check:authz-smoke`, `pnpm check:storage-smoke`, `pnpm check:ops-smoke`, `pnpm check:production-safety`, and `pnpm test:e2e` as passing in local/CI contexts. Re-run for any final release candidate.
+  - GitHub Actions `Nhost Production Safety` run `24948043688` passed for commit `8ae8d635e3fadf63fa0c78e98d1023b04446e622`.
 
 ## 3. Security gate
 
@@ -73,9 +79,9 @@ Evidence:
 
 Evidence:
 
-- Storage smoke output:
-- Backup/restore drill record:
-- Known exceptions:
+- Storage smoke output: local metadata/backup smoke passes via `pnpm check:storage-smoke`; this is not object lifecycle proof.
+- Backup/restore drill record: local PGlite metadata backup/restore test passes; staging restore drill remains required.
+- Known exceptions: attachment object upload/read/list/delete is deferred for web-first launch unless implemented and smoke-tested.
 
 ## 5. Staging gate
 

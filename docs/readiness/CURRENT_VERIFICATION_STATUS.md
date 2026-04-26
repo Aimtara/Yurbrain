@@ -51,6 +51,15 @@ pnpm check:production-safety
 
 ## Latest execution evidence
 
+Fresh current-state audit evidence from 2026-04-26:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `git status --short --branch && git rev-parse HEAD && git branch --show-current` | Passed | Branch `main`, clean tree, audit commit `8ae8d635e3fadf63fa0c78e98d1023b04446e622`. |
+| `gh run list --limit 5 --json databaseId,headSha,conclusion,status,workflowName,createdAt` | Passed | Read-only CI audit showed `Nhost Production Safety` run `24948043688` succeeded for `8ae8d635e3fadf63fa0c78e98d1023b04446e622`. |
+| `pnpm check:production-safety && pnpm test:e2e` | Passed | Local-only evidence. E2E final section: `full loop: capture -> feed -> comment/query -> convert -> act`, `pass 1`, `fail 0`. This is not staging or production proof. |
+| `git status --short --branch` | Passed | Working tree still clean after local verification. |
+
 Commands run on 2026-04-26 during P0 hardening:
 
 | Command | Result | Notes |
