@@ -20,8 +20,8 @@ Legend:
 | `GET /brain-items` | BrainItem list/search | `brain_items.userId` | Yes | Covered by search isolation | No | Yes | Covered |
 | `GET /brain-items/:id` | BrainItem | `brain_items.userId` | Yes | Covered | No | Yes | Covered |
 | `PATCH /brain-items/:id` | BrainItem | `brain_items.userId` | Yes | Covered | No | Yes | Covered |
-| `GET /brain-items/:id/artifacts` | ItemArtifact via item | parent `brain_items.userId` | Yes | Partial | No | Yes | Needs route-specific denial test |
-| `GET /brain-items/:id/related` | Related items | parent `brain_items.userId` | Yes | Partial | No | Yes | Needs route-specific denial test |
+| `GET /brain-items/:id/artifacts` | ItemArtifact via item | parent `brain_items.userId` | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
+| `GET /brain-items/:id/related` | Related items | parent `brain_items.userId` | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
 | `POST /capture/intake` | BrainItem + feed card + event | `userId = currentUser.id` | Yes | Covered by capture isolation | No | Yes | Covered |
 | `GET /feed` | FeedCard list | `feed_cards.userId` | Yes | Covered | No | Yes | Covered |
 | `POST /feed/:id/dismiss` | FeedCard | `feed_cards.userId` | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
@@ -39,15 +39,15 @@ Legend:
 | `POST /messages` | ThreadMessage | parent item owner | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
 | `GET /threads/:id/messages` | ThreadMessage list | parent item owner | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
 | `POST /ai/brain-items/:id/summarize` | ItemArtifact | parent `brain_items.userId` | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
-| `POST /ai/brain-items/:id/classify` | ItemArtifact | parent `brain_items.userId` | Yes | Partial | No | Yes | Needs alias denial test |
-| `POST /ai/brain-items/:id/query` | ItemThread/Message | parent `brain_items.userId` | Yes | Partial | No | Yes | Needs alias denial test |
+| `POST /ai/brain-items/:id/classify` | ItemArtifact | parent `brain_items.userId` | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
+| `POST /ai/brain-items/:id/query` | ItemThread/Message | parent `brain_items.userId` | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
 | `POST /ai/convert` | Task decision | source item owner when provided | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
 | `POST /functions/summarize` | ItemArtifact | parent `brain_items.userId` | Yes | Covered | No | Yes | Covered |
 | `POST /functions/classify` | ItemArtifact | parent `brain_items.userId` | Yes | Covered | No | Yes | Covered |
 | `POST /functions/query` | ThreadMessage | parent item owner | Yes | Covered | No | Yes | Covered |
 | `POST /functions/convert` | Task | source item owner when provided | Yes | Covered | No | Yes | Covered |
-| `POST /functions/summarize-progress` | Derived AI summary | all source item owners | Yes | Partial | No | Yes | Needs multi-item denial test |
-| `POST /functions/what-should-i-do-next` | Derived AI next step | all source item owners | Yes | Partial | No | Yes | Needs multi-item denial test |
+| `POST /functions/summarize-progress` | Derived AI summary | all source item owners | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
+| `POST /functions/what-should-i-do-next` | Derived AI next step | all source item owners | Yes | Covered by `sprint17/authz-route-denials.test.ts` | No | Yes | Covered |
 | `GET /functions/founder-review` | Derived diagnostics | `currentUser.id` filters | Yes | Covered for spoofing | No | Yes | Covered |
 | `GET /functions/founder-review/diagnostics` | Derived diagnostics | `currentUser.id` filters | Yes | Covered for spoofing | No | Yes | Covered |
 | `POST /functions/session-helper` | Task/Session | task owner | Yes | Partial | No | Yes | Needs route-specific denial test |

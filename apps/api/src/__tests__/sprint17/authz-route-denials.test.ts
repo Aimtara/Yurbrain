@@ -182,6 +182,22 @@ test("feed, thread, message, task, session, explore, and AI alias routes deny cr
     });
     assert.equal(outsiderAiAlias.statusCode, 404);
 
+    const outsiderClassifyAlias = await app.inject({
+      method: "POST",
+      url: `/ai/brain-items/${item.id}/classify`,
+      headers: userBHeaders,
+      payload: { rawContent: item.rawContent }
+    });
+    assert.equal(outsiderClassifyAlias.statusCode, 404);
+
+    const outsiderQueryAlias = await app.inject({
+      method: "POST",
+      url: `/ai/brain-items/${item.id}/query`,
+      headers: userBHeaders,
+      payload: { question: "Can I see this?" }
+    });
+    assert.equal(outsiderQueryAlias.statusCode, 404);
+
     const outsiderConvertAlias = await app.inject({
       method: "POST",
       url: "/ai/convert",
@@ -189,6 +205,68 @@ test("feed, thread, message, task, session, explore, and AI alias routes deny cr
       payload: { sourceItemId: item.id, content: item.rawContent }
     });
     assert.equal(outsiderConvertAlias.statusCode, 404);
+
+    const ownerSummary = await app.inject({
+      method: "POST",
+      url: "/functions/summarize",
+      headers: userAHeaders,
+      payload: { itemId: item.id, rawContent: item.rawContent }
+    });
+    assert.equal(ownerSummary.statusCode, 201);
+
+    const outsiderArtifacts = await app.inject({
+      method: "GET",
+      url: `/brain-items/${item.id}/artifacts`,
+      headers: userBHeaders
+    });
+    assert.equal(outsiderArtifacts.statusCode, 404);
+
+    const outsiderRelated = await app.inject({
+      method: "GET",
+      url: `/brain-items/${item.id}/related`,
+      headers: userBHeaders
+    });
+    assert.equal(outsiderRelated.statusCode, 404);
+
+    const outsiderManualConvert = await app.inject({
+      method: "POST",
+      url: "/tasks/manual-convert",
+      headers: userBHeaders,
+      payload: { sourceItemId: item.id, content: "Try to convert another user's item." }
+    });
+    assert.equal(outsiderManualConvert.statusCode, 404);
+
+    const outsiderSessionHelperStart = await app.inject({
+      method: "POST",
+      url: "/functions/session-helper",
+      headers: userBHeaders,
+      payload: { action: "start", taskId: task.id }
+    });
+    assert.equal(outsiderSessionHelperStart.statusCode, 404);
+
+    const outsiderSessionHelperPause = await app.inject({
+      method: "POST",
+      url: "/functions/session-helper",
+      headers: userBHeaders,
+      payload: { action: "pause", sessionId: session.id }
+    });
+    assert.equal(outsiderSessionHelperPause.statusCode, 404);
+
+    const ownerTaskListWithSpoofedUser = await app.inject({
+      method: "GET",
+      url: `/tasks?userId=${userB}`,
+      headers: userAHeaders
+    });
+    assert.equal(ownerTaskListWithSpoofedUser.statusCode, 200);
+    assert.ok(ownerTaskListWithSpoofedUser.json<Array<{ id: string }>>().some((entry) => entry.id === task.id));
+
+    const ownerSessionListWithSpoofedUser = await app.inject({
+      method: "GET",
+      url: `/sessions?userId=${userB}`,
+      headers: userAHeaders
+    });
+    assert.equal(ownerSessionListWithSpoofedUser.statusCode, 200);
+    assert.ok(ownerSessionListWithSpoofedUser.json<Array<{ id: string }>>().some((entry) => entry.id === session.id));
 
     const second = await app.inject({
       method: "POST",
@@ -202,6 +280,22 @@ test("feed, thread, message, task, session, explore, and AI alias routes deny cr
     });
     assert.equal(second.statusCode, 201);
     const secondItem = second.json<{ id: string }>();
+
+    const outsiderSummarizeProgress = await app.inject({
+      method: "POST",
+      url: "/functions/summarize-progress",
+      headers: userBHeaders,
+      payload: { itemIds: [item.id, secondItem.id] }
+    });
+    assert.equal(outsiderSummarizeProgress.statusCode, 404);
+
+    const outsiderNextStep = await app.inject({
+      method: "POST",
+      url: "/functions/what-should-i-do-next",
+      headers: userBHeaders,
+      payload: { itemIds: [item.id, secondItem.id] }
+    });
+    assert.equal(outsiderNextStep.statusCode, 404);
 
     const outsiderExplorePreview = await app.inject({
       method: "POST",
