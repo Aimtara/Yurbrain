@@ -71,6 +71,14 @@ Commands run on 2026-04-26 during P0 hardening:
 | `pnpm check:production-safety` | Passed | Composite local production-safety command. |
 | `pnpm test:e2e` | Passed | Full loop smoke assertions passed and exited 0 in this run. |
 
+Additional P1 security hardening evidence:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/rate-limit.test.ts` | Passed | Rate limiting returns 429, isolates authenticated users, and cannot be disabled in production-like environments. |
+| `pnpm lint && pnpm --filter api test` | Passed | API typecheck/lint and full API regression suite after rate limiting. |
+| `pnpm check:production-safety` | Passed | Final composite local safety gate after rate limiting. |
+
 ## Remaining production blockers
 
 - Staging signoff evidence is still absent.

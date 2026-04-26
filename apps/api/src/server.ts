@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { AuthMeResponseSchema } from "@yurbrain/contracts";
 import { registerCurrentUserResolution, requireCurrentUser } from "./middleware/current-user";
 import { registerObservability, sendSafeErrorResponse } from "./middleware/observability";
+import { registerRateLimiting } from "./middleware/rate-limit";
 import { registerAiRoutes } from "./routes/ai";
 import { registerBrainItemRoutes } from "./routes/brain-items";
 import { registerCaptureRoutes } from "./routes/capture";
@@ -154,6 +155,7 @@ export function createServer(options: ServerOptions = {}) {
   });
   registerObservability(app);
   registerCurrentUserResolution(app);
+  registerRateLimiting(app);
 
   app.addHook("onRequest", async (request, reply) => {
     const requestOrigin = typeof request.headers.origin === "string" ? request.headers.origin : "";

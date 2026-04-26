@@ -14,8 +14,8 @@ _Status: alpha hardening baseline._
 
 | Boundary | Risk | Required control | Current status |
 | --- | --- | --- | --- |
-| Browser/mobile client to API | Caller spoofs `userId` via header/query/body/path | Verified bearer identity in strict/staging/production; legacy header fallback only in explicit local/test legacy mode | P0 strict-header bypass under remediation |
-| API to repository | Route forgets owner filter/check | `requireCurrentUser`, owner lookup before read/write, cross-user denial tests | Mostly implemented; matrix/test sweep incomplete |
+| Browser/mobile client to API | Caller spoofs `userId` via header/query/body/path | Verified bearer identity in strict/staging/production; legacy header fallback only in explicit local/test legacy mode | Local P0 fixed; staging proof pending |
+| API to repository | Route forgets owner filter/check | `requireCurrentUser`, owner lookup before read/write, cross-user denial tests | Matrix exists; high-value smoke expanded; long-tail route-specific gaps remain |
 | Public routes to raw events | Raw behavioral data exposure | `/events` blocked until scoped read model exists | Green for block; no scoped replacement yet |
 | API to Nhost/JWKS | Misconfigured issuer/audience/JWKS accepts bad tokens | Production RS* JWKS validation, issuer and optional audience checks, safe failure | Automated scaffolding exists; staging proof pending |
 | API/web/mobile logs | Token/secret/content leakage | Redacted logger fields and safe error responses | Baseline exists; needs expanded evidence |
@@ -88,9 +88,8 @@ Mitigations:
 
 ## Open security blockers
 
-1. P0: explicit strict identity mode must reject header fallback.
-2. P1: full route-by-route authz matrix and denial tests are incomplete.
-3. P1: rate limits are not yet implemented across route classes.
-4. P2: attachment object lifecycle is not production-proven.
-5. P4: staging JWT/CORS/storage/dashboard evidence is pending.
+1. P1: long-tail route-specific authz denial tests remain for artifacts/related items, generated feed-card scope, multi-item synthesis, and session-helper/manual-convert aliases.
+2. P2: attachment object lifecycle is not production-proven.
+3. P4: staging JWT/CORS/storage/dashboard evidence is pending.
+4. P4: distributed production rate limiting requires a shared backing store before multi-instance production scale.
 
