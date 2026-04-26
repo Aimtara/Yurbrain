@@ -21,8 +21,10 @@ Feed:
 - POST /feed/:id/refresh
 
 Preferences:
-- GET /preferences/:userId
-- PUT /preferences/:userId
+- GET /preferences/me (canonical)
+- PUT /preferences/me (canonical)
+- GET /preferences/:userId (legacy compatibility; path userId is ignored for ownership and the route emits deprecation headers)
+- PUT /preferences/:userId (legacy compatibility; path userId is ignored for ownership and the route emits deprecation headers)
 
 AI:
 - POST /functions/summarize
