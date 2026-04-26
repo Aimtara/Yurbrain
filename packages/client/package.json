@@ -6,11 +6,16 @@
   "scripts": {
     "dev": "echo \"@yurbrain/client is a library package (no runtime dev server)\"",
     "start": "echo \"@yurbrain/client is consumed by app packages\"",
-    "test": "tsx --test src/__tests__/*.test.ts"
+    "test": "tsx --test src/__tests__/*.test.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --jsx react-jsx --strict --skipLibCheck src/index.ts",
+    "lint": "pnpm typecheck",
+    "build": "echo \"@yurbrain/client is source-consumed in the monorepo; no package build artifact is emitted\""
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3",
+    "@types/node": "^22.15.3"
   },
   "dependencies": {
     "@nhost/nhost-js": "^4.7.0",

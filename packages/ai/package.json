@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "test": "tsx --test src/__tests__/*.test.ts"
+    "test": "tsx --test src/__tests__/*.test.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --skipLibCheck src/index.ts",
+    "lint": "pnpm typecheck",
+    "build": "echo \"@yurbrain/ai is source-consumed in the monorepo; no package build artifact is emitted\""
   },
   "dependencies": {
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.3"
   }
 }

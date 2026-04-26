@@ -16,18 +16,21 @@
     "seed": "node tooling/scripts/seed-dev-db.mjs",
     "reseed": "pnpm reset && pnpm seed",
     "test:e2e": "NODE_ENV=test pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts",
-    "typecheck": "pnpm --filter api typecheck && pnpm --filter web typecheck && pnpm --filter mobile typecheck",
+    "typecheck": "turbo typecheck",
     "lint": "turbo lint",
     "test": "turbo test",
     "build": "turbo build",
     "check:secrets": "pnpm run check:secret-leaks",
     "check:secret-leaks": "node tooling/scripts/secret-leak-check.mjs",
     "check:nhost-safety": "node tooling/scripts/nhost-production-safety-check.mjs",
-    "check:alpha-smoke": "YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint12/strict-auth-core-loop.test.ts src/__tests__/sprint12/capture-intake.test.ts src/__tests__/sprint12/function-routes.test.ts src/__tests__/sprint3/ai-routes.test.ts src/__tests__/sprint15/brain-items-search.test.ts src/__tests__/sprint15/current-user-jwt-validation.test.ts src/__tests__/sprint14/strict-current-user-enforcement.test.ts && pnpm --filter mobile test",
+    "check:alpha-smoke": "pnpm test && pnpm lint && pnpm typecheck && pnpm build",
     "check:alpha": "pnpm check:secret-leaks && pnpm check:nhost-safety && pnpm typecheck && pnpm lint && pnpm --filter api test && pnpm --filter @yurbrain/client test && pnpm --filter @yurbrain/db test && pnpm --filter mobile test && pnpm --filter web build",
-    "check:production-safety": "pnpm check:secret-leaks && pnpm check:nhost-safety && pnpm typecheck && pnpm lint && pnpm test:nhost-safety && pnpm build:nhost-safety",
+    "check:production-safety": "pnpm check:security && pnpm check:authz-smoke && pnpm check:storage-smoke && pnpm check:alpha-smoke",
     "test:nhost-safety": "pnpm --filter @yurbrain/client test && pnpm --filter mobile test && pnpm --filter @yurbrain/db test && pnpm --filter api exec tsx --test src/__tests__/nhost-admin-graphql.test.ts",
-    "build:nhost-safety": "pnpm --filter web build"
+    "build:nhost-safety": "pnpm --filter web build",
+    "check:security": "pnpm check:secret-leaks && pnpm check:nhost-safety",
+    "check:authz-smoke": "YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint12/current-user-strict-mode.test.ts src/__tests__/sprint14/strict-current-user-enforcement.test.ts src/__tests__/sprint15/current-user-jwt-validation.test.ts src/__tests__/sprint15/two-user-isolation-high-value.test.ts src/__tests__/sprint17/strict-identity-fallback-denial.test.ts",
+    "check:storage-smoke": "pnpm --filter @yurbrain/db exec tsx --test src/__tests__/nhost-storage-attachments.test.ts"
   },
   "devDependencies": {
     "turbo": "^2.9.6"

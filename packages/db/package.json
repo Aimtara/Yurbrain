@@ -10,7 +10,10 @@
     "db:reset": "tsx src/scripts/reset.ts",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:backfill:profiles": "tsx src/scripts/n5-backfill-profiles.ts",
-    "test": "tsx --test src/__tests__/*.test.ts"
+    "test": "tsx --test src/__tests__/*.test.ts",
+    "typecheck": "tsc --noEmit --target ES2022 --module ESNext --moduleResolution Bundler --strict --skipLibCheck --types node src/index.ts",
+    "lint": "pnpm typecheck",
+    "build": "echo \"@yurbrain/db is source-consumed in the monorepo; no package build artifact is emitted\""
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.4.4",
@@ -19,6 +22,8 @@
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.4",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.3",
+    "@types/node": "^22.15.3"
   }
 }

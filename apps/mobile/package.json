@@ -7,7 +7,9 @@
     "dev": "expo start",
     "start": "expo start",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/__tests__/*.test.ts"
+    "test": "tsx --test src/__tests__/*.test.ts",
+    "lint": "tsc --noEmit -p tsconfig.json",
+    "build": "echo \"mobile production build is deferred; run Expo build only when mobile enters launch scope\""
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^3.0.2",
