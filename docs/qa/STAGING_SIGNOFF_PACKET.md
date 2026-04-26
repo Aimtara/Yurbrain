@@ -16,6 +16,9 @@ Complete this packet before any production approval.
 
 | Check | Result | Evidence |
 | --- | --- | --- |
+| CI production-safety gate | Passed on latest evidenced release-board run; rerun required for final release candidate | GitHub Actions run `24945724345` passed install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke. |
+| Local health/readiness smoke | Passed | `pnpm check:ops-smoke` covers unauthenticated `/health/live` and `/health/ready`; staging must repeat against deployed API. |
+| Attachment production scope | Deferred | Storage lifecycle docs and UI tests enforce no production attachment upload claims/affordances by default. |
 | Web app loads | Pending | |
 | Login with real staging user | Pending | |
 | `/auth/me` returns bearer identity | Pending | |
@@ -50,7 +53,9 @@ Complete this packet before any production approval.
 
 ## Known issues accepted for staging
 
--
+- Native attachment upload/read/list/delete is deferred from web-first production unless separately implemented and smoke-tested.
+- Mobile remains preview/deferred unless this packet is expanded with a mobile smoke run.
+- Local/CI proof does not replace real staging JWT, CORS, alert, rollback, or backup/restore evidence.
 
 ## Signoffs
 
