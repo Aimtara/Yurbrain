@@ -85,9 +85,17 @@ Additional CI/compliance/support hardening:
 - Compliance docs now include vendor inventory, privacy workflows, access/deletion requests, secrets/environment, and AI provider disclosure.
 - Support docs now include support runbook, severity matrix, incident communication templates, known issues, and user-impact assessment.
 
+Additional P2 lifecycle evidence:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `pnpm --filter @yurbrain/db exec tsx --test src/__tests__/backup-restore-drill.test.ts` | Passed | Local backup/restore drill preserves core loop records from a filesystem snapshot. |
+| `pnpm check:storage-smoke` | Passed | Now includes attachment metadata smoke and local backup/restore drill. This is still not object upload/read/delete proof. |
+| `pnpm check:production-safety` | Passed | Final composite local safety gate after backup/restore drill coverage. |
+
 ## Remaining production blockers
 
 - Staging signoff evidence is still absent.
 - Attachment object upload/read/list/delete lifecycle remains unimplemented/unproven and is not production-ready.
-- Backup/restore, rollback, alert firing, and incident drills are documented but not exercised.
+- Backup/restore is locally exercised only; staging restore, rollback, alert firing, and incident drills are documented but not exercised.
 - Mobile remains preview/deferred until production smoke evidence exists.

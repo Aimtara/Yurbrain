@@ -48,6 +48,26 @@ Minimum data to verify after restore:
    - preferences are present.
 7. Record elapsed restore time and any data loss.
 
+## Executable local metadata drill
+
+The repository now includes a local PGlite backup/restore metadata drill:
+
+```bash
+pnpm check:backup-restore-smoke
+```
+
+This test creates a representative user, BrainItem, feed card, thread/message,
+task, session, preference, event, and attachment metadata row; copies the PGlite
+data directory as a backup snapshot; removes the original DB directory; restores
+from the snapshot; and verifies all representative rows remain readable.
+
+Scope limitations:
+
+- This is local PGlite proof only, not staging/production infrastructure proof.
+- It verifies attachment metadata, not object-storage file bytes.
+- Staging must still exercise the environment-specific backup mechanism and
+  measure RTO/RPO before production.
+
 ## Staging/production requirements
 
 - Backups must be created before every production migration.
