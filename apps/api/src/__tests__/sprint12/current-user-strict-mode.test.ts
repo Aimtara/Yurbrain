@@ -33,6 +33,75 @@ test("current user resolution prefers bearer identity and ignores query spoofing
   }
 });
 
+test("request strict mode rejects caller-supplied identity without bearer token", async () => {
+  const dbPath = path.resolve(process.cwd(), ".yurbrain-data", `strict-current-user-denial-${process.pid}-${Date.now()}`);
+  await rm(dbPath, { recursive: true, force: true });
+  const server = createServer({ databasePath: dbPath });
+  const fallbackUserId = "22222222-2222-4222-8222-222222222222";
+
+  try {
+    const strictHeaderOnly = await server.app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: {
+        "x-yurbrain-auth-mode": "strict",
+        "x-yurbrain-user-id": fallbackUserId
+      }
+    });
+    assert.equal(strictHeaderOnly.statusCode, 401);
+
+    const strictIdentityHeaderOnly = await server.app.inject({
+      method: "GET",
+      url: "/auth/me?userId=33333333-3333-4333-8333-333333333333",
+      headers: {
+        "x-yurbrain-identity-mode": "strict",
+        "x-yurbrain-user-id": fallbackUserId
+      }
+    });
+    assert.equal(strictIdentityHeaderOnly.statusCode, 401);
+
+    const strictBodySpoof = await server.app.inject({
+      method: "POST",
+      url: "/tasks",
+      headers: {
+        "x-yurbrain-auth-mode": "strict",
+        "x-yurbrain-user-id": fallbackUserId
+      },
+      payload: {
+        userId: fallbackUserId,
+        title: "Spoofed task should not be created"
+      }
+    });
+    assert.equal(strictBodySpoof.statusCode, 401);
+  } finally {
+    await server.app.close();
+    await rm(dbPath, { recursive: true, force: true });
+  }
+});
+
+test("request strict mode rejects invalid bearer token before any header fallback", async () => {
+  const dbPath = path.resolve(process.cwd(), ".yurbrain-data", `strict-current-user-invalid-${process.pid}-${Date.now()}`);
+  await rm(dbPath, { recursive: true, force: true });
+  const server = createServer({ databasePath: dbPath });
+  const fallbackUserId = "22222222-2222-4222-8222-222222222222";
+
+  try {
+    const response = await server.app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: {
+        authorization: "Bearer not-a-valid-token",
+        "x-yurbrain-auth-mode": "strict",
+        "x-yurbrain-user-id": fallbackUserId
+      }
+    });
+    assert.equal(response.statusCode, 401);
+  } finally {
+    await server.app.close();
+    await rm(dbPath, { recursive: true, force: true });
+  }
+});
+
 test("legacy mode still allows explicit header identity for non-migrated routes", async () => {
   const dbPath = path.resolve(process.cwd(), ".yurbrain-data", `legacy-current-user-${process.pid}-${Date.now()}`);
   await rm(dbPath, { recursive: true, force: true });

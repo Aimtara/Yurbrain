@@ -6,6 +6,8 @@ import { sendSafeErrorResponse } from "./observability";
 
 export const CURRENT_USER_HEADER = "x-yurbrain-user-id";
 const BEARER_PREFIX = "bearer ";
+const STRICT_AUTH_MODE_HEADER = "x-yurbrain-auth-mode";
+const STRICT_IDENTITY_MODE_HEADER = "x-yurbrain-identity-mode";
 const UserIdSchema = z.string().uuid();
 const HASURA_CLAIMS_NAMESPACE = "https://hasura.io/jwt/claims";
 const DEFAULT_TEST_JWT_SECRET = "yurbrain-test-jwt-secret";
@@ -59,6 +61,28 @@ function trimTrailingSlash(raw: string): string {
 
 function isTestAuthMode(): boolean {
   return process.env.NODE_ENV === "test" || process.env.YURBRAIN_TEST_MODE === "1";
+}
+
+function isStrictIdentityModeDefault(): boolean {
+  const configuredMode = trimValue(process.env.YURBRAIN_IDENTITY_MODE)?.toLowerCase();
+  if (configuredMode === "strict") return true;
+  const deploymentEnvironment =
+    trimValue(process.env.NHOST_PROJECT_ENV)?.toLowerCase() ??
+    trimValue(process.env.YURBRAIN_DEPLOYMENT_ENV)?.toLowerCase();
+  return deploymentEnvironment === "preview" || deploymentEnvironment === "staging" || deploymentEnvironment === "production";
+}
+
+function readHeaderValue(raw: unknown): string | undefined {
+  if (Array.isArray(raw)) {
+    return trimValue(raw.find((value) => typeof value === "string"));
+  }
+  return typeof raw === "string" ? trimValue(raw) : undefined;
+}
+
+function isStrictIdentityRequest(request: FastifyRequest): boolean {
+  const authMode = readHeaderValue(request.headers[STRICT_AUTH_MODE_HEADER])?.toLowerCase();
+  const identityMode = readHeaderValue(request.headers[STRICT_IDENTITY_MODE_HEADER])?.toLowerCase();
+  return authMode === "strict" || identityMode === "strict" || isStrictIdentityModeDefault();
 }
 
 function buildNhostAuthUrlFromEnv(): string | null {
@@ -277,7 +301,8 @@ async function resolveFromAuthorizationHeader(
   return { id: userId, source: "authorization" };
 }
 
-function canUseHeaderIdentityFallback(): boolean {
+function canUseHeaderIdentityFallback(request?: FastifyRequest): boolean {
+  if (request && isStrictIdentityRequest(request)) return false;
   if (!isTestAuthMode()) return false;
   const allowOverride = trimValue(process.env.YURBRAIN_ALLOW_TEST_USER_HEADER);
   return allowOverride !== "0";
@@ -296,7 +321,7 @@ async function resolveFromHeaders(
   // If an Authorization header is present but invalid, do not fall back to user-id headers.
   if (hasAuthorizationHeader) return null;
 
-  if (!canUseHeaderIdentityFallback()) return null;
+  if (!canUseHeaderIdentityFallback(request)) return null;
   const headerUserId = parseUuid(request.headers[CURRENT_USER_HEADER]);
   if (headerUserId) {
     return { id: headerUserId, source: "header" };
@@ -319,12 +344,13 @@ export function resolveCurrentUser(request: FastifyRequest): CurrentUserContext 
 export function requireCurrentUser(request: FastifyRequest, reply: FastifyReply, log?: FastifyBaseLogger): CurrentUserContext | null {
   const resolved = resolveCurrentUser(request);
   if (!resolved) {
-    const allowHeaderHint = canUseHeaderIdentityFallback();
+    const allowHeaderHint = canUseHeaderIdentityFallback(request);
     log?.warn?.(
       {
         event: "auth_required_missing_identity",
         correlationId: (request as { correlationId?: string }).correlationId,
         allowHeaderHint,
+        strictIdentity: isStrictIdentityRequest(request),
         hasAuthorizationHeader: typeof request.headers.authorization === "string"
       },
       "authentication required"
