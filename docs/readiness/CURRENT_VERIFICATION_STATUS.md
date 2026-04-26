@@ -85,7 +85,7 @@ Additional CI/compliance/support hardening:
 - CI workflow now uses Node 22 and runs frozen install, typecheck, lint, tests, build, security, authz smoke, storage smoke, and production safety.
 - Compliance docs now include vendor inventory, privacy workflows, access/deletion requests, secrets/environment, and AI provider disclosure.
 - Support docs now include support runbook, severity matrix, incident communication templates, known issues, and user-impact assessment.
-- Latest CI run checked during hardening: GitHub Actions `Nhost Production Safety` for commit `b4458b6` completed successfully on 2026-04-26, with install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke all green.
+- Latest CI run checked during hardening: GitHub Actions `Nhost Production Safety` for commit `2ac8937` completed successfully on 2026-04-26, with install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke all green.
 
 Additional P2 lifecycle evidence:
 
