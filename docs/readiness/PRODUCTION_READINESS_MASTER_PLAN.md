@@ -76,6 +76,9 @@ Exit criteria:
 - trusted alpha proceeds only within error budget and without product vision drift;
 - rollback and user communication paths are ready before each wave.
 
+Release tracking:
+- `docs/readiness/RELEASE_BOARD.md` is the canonical board for remaining red/yellow gates, owners, and evidence links.
+
 ## Go/no-go matrix
 
 | Gate | Local | Staging | Production |
