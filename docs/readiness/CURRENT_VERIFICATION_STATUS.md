@@ -115,6 +115,13 @@ Additional production-readiness implementation evidence on branch `cursor/produc
 | `pnpm --filter @yurbrain/nhost test && pnpm --filter @yurbrain/nhost lint` | Passed | Focused Nhost config-helper tests replaced the prior no-op package test; package typecheck passed. |
 | `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e` | Passed | Final local gate after route-doc reconciliation and Nhost package tests; final e2e reported `full loop: capture -> feed -> comment/query -> convert -> act`, pass 1/fail 0. |
 
+Feature branch CI evidence:
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| GitHub Actions `Nhost Production Safety` run `24963304867` for `55a665e3ad71b398891c623b9c9c6051f6103422` | Passed | CI ran install, typecheck, lint, tests, build, security, authz smoke, storage smoke, ops smoke, production-safety composite, and e2e core loop. |
+| GitHub Actions `Nhost Production Safety` run `24963301758` for `55a665e3ad71b398891c623b9c9c6051f6103422` | Passed | Duplicate branch/PR-triggered CI run also completed successfully. |
+
 ## Remaining production blockers
 
 - Staging signoff evidence is still absent.
