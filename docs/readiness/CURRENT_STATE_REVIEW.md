@@ -75,7 +75,7 @@ Current root composite:
 | `@yurbrain/client` | `test`, `typecheck`, `lint`, `build` | Build is source-consumed no-op. |
 | `@yurbrain/db` | `db:*`, `test`, `typecheck`, `lint`, `build` | Build is source-consumed no-op. |
 | `@yurbrain/ai` | `dev`, `start`, `test`, `typecheck`, `lint`, `build` | Build is source-consumed no-op. |
-| `@yurbrain/nhost` | `dev`, `start`, `test`, `typecheck`, `lint`, `build` | `test` is currently a documented coverage no-op; needs explicit approval or a real focused test. |
+| `@yurbrain/nhost` | `dev`, `start`, `test`, `typecheck`, `lint`, `build` | Focused config-helper tests now cover runtime URL resolution and secret redaction behavior. |
 | `@yurbrain/ui` | `dev`, `start`, `test`, `typecheck`, `lint`, `build` | Build is source-consumed no-op. |
 
 ## 6. Routes inventory
@@ -265,7 +265,7 @@ Follow current production-aligned code conventions and add documentation/compati
 ## 17. P1 blockers
 
 - CI should run full local parity (`check:ops-smoke`, `check:production-safety`, and possibly `test:e2e` if stable).
-- `@yurbrain/nhost` test no-op needs approval or a real small test.
+- Staging CI must pass with the expanded workflow, including web smoke, Nhost helper tests, ops smoke, production-safety composite, and e2e.
 - Operational drills are documented but not exercised in staging.
 - Backup/restore proof is local only; staging restore drill is missing.
 - Support/on-call ownership requires final launch assignment.
@@ -276,7 +276,7 @@ Follow current production-aligned code conventions and add documentation/compati
 1. Commit this current-state review and associated readiness/naming documentation.
 2. Add naming and compatibility decisions.
 3. Add strict auth policy and preference route deprecation/safety tests.
-4. Replace the web test placeholder with a meaningful automated smoke.
+4. Keep the new web smoke and Nhost helper tests in the release gate; expand only when feature complexity warrants it.
 5. Reconcile rate-limit docs with code.
 6. Create storage launch decision and mobile launch-scope docs.
 7. Bring CI closer to production-safety parity.

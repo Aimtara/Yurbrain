@@ -47,6 +47,7 @@ Evidence:
   - `pnpm check:production-safety && pnpm test:e2e` passed locally with exit 0.
   - E2E final section confirmed `full loop: capture -> feed -> comment/query -> convert -> act`, pass 1, fail 0.
   - Implementation re-run after quality/auth hardening passed: `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e`.
+  - Follow-up package gate: `pnpm --filter @yurbrain/nhost test` now runs focused config-helper tests instead of a no-op.
   - New web automated smoke: `pnpm --filter web test` runs `production-ux-smoke.test.ts` and verifies Focus Feed home, capture-first language, Brain Item Detail continuity hooks, downstream tasks/sessions, Explore presence, and no production attachment-upload claim.
   - Prior local gate evidence also records `pnpm install`, `pnpm reset`, `pnpm seed`, `pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm check:security`, `pnpm check:authz-smoke`, `pnpm check:storage-smoke`, `pnpm check:ops-smoke`, `pnpm check:production-safety`, and `pnpm test:e2e` as passing in local/CI contexts. Re-run for any final release candidate.
   - GitHub Actions `Nhost Production Safety` run `24948043688` passed for commit `8ae8d635e3fadf63fa0c78e98d1023b04446e622`.

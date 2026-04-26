@@ -112,6 +112,7 @@ Additional production-readiness implementation evidence on branch `cursor/produc
 | `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/authz-route-denials.test.ts` | Passed | Legacy `/preferences/:userId` compatibility path returns/updates the authenticated user's preferences and emits deprecation headers. |
 | `pnpm --filter api lint` | Passed | API typecheck passed after legacy preference deprecation headers. |
 | `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e` | Passed | Full local gate passed after docs, web smoke, CI parity, and preference compatibility changes; final e2e again reported full-loop pass 1 / fail 0. |
+| `pnpm --filter @yurbrain/nhost test` | Passed | Focused Nhost config-helper tests replaced the prior no-op package test. |
 
 ## Remaining production blockers
 
