@@ -1,6 +1,6 @@
 # Yurbrain Development Current State
 
-_Last audited: April 26, 2026 during enterprise production-hardening P0._
+_Last audited: April 26, 2026 after enterprise production-hardening local/CI gate completion._
 
 This is the implementation-truth audit for the current repository. It is intentionally factual: it records what is present today, what remains mocked or deferred, and the safest next steps for continuing the Yurbrain core loop without turning the product into a dashboard, task manager, or separate Explore system.
 
@@ -21,9 +21,9 @@ This is the implementation-truth audit for the current repository. It is intenti
 
 - AI remains mostly deterministic/local-stub for the product-critical loop. Real provider scaffolding exists for selected synthesis functions, but capture/feed/comment/task/session flows do not require external model credentials.
 - Explore is prototype-level: preview/save are deterministic and source-grounded, the canvas/tray state is local UI state, and saved connections persist as artifacts/feed cards. There is no persistent ExploreBoard or graph editor.
-- Voice capture, file uploads from the capture sheet, and richer media feed cards are visible as post-alpha/stub affordances.
+- Voice capture, native file uploads from the capture sheet, and richer media feed cards remain post-alpha. Web production-mode capture hides post-alpha voice/reminder affordances, and mobile hides image/file upload mode unless `EXPO_PUBLIC_YURBRAIN_STORAGE_ENABLED=true`.
 - `/events` is intentionally disabled for reads until authentication and per-user event filtering are implemented, though internal event rows exist.
-- Some lint/build coverage remains uneven across packages; `apps/api` is the strongest TypeScript lint target.
+- All workspaces now expose `typecheck`, `lint`, and `build` scripts. Library/mobile build scripts are documented no-ops where packages are source-consumed or mobile production build is deferred.
 
 ## 3. What is persisted?
 
@@ -96,26 +96,28 @@ Current package scripts should be treated as production-hardening inputs, not pr
 
 | Workspace | Current coverage | Gap / rationale |
 | --- | --- | --- |
-| `apps/api` | `test`, `lint`, `typecheck`, `dev/start` | Strongest production-impacting gate. |
-| `apps/web` | `build`, `typecheck`, `dev/start` | Needs explicit lint/test decision; web build is the production smoke prerequisite. |
-| `apps/mobile` | `test`, `typecheck`, `dev/start` | Mobile remains preview until production smoke evidence; build/lint parity still needed. |
-| `@yurbrain/ai` | `test`, `dev/start` | Needs typecheck/lint/build or explicit library no-op scripts. |
-| `@yurbrain/client` | `test`, `dev/start` | Needs typecheck/lint/build or explicit library no-op scripts. |
-| `@yurbrain/contracts` | `test` | Needs typecheck/lint/build or explicit schema-library no-op scripts. |
-| `@yurbrain/db` | `test`, migration/seed/reset scripts | Needs typecheck/lint/build or explicit DB-library no-op scripts. |
-| `@yurbrain/nhost` | `dev/start` | Needs test/typecheck/lint/build coverage or explicit no-op scripts. |
-| `@yurbrain/ui` | `test`, `dev/start` | Needs typecheck/lint/build or explicit component-library no-op scripts. |
+| `apps/api` | `test`, `lint`, `typecheck`, `build` via Turbo no-op absence, `dev/start` | Strongest production-impacting runtime gate; API tests include authz/rate-limit/health smoke. |
+| `apps/web` | `build`, `typecheck`, `lint`, documented no-op `test`, `dev/start` | Web build passes locally and in CI; web-first production still requires staging smoke evidence. |
+| `apps/mobile` | `test`, `typecheck`, `lint`, documented deferred `build`, `dev/start` | Mobile remains preview until production smoke evidence or explicit launch deferral signoff. |
+| `@yurbrain/ai` | `test`, `typecheck`, `lint`, documented source-consumed `build` | No package artifact emitted. |
+| `@yurbrain/client` | `test`, `typecheck`, `lint`, documented source-consumed `build` | Client auth/session tests cover Nhost transport helpers. |
+| `@yurbrain/contracts` | `test`, `typecheck`, `lint`, documented source-consumed `build` | Schema library is source-consumed in monorepo. |
+| `@yurbrain/db` | `test`, `typecheck`, `lint`, documented source-consumed `build`, migration/seed/reset scripts | Storage metadata and local backup/restore smoke are included in storage smoke. |
+| `@yurbrain/nhost` | `test` no-op with coverage rationale, `typecheck`, `lint`, documented source-consumed `build` | Config helpers are covered through client tests. |
+| `@yurbrain/ui` | `test`, `typecheck`, `lint`, documented source-consumed `build` | Capture storage-deferral UI guard test is included. |
 
 ## 11. Safest next implementation step
 
-1. Close P0 production blockers before any net-new product work:
-   - enforce explicit strict identity mode so missing/invalid bearer tokens cannot fall back to caller-supplied IDs,
-   - verify the web build after the earlier `@nhost/nextjs` failure,
-   - normalize root verification scripts (`check:security`, `check:authz-smoke`, `check:storage-smoke`, and `typecheck`),
-   - record command evidence in readiness docs.
-2. Keep the Focus loop as the primary validation path.
-3. Create and maintain the route-by-route authz matrix before claiming enterprise security readiness.
-4. Treat storage/attachments as production-deferred until upload/read/list/delete isolation is implemented and evidenced.
-5. Defer persistent boards, graph editing, collaboration, real-provider expansion, and mobile production launch until the production foundation is green.
+1. Do not claim production readiness from local/CI gates alone.
+2. Complete the staging signoff packet with real environment evidence:
+   - staging web/core-loop smoke,
+   - real JWT issuer/audience/JWKS validation,
+   - two-user isolation,
+   - CORS allowlist rejection,
+   - dashboards/alerts,
+   - rollback and managed backup/restore drills.
+3. Keep storage/attachments production-deferred unless the full upload/read/list/delete object lifecycle is implemented and evidenced.
+4. Keep mobile preview/deferred until mobile production smoke evidence exists.
+5. Continue using the release board and current verification status docs as the source of truth.
 
 The guiding implementation constraint is: **Focus brings thoughts back; Explore helps thoughts combine; Time helps thoughts become action only when ready.**

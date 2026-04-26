@@ -1,6 +1,6 @@
 # Yurbrain go / no-go readiness
 
-_Last updated: April 26, 2026 during enterprise production-hardening P0._
+_Last updated: April 26, 2026 after enterprise hardening local/CI gates._
 
 This document summarizes the current release gate for MVP, Alpha, and Production using the latest verified code paths, scripts, and manual runbooks. Canonical release criteria now live in:
 
@@ -14,9 +14,9 @@ This document summarizes the current release gate for MVP, Alpha, and Production
 
 | Stage | Current status | Notes |
 | --- | --- | --- |
-| MVP | Conditional go | Core loop is implemented, but a real smoke pass and explicit acceptance of known limitations are still required. |
-| Alpha | Not yet go | Security posture is stronger, but staging validation with two real users remains the main blocker. |
-| Production | No-go | Strict identity P0 verification, operational validation, storage execution, backup/restore, rollout, and incident readiness are still incomplete. |
+| MVP | Conditional go | Core loop and local/CI gates are green; a real staged smoke pass and explicit acceptance of known limitations are still required. |
+| Alpha | Not yet go | Security posture and local authz evidence are stronger, but staging validation with two real users remains the main blocker. |
+| Production | No-go | Local/CI production-safety is green, but staging signoff, managed backup/restore, rollback, alerts, and launch approvals are not complete. |
 
 ## Commands to run
 
@@ -26,9 +26,10 @@ Run these from a real git checkout with dependencies installed:
 2. `pnpm check:security`
 3. `pnpm check:authz-smoke`
 4. `pnpm check:storage-smoke`
-5. `pnpm check:alpha-smoke`
-6. `pnpm check:alpha`
-7. `pnpm check:production-safety`
+5. `pnpm check:ops-smoke`
+6. `pnpm check:alpha-smoke`
+7. `pnpm check:alpha`
+8. `pnpm check:production-safety`
 
 If a script fails because the repo is not a git checkout, rerun from a normal clone. The safety scripts intentionally require git metadata to inspect tracked files only.
 
@@ -77,10 +78,9 @@ Production is ready only if all are true:
 
 ### Current Production blockers
 
-- Explicit strict identity mode must reject all missing/invalid bearer requests without falling back to test/caller-supplied identity.
 - Staging and production operational validation has not been completed.
 - Real storage upload/access/delete flow is not yet proven end-to-end.
-- Incident response, monitoring, rollback, and backup evidence are still documentation-first.
+- Incident response, monitoring, rollback, and managed staging/production backup evidence are still documentation-first.
 - Production launch remains blocked on dashboard-only Nhost checks and post-deploy smoke evidence.
 
 ## Manual staging checks required
@@ -114,6 +114,6 @@ These remain dashboard/operator checks and must be recorded separately:
 ## Known remaining blockers / limitations
 
 - Brain-item delete is not currently implemented as a dedicated API/client/UI action.
-- Capture attachments/storage are still metadata-oriented in code; no proven upload/download/delete path is present.
+- Capture attachments/storage are production-deferred; web/mobile upload affordances are hidden/gated by default and no proven upload/download/delete path is present.
 - Full staging proof is not yet checked into release evidence.
 - Production readiness remains substantially operational rather than purely code-based.

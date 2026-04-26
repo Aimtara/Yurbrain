@@ -1,18 +1,18 @@
 # Yurbrain Current Implementation State
 
-_Last audited: April 26, 2026 (UTC), during enterprise production-hardening P0._
+_Last audited: April 26, 2026 (UTC), after enterprise hardening local + CI gates._
 
 This document is factual current state after code inspection plus command verification.
-Production is currently **NO-GO**; see `docs/readiness/CURRENT_VERIFICATION_STATUS.md` for the live hardening gate.
+Production is currently **NO-GO**; see `docs/readiness/CURRENT_VERIFICATION_STATUS.md` for the live hardening gate and latest local/CI evidence.
 
 ## Enterprise hardening delta
 
-Latest known verification issues being addressed:
+Latest enterprise-hardening state:
 
-- strict identity mode previously returned `200` where `401` was expected when no bearer identity was present;
-- a prior web build failed resolving `@nhost/nextjs`, though current source now uses the internal web Nhost provider;
-- root verification scripts were missing/mismatched for enterprise gates;
-- attachment/storage lifecycle remains unproven and is not production-supported until upload/read/list/delete isolation evidence exists.
+- strict identity fallback is fixed locally and covered by regression tests;
+- the prior `@nhost/nextjs` web build issue is resolved; web uses the internal Nhost provider and `pnpm build` passes;
+- root enterprise verification gates exist and pass locally and in CI;
+- attachment object lifecycle remains intentionally production-deferred unless a later release implements upload/read/list/delete isolation.
 
 Web remains the first intended production surface. Mobile remains preview/deferred until mobile production smoke evidence exists.
 
@@ -36,6 +36,15 @@ Passing in this audit:
 - `pnpm --filter @yurbrain/ui test`
 - `pnpm --filter mobile test`
 - `pnpm typecheck`
+- `pnpm check:security`
+- `pnpm check:authz-smoke`
+- `pnpm check:storage-smoke`
+- `pnpm check:ops-smoke`
+- `pnpm check:alpha-smoke`
+- `pnpm check:production-safety`
+
+CI evidence:
+- GitHub Actions `Nhost Production Safety` run for commit `2ac8937` passed install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke.
 
 Not used for runtime truth:
 - `pnpm --filter @yurbrain/db db:migrate` (Drizzle CLI workflow; local runtime uses startup SQL migrations in `@yurbrain/db` repository initialization).
@@ -62,10 +71,11 @@ Not used for runtime truth:
   - convert to task
   - start/finish sessions
   - refresh/reload continuity from DB-backed APIs
-- Capture sheet now supports a mobile-first flow with autofocus and autosizing input, attachment/voice placeholders, and three actions:
+- Capture sheet now supports a mobile-first flow with autofocus and autosizing input and three actions:
   - Save
   - Save + Plan (routes to existing convert flow)
   - Save + Remind Later (current lightweight stub notice without new domain objects)
+- Native attachment/file upload and voice capture are hidden/deferred for production launch; image capture is URL/reference-only unless future storage lifecycle work enables it.
 - Item detail continuation now uses one inline `CommentComposer` with mode toggle (`Comment` / `Ask Yurbrain`) so both flows share the same continuity surface.
 - Ask mode now appends both user question and assistant reply into the same continuity timeline with explicit role labels (`You`, `Yurbrain`) for recognition-first re-entry.
 - Item detail now includes suggested AI prompt chips and a lightweight related-items list so users can continue in-place without leaving the continuity surface.
@@ -111,12 +121,12 @@ Not used for runtime truth:
 
 ## What is partially implemented
 
-- Web and mobile are still prototype surfaces (hardcoded demo user id, minimal styling, limited UX polish).
+- Web and mobile are still prototype surfaces in UX polish terms, but strict-auth/Nhost session scaffolding is present. Web remains the first production surface.
 - Mobile is not the primary full-loop surface; web is the validated end-to-end surface.
 - AI outputs are deterministic runner + fallback behavior (useful for MVP continuity, not production intelligence).
-- Monorepo lint/build coverage is uneven:
-  - `pnpm lint` effectively validates packages that define lint scripts (mainly API).
-  - `pnpm build` is effectively centered on web.
+- Monorepo quality gates are now normalized:
+  - `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm build` run through Turbo across production-impacting workspaces.
+  - Source-consumed library packages and deferred mobile production build expose explicit no-op build rationale where no artifact is emitted.
 
 ## What is placeholder or mocked
 
@@ -136,8 +146,8 @@ Not used for runtime truth:
 
 ## Missing pieces relative to full product direction (not MVP blockers)
 
-- Auth/multi-user access control and user identity flows.
-- Production deployment persistence hardening and operational migrations runbook for non-local environments.
+- Staging/prod signoff for auth, two-user isolation, dashboards, rollback, and backup/restore.
+- Production deployment persistence hardening and operational migration evidence for non-local environments.
 - Richer client UX and mobile parity for full-loop interaction.
 
 ## Next milestone
@@ -145,5 +155,5 @@ Not used for runtime truth:
 Stabilize MVP for repeatable local demo + QA:
 1. keep web loop as primary validated path,
 2. keep architecture docs aligned with runtime routes/contracts as features land,
-3. tighten package boundaries and script coverage (lint/build/test parity),
-4. prepare auth boundary without changing current object model.
+3. execute staging signoff with real Nhost/JWT/CORS settings,
+4. keep attachments storage production-deferred or implement full object lifecycle before launch.

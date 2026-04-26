@@ -8,6 +8,10 @@ Run from repository root:
 
 - `pnpm install`
 - `pnpm check:secrets`
+- `pnpm check:security`
+- `pnpm check:authz-smoke`
+- `pnpm check:storage-smoke`
+- `pnpm check:ops-smoke`
 - `pnpm check:alpha`
 - `pnpm check:production-safety`
 
@@ -28,13 +32,23 @@ Run from repository root:
     - `mobile`
   - web production build smoke (`apps/web`)
 - `pnpm check:production-safety`
-  - strict production-oriented gate used by CI:
-    - `check:secret-leaks`
-    - `check:nhost-safety`
-    - `typecheck`
-    - `lint`
-    - `test:nhost-safety`
-    - `build:nhost-safety`
+  - strict production-oriented local composite:
+    - `check:security`
+    - `check:authz-smoke`
+    - `check:storage-smoke`
+    - `check:ops-smoke`
+    - `check:alpha-smoke`
+- `pnpm check:authz-smoke`
+  - strict identity fallback denial,
+  - JWT validation,
+  - high-value two-user isolation,
+  - route-specific authz denial coverage,
+  - rate-limit and health/readiness smoke.
+- `pnpm check:storage-smoke`
+  - attachment metadata migration smoke,
+  - local PGlite backup/restore drill smoke.
+- `pnpm check:ops-smoke`
+  - unauthenticated liveness/readiness endpoint smoke.
 
 ## Failure interpretation guide
 
@@ -105,18 +119,28 @@ What to do:
 
 ## CI strategy
 
-The workflow `.github/workflows/nhost-production-safety.yml` runs only `pnpm check:production-safety`.
+The workflow `.github/workflows/nhost-production-safety.yml` now runs the expanded production-safety sequence on Node 22:
+
+1. `pnpm install --frozen-lockfile`
+2. `pnpm typecheck`
+3. `pnpm lint`
+4. `pnpm test`
+5. `pnpm build`
+6. `pnpm check:security`
+7. `pnpm check:authz-smoke`
+8. `pnpm check:storage-smoke`
 
 Rationale:
 
 - high signal for Alpha/production readiness
-- bounded runtime by reusing targeted `test:nhost-safety` and `build:nhost-safety`
-- avoids duplicate/noisy matrix jobs
+- direct visibility into each gate step
+- includes strict authz and storage/restore smoke without claiming staging proof
 
 ## Current intentional gaps
 
 - no full end-to-end GUI smoke in CI (kept manual to avoid flaky browser automation)
-- no full monorepo exhaustive test sweep in this gate (trade-off for runtime/cost)
+- no staging dashboard/alert/rollback proof in CI
+- storage object upload/read/delete lifecycle remains production-deferred
 
 Use targeted manual QA + release checklist for UI flows that cannot be validated reliably in headless CI.
 

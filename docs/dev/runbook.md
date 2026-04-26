@@ -101,21 +101,22 @@ pnpm --filter @yurbrain/contracts test
 pnpm test
 ```
 - Runs Turbo `test` tasks.
-- Note: some package `test` scripts are placeholder echoes (`@yurbrain/ai`, `@yurbrain/client`, `@yurbrain/ui`).
+- Includes API, client, DB, UI, AI, contracts, and mobile package tests where package tests are defined.
+- Some workspaces are source-consumed library packages; build output is intentionally a documented no-op for those packages.
 
 ### Lint
 ```bash
 pnpm lint
 ```
-- Runs Turbo `lint` tasks.
-- Current practical lint coverage is limited to packages that define `lint` (currently `apps/api`).
+- Runs Turbo `lint` tasks across all workspaces.
+- Package lint scripts are TypeScript-backed where a dedicated linter is not configured.
 
 ### Build
 ```bash
 pnpm build
 ```
 - Runs Turbo `build` tasks.
-- Current practical build workload is `apps/web`.
+- Web performs a real Next.js production build. Source-consumed packages and mobile expose explicit documented no-op builds; mobile production build remains deferred until mobile enters launch scope.
 
 ### Typecheck
 ```bash
@@ -129,12 +130,14 @@ pnpm typecheck
 pnpm check:security
 pnpm check:authz-smoke
 pnpm check:storage-smoke
+pnpm check:ops-smoke
 pnpm check:alpha-smoke
 pnpm check:production-safety
 ```
 - `check:security`: secret-leak and Nhost production-safety checks.
-- `check:authz-smoke`: strict identity and high-value cross-user isolation tests.
-- `check:storage-smoke`: current storage metadata smoke. This is **not** proof of production attachment upload/read/delete until storage lifecycle routes exist.
+- `check:authz-smoke`: strict identity, JWT, rate-limit, health/readiness, and high-value cross-user isolation tests.
+- `check:storage-smoke`: current storage metadata smoke plus local PGlite backup/restore drill. This is **not** proof of production attachment upload/read/delete until storage lifecycle routes exist.
+- `check:ops-smoke`: local API liveness/readiness smoke.
 - `check:alpha-smoke`: local verification sweep for tests, lint, typecheck, and build.
 - `check:production-safety`: composite safety gate. Production still requires staging proof, storage lifecycle evidence, rollback, backup/restore, and incident readiness.
 

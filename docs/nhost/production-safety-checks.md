@@ -16,10 +16,14 @@ For quick focused checks:
 - `pnpm check:secrets` (alias of `pnpm check:secret-leaks`)
 - `pnpm check:secret-leaks`
 - `pnpm check:nhost-safety`
+- `pnpm check:security`
+- `pnpm check:authz-smoke`
+- `pnpm check:storage-smoke`
+- `pnpm check:ops-smoke`
 - `pnpm test:nhost-safety`
 - `pnpm build:nhost-safety`
 
-The CI workflow `.github/workflows/nhost-production-safety.yml` runs `pnpm check:production-safety` on PRs/pushes.
+The CI workflow `.github/workflows/nhost-production-safety.yml` runs install, typecheck, lint, tests, build, security, authz smoke, and storage smoke on PRs/pushes using Node 22.
 
 ## What each safety check enforces
 
@@ -54,14 +58,13 @@ Runs `tooling/scripts/nhost-production-safety-check.mjs` and fails if:
 
 ### `check:production-safety`
 
-Runs a high-value, bounded sequence:
+Runs the current local production-hardening sequence:
 
-1. `check:secret-leaks`
-2. `check:nhost-safety`
-3. `typecheck`
-4. `lint`
-5. `test:nhost-safety`
-6. `build:nhost-safety`
+1. `check:security`
+2. `check:authz-smoke`
+3. `check:storage-smoke`
+4. `check:ops-smoke`
+5. `check:alpha-smoke`
 
 This is the recommended pre-merge gate for production hardening.
 
