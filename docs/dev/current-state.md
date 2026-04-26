@@ -1,6 +1,6 @@
 # Yurbrain Development Current State
 
-_Last audited: April 25, 2026 after Explore prototype implementation._
+_Last audited: April 26, 2026 during enterprise production-hardening P0._
 
 This is the implementation-truth audit for the current repository. It is intentionally factual: it records what is present today, what remains mocked or deferred, and the safest next steps for continuing the Yurbrain core loop without turning the product into a dashboard, task manager, or separate Explore system.
 
@@ -90,12 +90,32 @@ This is the implementation-truth audit for the current repository. It is intenti
 - UI components must remain presentation-only; Explore networking and persistence should live in `packages/client` and app controllers.
 - DB schema/repository should not absorb UX decisions such as canvas layout persistence before Explore is validated.
 
-## 10. Safest next implementation step
+## 10. Package quality-gate coverage
 
-1. Freeze docs and guardrails in the requested paths.
-1. Keep the Focus loop as the primary validation path.
-2. Manually QA Feed → Explore → Preview → Save → Focus on web and mobile.
-3. Keep docs/runbooks current with the new Explore prototype.
-4. Defer persistent boards, graph editing, and collaboration until prototype validation proves the need.
+Current package scripts should be treated as production-hardening inputs, not production proof:
+
+| Workspace | Current coverage | Gap / rationale |
+| --- | --- | --- |
+| `apps/api` | `test`, `lint`, `typecheck`, `dev/start` | Strongest production-impacting gate. |
+| `apps/web` | `build`, `typecheck`, `dev/start` | Needs explicit lint/test decision; web build is the production smoke prerequisite. |
+| `apps/mobile` | `test`, `typecheck`, `dev/start` | Mobile remains preview until production smoke evidence; build/lint parity still needed. |
+| `@yurbrain/ai` | `test`, `dev/start` | Needs typecheck/lint/build or explicit library no-op scripts. |
+| `@yurbrain/client` | `test`, `dev/start` | Needs typecheck/lint/build or explicit library no-op scripts. |
+| `@yurbrain/contracts` | `test` | Needs typecheck/lint/build or explicit schema-library no-op scripts. |
+| `@yurbrain/db` | `test`, migration/seed/reset scripts | Needs typecheck/lint/build or explicit DB-library no-op scripts. |
+| `@yurbrain/nhost` | `dev/start` | Needs test/typecheck/lint/build coverage or explicit no-op scripts. |
+| `@yurbrain/ui` | `test`, `dev/start` | Needs typecheck/lint/build or explicit component-library no-op scripts. |
+
+## 11. Safest next implementation step
+
+1. Close P0 production blockers before any net-new product work:
+   - enforce explicit strict identity mode so missing/invalid bearer tokens cannot fall back to caller-supplied IDs,
+   - verify the web build after the earlier `@nhost/nextjs` failure,
+   - normalize root verification scripts (`check:security`, `check:authz-smoke`, `check:storage-smoke`, and `typecheck`),
+   - record command evidence in readiness docs.
+2. Keep the Focus loop as the primary validation path.
+3. Create and maintain the route-by-route authz matrix before claiming enterprise security readiness.
+4. Treat storage/attachments as production-deferred until upload/read/list/delete isolation is implemented and evidenced.
+5. Defer persistent boards, graph editing, collaboration, real-provider expansion, and mobile production launch until the production foundation is green.
 
 The guiding implementation constraint is: **Focus brings thoughts back; Explore helps thoughts combine; Time helps thoughts become action only when ready.**

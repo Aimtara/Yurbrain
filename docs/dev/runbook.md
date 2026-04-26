@@ -1,6 +1,6 @@
 # Yurbrain Local Runbook (Current State)
 
-_Last updated: April 25, 2026 (UTC), after Yurbrain Explore/core-loop audit._
+_Last updated: April 26, 2026 (UTC), during enterprise production hardening._
 
 This runbook lists only commands verified in the current repository state.
 
@@ -15,7 +15,13 @@ pnpm --filter api test
 pnpm --filter @yurbrain/contracts test
 pnpm test
 pnpm lint
+pnpm typecheck
 pnpm build
+pnpm check:alpha-smoke
+pnpm check:security
+pnpm check:authz-smoke
+pnpm check:storage-smoke
+pnpm check:production-safety
 pnpm test:e2e
 ```
 
@@ -110,6 +116,27 @@ pnpm build
 ```
 - Runs Turbo `build` tasks.
 - Current practical build workload is `apps/web`.
+
+### Typecheck
+```bash
+pnpm typecheck
+```
+- Runs Turbo `typecheck` tasks after the production-hardening script normalization.
+- Every production-impacting workspace must either typecheck or provide an explicit no-op rationale in its package script.
+
+### Production-hardening gates
+```bash
+pnpm check:security
+pnpm check:authz-smoke
+pnpm check:storage-smoke
+pnpm check:alpha-smoke
+pnpm check:production-safety
+```
+- `check:security`: secret-leak and Nhost production-safety checks.
+- `check:authz-smoke`: strict identity and high-value cross-user isolation tests.
+- `check:storage-smoke`: current storage metadata smoke. This is **not** proof of production attachment upload/read/delete until storage lifecycle routes exist.
+- `check:alpha-smoke`: local verification sweep for tests, lint, typecheck, and build.
+- `check:production-safety`: composite safety gate. Production still requires staging proof, storage lifecycle evidence, rollback, backup/restore, and incident readiness.
 
 ## 5) E2E smoke test
 

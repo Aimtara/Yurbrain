@@ -1,6 +1,14 @@
 # Yurbrain go / no-go readiness
 
-This document summarizes the current release gate for MVP, Alpha, and Production using the latest verified code paths, scripts, and manual runbooks.
+_Last updated: April 26, 2026 during enterprise production-hardening P0._
+
+This document summarizes the current release gate for MVP, Alpha, and Production using the latest verified code paths, scripts, and manual runbooks. Canonical release criteria now live in:
+
+- `docs/readiness/ENTERPRISE_RELEASE_CRITERIA.md`
+- `docs/readiness/CURRENT_VERIFICATION_STATUS.md`
+- `docs/readiness/RELEASE_CHECKLIST.md`
+- `docs/readiness/STAGING_GATE.md`
+- `docs/readiness/PRODUCTION_GATE.md`
 
 ## Current status
 
@@ -8,16 +16,19 @@ This document summarizes the current release gate for MVP, Alpha, and Production
 | --- | --- | --- |
 | MVP | Conditional go | Core loop is implemented, but a real smoke pass and explicit acceptance of known limitations are still required. |
 | Alpha | Not yet go | Security posture is stronger, but staging validation with two real users remains the main blocker. |
-| Production | No-go | Operational validation, storage execution, backup/restore, rollout, and incident readiness are still incomplete. |
+| Production | No-go | Strict identity P0 verification, operational validation, storage execution, backup/restore, rollout, and incident readiness are still incomplete. |
 
 ## Commands to run
 
 Run these from a real git checkout with dependencies installed:
 
 1. `pnpm install --frozen-lockfile`
-2. `pnpm check:alpha-smoke`
-3. `pnpm check:alpha`
-4. `pnpm check:production-safety`
+2. `pnpm check:security`
+3. `pnpm check:authz-smoke`
+4. `pnpm check:storage-smoke`
+5. `pnpm check:alpha-smoke`
+6. `pnpm check:alpha`
+7. `pnpm check:production-safety`
 
 If a script fails because the repo is not a git checkout, rerun from a normal clone. The safety scripts intentionally require git metadata to inspect tracked files only.
 
@@ -66,6 +77,7 @@ Production is ready only if all are true:
 
 ### Current Production blockers
 
+- Explicit strict identity mode must reject all missing/invalid bearer requests without falling back to test/caller-supplied identity.
 - Staging and production operational validation has not been completed.
 - Real storage upload/access/delete flow is not yet proven end-to-end.
 - Incident response, monitoring, rollback, and backup evidence are still documentation-first.

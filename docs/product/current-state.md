@@ -1,8 +1,20 @@
 # Yurbrain Current Implementation State
 
-_Last audited: April 25, 2026 (UTC)._
+_Last audited: April 26, 2026 (UTC), during enterprise production-hardening P0._
 
 This document is factual current state after code inspection plus command verification.
+Production is currently **NO-GO**; see `docs/readiness/CURRENT_VERIFICATION_STATUS.md` for the live hardening gate.
+
+## Enterprise hardening delta
+
+Latest known verification issues being addressed:
+
+- strict identity mode previously returned `200` where `401` was expected when no bearer identity was present;
+- a prior web build failed resolving `@nhost/nextjs`, though current source now uses the internal web Nhost provider;
+- root verification scripts were missing/mismatched for enterprise gates;
+- attachment/storage lifecycle remains unproven and is not production-supported until upload/read/list/delete isolation evidence exists.
+
+Web remains the first intended production surface. Mobile remains preview/deferred until mobile production smoke evidence exists.
 
 For implementation-truth details and known package-boundary notes, see `docs/dev/current-state.md`.
 
