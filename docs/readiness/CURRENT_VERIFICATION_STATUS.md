@@ -123,6 +123,8 @@ Feature branch CI evidence:
 | GitHub Actions `Nhost Production Safety` run `24963301758` for `55a665e3ad71b398891c623b9c9c6051f6103422` | Passed | Duplicate branch/PR-triggered CI run also completed successfully. |
 | GitHub Actions `Nhost Production Safety` run `24963628496` for `1b9b443f53a4f534b16b974cc779b6ae4ce2c7b5` | Passed | CI re-ran after recording CI evidence and completed the full workflow successfully. |
 | GitHub Actions `Nhost Production Safety` run `24963627760` for `1b9b443f53a4f534b16b974cc779b6ae4ce2c7b5` | Passed | Duplicate branch/PR-triggered CI run also completed successfully. |
+| GitHub Actions `Nhost Production Safety` run `24963980931` for `83a3cea925883150a7999a48be0016373818853e` | Passed | CI re-ran after recording latest-head CI evidence and completed install, typecheck, lint, tests, build, security, authz smoke, storage smoke, ops smoke, production-safety composite, and e2e. |
+| GitHub Actions `Nhost Production Safety` run `24963980033` for `83a3cea925883150a7999a48be0016373818853e` | Passed | Duplicate branch/PR-triggered CI run also completed successfully. |
 
 ## Remaining production blockers
 
