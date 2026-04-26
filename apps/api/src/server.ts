@@ -224,6 +224,41 @@ export function createServer(options: ServerOptions = {}) {
     });
   });
 
+  app.get("/health/live", async (_request, reply) => {
+    return reply.code(200).send({
+      status: "ok",
+      check: "live",
+      service: "api"
+    });
+  });
+
+  app.get("/health/ready", async (request, reply) => {
+    try {
+      await state.repo.listUserProfilesNeedingBackfill(1);
+      return reply.code(200).send({
+        status: "ok",
+        check: "ready",
+        service: "api",
+        dependencies: {
+          database: "ok"
+        }
+      });
+    } catch (error) {
+      request.log.error(
+        {
+          event: "readiness_check_failed",
+          errorName: error instanceof Error ? error.name : "UnknownError"
+        },
+        "readiness check failed"
+      );
+      return sendSafeErrorResponse(request, reply, {
+        statusCode: 503,
+        message: "Service is not ready.",
+        code: "SERVICE_NOT_READY"
+      });
+    }
+  });
+
   registerBrainItemRoutes(app, state);
   registerCaptureRoutes(app, state);
   registerThreadRoutes(app, state);
