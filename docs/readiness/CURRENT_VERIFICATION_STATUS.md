@@ -104,6 +104,15 @@ Additional P2 lifecycle evidence:
 | `pnpm check:storage-smoke` | Passed | Now includes attachment metadata smoke and local backup/restore drill. This is still not object upload/read/delete proof. |
 | `pnpm check:production-safety` | Passed | Final composite local safety gate after backup/restore drill coverage. |
 
+Additional production-readiness implementation evidence on branch `cursor/production-readiness-20260426`:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `pnpm --filter web test` | Passed | New web production UX smoke ran 3 tests covering Focus Feed home, capture/detail/comment/AI/task/session surfaces, and no production attachment upload claims. |
+| `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/authz-route-denials.test.ts` | Passed | Legacy `/preferences/:userId` compatibility path returns/updates the authenticated user's preferences and emits deprecation headers. |
+| `pnpm --filter api lint` | Passed | API typecheck passed after legacy preference deprecation headers. |
+| `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e` | Passed | Full local gate passed after docs, web smoke, CI parity, and preference compatibility changes; final e2e again reported full-loop pass 1 / fail 0. |
+
 ## Remaining production blockers
 
 - Staging signoff evidence is still absent.

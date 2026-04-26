@@ -26,6 +26,10 @@ pnpm check:production-safety && pnpm test:e2e
 Result: passed locally with `pnpm test:e2e` reporting `full loop: capture -> feed -> comment/query -> convert -> act`, `pass 1`, `fail 0`.
 
 - CI evidence: GitHub Actions `Nhost Production Safety` run `24948043688` succeeded for commit `8ae8d635e3fadf63fa0c78e98d1023b04446e622`.
+- Implementation-branch evidence after quality/preference hardening:
+  - `pnpm --filter web test` passed 3/3 web production UX smoke tests.
+  - `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/authz-route-denials.test.ts` passed, including legacy preference path owner-scoping.
+  - `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e` passed locally; final E2E again reported `pass 1`, `fail 0`.
 
 This section is **not** staging signoff. All rows below still require real staging environment evidence with staging URLs, real staging tokens, CORS settings, and operator/date.
 
