@@ -65,6 +65,7 @@ Exit criteria:
 
 Exit criteria:
 - staging mirrors production identity/CORS/storage settings where feasible;
+- liveness/readiness endpoints are covered by automated smoke before staging signoff;
 - staging smoke pass covers core loop, two-user isolation, and storage if in scope;
 - dashboards/alerts and incident/rollback/backup game-days are exercised.
 

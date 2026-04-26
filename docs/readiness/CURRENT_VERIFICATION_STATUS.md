@@ -78,6 +78,7 @@ Additional P1 security hardening evidence:
 | `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/rate-limit.test.ts` | Passed | Rate limiting returns 429, isolates authenticated users, and cannot be disabled in production-like environments. |
 | `pnpm lint && pnpm --filter api test` | Passed | API typecheck/lint and full API regression suite after rate limiting. |
 | `pnpm check:production-safety` | Passed | Final composite local safety gate after rate limiting. |
+| `pnpm check:ops-smoke` | Passed | Local unauthenticated liveness/readiness smoke validates `/health/live` and `/health/ready`. |
 
 Additional CI/compliance/support hardening:
 

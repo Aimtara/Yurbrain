@@ -57,3 +57,18 @@ Production remains no-go until:
 2. at least one alert test is recorded,
 3. staging smoke results are linked from the signoff packet,
 4. rollback and incident drills are recorded.
+
+## Local executable baseline
+
+Local code now exposes separate health endpoints:
+
+- `GET /health/live`: liveness only, no dependency checks.
+- `GET /health/ready`: readiness check that verifies repository/database access.
+
+Evidence:
+
+- `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/health-readiness.test.ts`
+- `pnpm check:ops-smoke`
+
+This is only a local executable baseline. Staging still needs dashboard wiring, alert
+fire/acknowledge evidence, and incident/rollback game-day proof.
