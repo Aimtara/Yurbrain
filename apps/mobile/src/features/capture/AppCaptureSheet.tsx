@@ -15,7 +15,8 @@ type AppCaptureSheetProps = {
   onSubmit: (intent: CaptureSubmitIntent) => Promise<void>;
 };
 
-const captureTypeOptions: Array<CaptureDraft["type"]> = ["text", "link", "image"];
+const storageEnabled = process.env.EXPO_PUBLIC_YURBRAIN_STORAGE_ENABLED === "true";
+const captureTypeOptions: Array<CaptureDraft["type"]> = storageEnabled ? ["text", "link", "image"] : ["text", "link"];
 
 const captureTypeLabels: Record<CaptureDraft["type"], string> = {
   text: "Text",
@@ -26,7 +27,7 @@ const captureTypeLabels: Record<CaptureDraft["type"], string> = {
 const captureContentPlaceholders: Record<CaptureDraft["type"], string> = {
   text: "Capture in your own words...",
   link: "https://example.com/article-you-want-to-remember",
-  image: "Paste image URL or file reference (uploads are post-alpha)"
+  image: storageEnabled ? "Paste an image URL or file reference" : "Image capture is deferred for this launch"
 };
 
 export function AppCaptureSheet({
@@ -42,6 +43,8 @@ export function AppCaptureSheet({
 }: AppCaptureSheetProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const canSubmit = useMemo(() => draft.content.trim().length > 0, [draft.content]);
+  const safeDraftType = !storageEnabled && draft.type === "image" ? "text" : draft.type;
+  const safeDraft = safeDraftType === draft.type ? draft : { ...draft, type: safeDraftType };
 
   return (
     <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
@@ -90,7 +93,7 @@ export function AppCaptureSheet({
             autoFocus
             value={draft.content}
             onChangeText={(content) => onChangeDraft({ ...draft, content })}
-            placeholder={captureContentPlaceholders[draft.type]}
+            placeholder={captureContentPlaceholders[safeDraft.type]}
             accessibilityLabel="Capture content"
             style={{
               minHeight: 120,
@@ -110,7 +113,7 @@ export function AppCaptureSheet({
 
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={{ color: "#64748b" }}>
-              Mode: <Text style={{ color: "#1e293b", fontWeight: "700" }}>{captureTypeLabels[draft.type]}</Text>
+              Mode: <Text style={{ color: "#1e293b", fontWeight: "700" }}>{captureTypeLabels[safeDraft.type]}</Text>
             </Text>
             <Pressable
               onPress={() => setAdvancedOpen((current) => !current)}
@@ -139,14 +142,14 @@ export function AppCaptureSheet({
                     accessibilityState={{ selected: draft.type === type }}
                     style={{
                       borderWidth: 1,
-                      borderColor: draft.type === type ? "#93c5fd" : "#d8dce8",
-                      backgroundColor: draft.type === type ? "#eff6ff" : "#ffffff",
+                      borderColor: safeDraft.type === type ? "#93c5fd" : "#d8dce8",
+                      backgroundColor: safeDraft.type === type ? "#eff6ff" : "#ffffff",
                       borderRadius: 999,
                       paddingVertical: 6,
                       paddingHorizontal: 10
                     }}
                   >
-                    <Text style={{ color: "#1e293b", fontWeight: draft.type === type ? "700" : "500" }}>{captureTypeLabels[type]}</Text>
+                    <Text style={{ color: "#1e293b", fontWeight: safeDraft.type === type ? "700" : "500" }}>{captureTypeLabels[type]}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -200,7 +203,7 @@ export function AppCaptureSheet({
                   Not yet in MVP:
                 </Text>
                 <Text style={{ color: "#64748b" }}>
-                  Native file uploads, voice capture, and reminder scheduling are post-alpha.
+                  Native file uploads, voice capture, and reminder scheduling are post-alpha and hidden from production launch scope.
                 </Text>
               </View>
             </View>

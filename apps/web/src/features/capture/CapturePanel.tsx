@@ -65,6 +65,7 @@ export function CapturePanel({
         errorMessage={captureError}
         statusMessage={captureStatusNotice}
         successMessage={captureSuccessNotice}
+        productionMode
       />
     </div>
   );

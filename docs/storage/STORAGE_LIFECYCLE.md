@@ -46,6 +46,7 @@ Until lifecycle proof exists:
 - Do not claim production attachment support.
 - Do not include attachment upload/read/delete in launch promises.
 - Keep any capture attachment UI affordance clearly placeholder/deferred or hide it for production launch.
+- Current web/mobile copy intentionally labels image/file references as post-alpha and says native uploads are not yet in MVP; tests guard this wording.
 - Keep storage gate red or marked explicitly deferred in release criteria.
 
 ## Owner model

@@ -18,6 +18,7 @@ type Props = {
   errorMessage?: string;
   statusMessage?: string;
   successMessage?: string;
+  productionMode?: boolean;
 };
 
 export function CaptureComposer({
@@ -29,7 +30,8 @@ export function CaptureComposer({
   isSubmitting = false,
   errorMessage,
   statusMessage,
-  successMessage
+  successMessage,
+  productionMode = false
 }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isCompact, setIsCompact] = useState(false);
@@ -115,20 +117,22 @@ export function CaptureComposer({
             <p style={{ margin: "4px 0 0", color: "#475569", fontSize: "14px" }}>Capture first. Decide what to do next after.</p>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <span
-              aria-label="Voice capture availability"
-              style={{
-                borderRadius: "999px",
-                border: "1px solid #cbd5e1",
-                background: "#f8fafc",
-                color: "#475569",
-                fontSize: "12px",
-                fontWeight: 600,
-                padding: "6px 10px"
-              }}
-            >
-              Voice capture (post-alpha)
-            </span>
+            {productionMode ? null : (
+              <span
+                aria-label="Voice capture availability"
+                style={{
+                  borderRadius: "999px",
+                  border: "1px solid #cbd5e1",
+                  background: "#f8fafc",
+                  color: "#475569",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  padding: "6px 10px"
+                }}
+              >
+                Voice capture (post-alpha)
+              </span>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -227,9 +231,11 @@ export function CaptureComposer({
           >
             Save + Plan
           </button>
-          <button type="button" disabled aria-disabled style={{ opacity: 0.6 }}>
-            Reminder scheduling (post-alpha)
-          </button>
+          {productionMode ? null : (
+            <button type="button" disabled aria-disabled style={{ opacity: 0.6 }}>
+              Reminder scheduling (post-alpha)
+            </button>
+          )}
         </div>
       </section>
     </div>
@@ -253,7 +259,7 @@ const contentFieldLabels: Record<CaptureComposerValue["type"], string> = {
 const contentFieldPlaceholders: Record<CaptureComposerValue["type"], string> = {
   text: "Capture in your own words...",
   link: "https://example.com/article-you-want-to-remember",
-  image: "Paste image URL or file reference (uploads are post-alpha)"
+  image: "Paste image URL; native uploads are not part of the current production scope"
 };
 
 const typeChipStyle: React.CSSProperties = {

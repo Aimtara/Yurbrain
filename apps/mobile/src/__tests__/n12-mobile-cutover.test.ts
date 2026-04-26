@@ -58,6 +58,20 @@ test("mobile app honors explicit staged API URL before localhost fallback", () =
   assert.ok(appSource.includes("configureApiBaseUrl(mobileApiBaseUrl);"));
 });
 
+test("mobile capture sheet keeps production-deferred file and voice affordances disabled", () => {
+  const captureSheetSourcePath = path.resolve(
+    process.cwd(),
+    "src/features/capture/AppCaptureSheet.tsx"
+  );
+  const captureSheetSource = fs.readFileSync(captureSheetSourcePath, "utf8");
+
+  assert.ok(captureSheetSource.includes("Text"));
+  assert.ok(captureSheetSource.includes("Link"));
+  assert.ok(captureSheetSource.includes('process.env.EXPO_PUBLIC_YURBRAIN_STORAGE_ENABLED === "true"'));
+  assert.ok(captureSheetSource.includes('storageEnabled ? ["text", "link", "image"] : ["text", "link"]'));
+  assert.ok(captureSheetSource.includes("hidden from production launch scope"));
+});
+
 test("mobile loop controller enforces verified-current-user bootstrap gate", () => {
   const controllerSourcePath = path.resolve(
     process.cwd(),
