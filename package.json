@@ -29,7 +29,7 @@
     "test:nhost-safety": "pnpm --filter @yurbrain/client test && pnpm --filter mobile test && pnpm --filter @yurbrain/db test && pnpm --filter api exec tsx --test src/__tests__/nhost-admin-graphql.test.ts",
     "build:nhost-safety": "pnpm --filter web build",
     "check:security": "pnpm check:secret-leaks && pnpm check:nhost-safety",
-    "check:authz-smoke": "YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint12/current-user-strict-mode.test.ts src/__tests__/sprint14/strict-current-user-enforcement.test.ts src/__tests__/sprint15/current-user-jwt-validation.test.ts src/__tests__/sprint15/two-user-isolation-high-value.test.ts src/__tests__/sprint17/strict-identity-fallback-denial.test.ts",
+    "check:authz-smoke": "YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint12/current-user-strict-mode.test.ts src/__tests__/sprint14/strict-current-user-enforcement.test.ts src/__tests__/sprint15/current-user-jwt-validation.test.ts src/__tests__/sprint15/two-user-isolation-high-value.test.ts src/__tests__/sprint17/strict-identity-fallback-denial.test.ts src/__tests__/sprint17/authz-route-denials.test.ts",
     "check:storage-smoke": "pnpm --filter @yurbrain/db exec tsx --test src/__tests__/nhost-storage-attachments.test.ts"
   },
   "devDependencies": {
