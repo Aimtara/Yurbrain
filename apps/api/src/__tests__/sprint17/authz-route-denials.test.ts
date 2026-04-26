@@ -4,6 +4,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { createServer } from "../../server";
+import type { LightMyRequestResponse } from "fastify";
 import { createTestJwt } from "../helpers/auth-token";
 
 process.env.NODE_ENV = "test";
@@ -49,23 +50,23 @@ test("feed, thread, message, task, session, explore, and AI alias routes deny cr
     assert.ok(card?.id);
 
     for (const action of ["dismiss", "snooze", "remind-later", "refresh"] as const) {
-      const blocked = await app.inject({
+      const blockedFeedActionResponse: LightMyRequestResponse = await app.inject({
         method: "POST",
         url: `/feed/${card.id}/${action}`,
         headers: userBHeaders,
         payload: action === "snooze" || action === "remind-later" ? { minutes: 30 } : {}
       });
-      assert.equal(blocked.statusCode, 404, `expected /feed ${action} to deny cross-user access`);
+      assert.equal(blockedFeedActionResponse.statusCode, 404, `expected /feed ${action} to deny cross-user access`);
     }
 
     for (const action of ["dismiss", "snooze", "refresh"] as const) {
-      const blocked = await app.inject({
+      const blockedFunctionFeedActionResponse: LightMyRequestResponse = await app.inject({
         method: "POST",
         url: `/functions/feed/${card.id}/${action}`,
         headers: userBHeaders,
         payload: action === "snooze" ? { minutes: 30 } : {}
       });
-      assert.equal(blocked.statusCode, 404, `expected /functions/feed ${action} to deny cross-user access`);
+      assert.equal(blockedFunctionFeedActionResponse.statusCode, 404, `expected /functions/feed ${action} to deny cross-user access`);
     }
 
     const outsiderCreateThread = await app.inject({
