@@ -10,10 +10,10 @@ _Last updated: 2026-04-26._
 
 | Area | Status | Evidence / current truth | Next required proof |
 | --- | --- | --- | --- |
-| Strict identity | Red | Latest known verification reported `401` expected but `200` returned when strict mode lacked bearer identity. Audit found API bearer validation exists, but per-request strict headers are not yet enforced against test header fallback. | Fix strict fallback bypass and rerun auth regression suite. |
-| Web build | Yellow | Latest known verification reported `apps/web/app/layout.tsx` could not resolve `@nhost/nextjs`. Current source no longer imports `@nhost/nextjs`; it uses internal `WebNhostProvider`. | Rerun `pnpm build` / `pnpm --filter web build`. |
-| Root scripts | Yellow | `typecheck`, `check:alpha-smoke`, and `check:production-safety` currently exist. Requested aliases `check:security`, `check:authz-smoke`, and `check:storage-smoke` are missing; `turbo.json` lacks `typecheck`. | Add/normalize scripts and rerun root gates. |
-| Package quality parity | Yellow/Red | API/web/mobile have typecheck coverage. Several packages lack typecheck/lint/build scripts or explicit no-op rationale. | Add meaningful scripts or documented no-ops. |
+| Strict identity | Green for local P0 | Explicit strict mode now honors `x-yurbrain-auth-mode: strict` and `x-yurbrain-identity-mode: strict`; missing/invalid bearer tokens no longer fall back to caller-supplied IDs. | Staging proof with real Nhost tokens remains required. |
+| Web build | Green for local P0 | `pnpm build` passes. Current source uses internal `WebNhostProvider`; no `@nhost/nextjs` import is present. | Staging web smoke remains required. |
+| Root scripts | Green for local P0 | `check:security`, `check:authz-smoke`, `check:storage-smoke`, `check:alpha-smoke`, `check:production-safety`, and Turbo `typecheck` exist and pass locally. | CI proof remains required. |
+| Package quality parity | Green/Yellow | All workspaces now expose `typecheck`, `lint`, and `build`; library/mobile build scripts document source-consumed or deferred no-op rationale. | Replace no-op package builds with artifacts if package publishing becomes production scope. |
 | Storage lifecycle | Red | Attachment metadata/schema and Nhost docs exist, but no repository API upload/read/list/delete lifecycle is proven. | Implement lifecycle or explicitly defer/hide from production. |
 | Staging proof | Red | No current staging signoff packet with smoke evidence is present. | Run web-first staging smoke before production. |
 | Ops readiness | Red | Nhost runbooks exist, but canonical SLO/alert/incident/rollback/backup drills are not exercised. | Complete and exercise ops runbooks. |
@@ -22,10 +22,10 @@ _Last updated: 2026-04-26._
 ## Answers to current-state questions
 
 1. **What works today?** Core loop API persistence, deterministic AI fallback, web full-loop surface, mobile preview surface, JWT scaffolding, CORS hardening tests, disabled `/events` raw endpoint, and substantial API tests.
-2. **What failed in latest verification?** Strict identity returned `200` instead of `401`, web build previously failed on `@nhost/nextjs`, and root verification scripts were reported missing/mismatched.
-3. **What production gates are red/yellow/green?** No pillar is fully green. Security, ops, data/storage, compliance, and support are red. Vision fidelity and web-first reliability are yellow. Production is no-go.
-4. **Which packages lack lint/typecheck/test/build coverage?** See `docs/dev/current-state.md`; package quality parity is uneven and will be normalized in P0/P3.
-5. **Which routes rely on legacy/caller-supplied user identity?** Runtime routes call `requireCurrentUser`; legacy `x-yurbrain-user-id` fallback is test/local-only but must be disabled by explicit strict mode. Query/body/path `userId` is not an identity source.
+2. **What failed in latest verification?** Earlier verification failed strict identity, web build, and script coverage. In this P0 pass, strict identity, web build, and local scripts are green; staging/CI/storage lifecycle remain open.
+3. **What production gates are red/yellow/green?** Local P0 security/build/script gates are green. Storage lifecycle, staging proof, ops drills, compliance/support evidence, and mobile production smoke remain red/yellow, so production is still no-go.
+4. **Which packages lack lint/typecheck/test/build coverage?** All workspaces now expose `typecheck`, `lint`, and `build`; some package/mobile builds are explicit no-ops because packages are source-consumed and mobile is deferred from production scope.
+5. **Which routes rely on legacy/caller-supplied user identity?** Runtime routes call `requireCurrentUser`; legacy `x-yurbrain-user-id` fallback remains test/local only and is disabled by explicit strict mode. Query/body/path `userId` is not an identity source.
 6. **Which user-owned resources lack cross-user denial tests?** High-value tests exist for brain items, AI, feed listing, and tasks. Additional denial coverage is needed for feed mutations, threads/messages, sessions, preferences, Explore, founder diagnostics, and attachments if enabled.
 7. **Which storage flows are incomplete or unproven?** Upload, read/download, list, delete, deleted-read denial, object/metadata consistency, MIME/size rejection, provider error handling, and two-user object isolation are unproven.
 8. **Which operational procedures exist only as docs and have not been exercised?** Backup/restore, rollback, incident simulation, alert firing, staging smoke, production post-deploy smoke, and controlled rollout wave gates.
@@ -51,4 +51,29 @@ pnpm check:production-safety
 
 ## Latest execution evidence
 
-Pending. This document must be updated after the P0 commands above are run.
+Commands run on 2026-04-26 during P0 hardening:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint12/current-user-strict-mode.test.ts src/__tests__/sprint17/strict-identity-fallback-denial.test.ts` | Passed | Verified strict fallback denial and legacy test header compatibility. |
+| `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint12/current-user-strict-mode.test.ts src/__tests__/sprint14/strict-current-user-enforcement.test.ts src/__tests__/sprint15/current-user-jwt-validation.test.ts src/__tests__/sprint17/strict-identity-fallback-denial.test.ts` | Passed | Auth regression subset. |
+| `pnpm install` | Passed | Lockfile/install current after package script normalization. |
+| `pnpm reset` | Passed | Runtime PGlite reset. |
+| `pnpm seed` | Passed | Seed data created. |
+| `pnpm test` | Passed | Turbo workspace test sweep. |
+| `pnpm lint` | Passed | Turbo lint/typecheck-backed package lint sweep. |
+| `pnpm typecheck` | Passed | Turbo typecheck across all 9 workspaces. |
+| `pnpm build` | Passed | Web Next production build passed; package/mobile build no-ops documented. |
+| `pnpm check:security` | Passed | Secret leak + Nhost production safety checks. |
+| `pnpm check:authz-smoke` | Passed | Strict identity/JWT/two-user isolation smoke. |
+| `pnpm check:storage-smoke` | Passed | Attachment metadata smoke only; not production object lifecycle proof. |
+| `pnpm check:alpha-smoke` | Passed | Composite `test && lint && typecheck && build`. |
+| `pnpm check:production-safety` | Passed | Composite local production-safety command. |
+| `pnpm test:e2e` | Passed | Full loop smoke assertions passed and exited 0 in this run. |
+
+## Remaining production blockers
+
+- Staging signoff evidence is still absent.
+- Attachment object upload/read/list/delete lifecycle remains unimplemented/unproven and is not production-ready.
+- Backup/restore, rollback, alert firing, and incident drills are documented but not exercised.
+- Mobile remains preview/deferred until production smoke evidence exists.
