@@ -10,13 +10,13 @@ Limits are enforced by route class:
 
 | Class | Examples | Default window | Default max |
 | --- | --- | --- | --- |
-| `auth_sensitive` | `/auth/me` | 60s | 120 |
+| `auth_sensitive` | `/auth/me` | 60s | 60 |
 | `read_standard` | item reads, lists, preferences | 60s | 600 |
-| `write_standard` | capture, comments, tasks, sessions, feed actions | 60s | 180 |
+| `write_standard` | capture, comments, tasks, sessions, feed actions | 60s | 120 |
 | `feed` | feed list/refresh/generate | 60s | 120 |
 | `ai_expensive` | summarize, classify, query, convert, synthesis | 60s | 60 |
-| `storage_write` | attachment/storage routes when added | 60s | 60 |
-| `diagnostics_sensitive` | founder review/diagnostics | 60s | 30 |
+| `storage_write` | attachment/storage routes when added | 60s | 30 |
+| `diagnostics_sensitive` | founder review/diagnostics | 60s | 20 |
 
 ## Identity keying
 
@@ -30,23 +30,26 @@ Limits are enforced by route class:
 When a limit is exceeded, the API returns:
 
 - status `429`,
-- safe error code `RATE_LIMIT_EXCEEDED`,
-- `Retry-After`,
-- `X-RateLimit-Limit`,
-- `X-RateLimit-Remaining`,
-- `X-RateLimit-Reset`.
+- safe error code `RATE_LIMITED`,
+- `x-yurbrain-rate-limit-class`,
+- `x-yurbrain-rate-limit-limit`,
+- `x-yurbrain-rate-limit-remaining`,
+- `x-yurbrain-rate-limit-reset-ms`.
 
 No token, secret, or raw user content is included in the error body.
 
 ## Environment controls
 
-Configurable environment variables:
+Configurable environment variables implemented in code:
 
-- `YURBRAIN_RATE_LIMIT_ENABLED` (`1`/`0`, default enabled)
+- `YURBRAIN_RATE_LIMIT_DISABLED` (`1` disables only in non-production-like environments)
 - `YURBRAIN_RATE_LIMIT_WINDOW_MS`
-- `YURBRAIN_RATE_LIMIT_<CLASS>_MAX`
+- `YURBRAIN_RATE_LIMIT_<CLASS>_LIMIT`
+- legacy alias: `YURBRAIN_RATE_LIMIT_<CLASS>`
 
-Production, staging, and preview environments cannot disable all limits with `YURBRAIN_RATE_LIMIT_ENABLED=0`.
+Production, staging, and preview environments cannot disable all limits with
+`YURBRAIN_RATE_LIMIT_DISABLED=1`; production-like environments force the limiter
+on. The assessment term `feed_expensive` maps to the current code class `feed`.
 
 ## Production caveat
 

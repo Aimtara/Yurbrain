@@ -268,6 +268,39 @@ test("feed, thread, message, task, session, explore, and AI alias routes deny cr
     assert.equal(ownerSessionListWithSpoofedUser.statusCode, 200);
     assert.ok(ownerSessionListWithSpoofedUser.json<Array<{ id: string }>>().some((entry) => entry.id === session.id));
 
+    const ownerPreference = await app.inject({
+      method: "PUT",
+      url: "/preferences/me",
+      headers: userAHeaders,
+      payload: { defaultLens: "learning", founderMode: true }
+    });
+    assert.equal(ownerPreference.statusCode, 200);
+    assert.equal(ownerPreference.json<{ userId: string; defaultLens: string; founderMode: boolean }>().userId, userA);
+
+    const legacyPreferenceRead = await app.inject({
+      method: "GET",
+      url: `/preferences/${userB}`,
+      headers: userAHeaders
+    });
+    assert.equal(legacyPreferenceRead.statusCode, 200);
+    assert.equal(legacyPreferenceRead.headers.deprecation, "true");
+    const legacyPreferenceReadBody = legacyPreferenceRead.json<{ userId: string; defaultLens: string; founderMode: boolean }>();
+    assert.equal(legacyPreferenceReadBody.userId, userA);
+    assert.equal(legacyPreferenceReadBody.defaultLens, "learning");
+    assert.equal(legacyPreferenceReadBody.founderMode, true);
+
+    const legacyPreferenceWrite = await app.inject({
+      method: "PUT",
+      url: `/preferences/${userB}`,
+      headers: userAHeaders,
+      payload: { feedDensity: "compact" }
+    });
+    assert.equal(legacyPreferenceWrite.statusCode, 200);
+    assert.equal(legacyPreferenceWrite.headers.deprecation, "true");
+    const legacyPreferenceWriteBody = legacyPreferenceWrite.json<{ userId: string; feedDensity: string }>();
+    assert.equal(legacyPreferenceWriteBody.userId, userA);
+    assert.equal(legacyPreferenceWriteBody.feedDensity, "compact");
+
     const second = await app.inject({
       method: "POST",
       url: "/brain-items",

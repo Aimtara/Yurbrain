@@ -1,7 +1,14 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { UpdateUserPreferenceRequestSchema, UserPreferenceResponseSchema, UserPreferenceMeResponseSchema } from "@yurbrain/contracts";
 import { requireCurrentUser } from "../middleware/current-user";
 import type { AppState } from "../state";
+
+const LEGACY_PREFERENCES_PATH_DOC = "</preferences/me>; rel=\"successor-version\"";
+
+function markLegacyPreferencesPath(reply: FastifyReply) {
+  reply.header("Deprecation", "true");
+  reply.header("Link", LEGACY_PREFERENCES_PATH_DOC);
+}
 
 export async function registerPreferenceRoutes(app: FastifyInstance, state: AppState) {
   app.get("/preferences/me", async (request, reply) => {
@@ -39,6 +46,7 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
     if (!currentUser) return;
     // Preserve legacy route shape but enforce current-user scoping.
     void request.params;
+    markLegacyPreferencesPath(reply);
     const stored = await state.repo.getUserPreference(currentUser.id);
 
     const response = UserPreferenceResponseSchema.parse(
@@ -63,6 +71,7 @@ export async function registerPreferenceRoutes(app: FastifyInstance, state: AppS
     if (!currentUser) return;
     // Preserve legacy route shape but enforce current-user scoping.
     void request.params;
+    markLegacyPreferencesPath(reply);
     const payload = UpdateUserPreferenceRequestSchema.parse(request.body);
     const updated = await state.repo.upsertUserPreference(currentUser.id, payload);
     return reply.code(200).send(UserPreferenceResponseSchema.parse(updated));

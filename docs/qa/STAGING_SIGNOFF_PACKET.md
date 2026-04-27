@@ -8,16 +8,38 @@ Complete this packet before any production approval.
 
 - Staging URL:
 - API URL:
-- Release candidate commit:
+- Release candidate commit: `8ae8d635e3fadf63fa0c78e98d1023b04446e622` recorded as current local/CI audit commit; re-record exact commit after final release-candidate cut.
 - Operator:
 - Date:
+
+## Current local/CI evidence, not staging proof
+
+- Current branch at audit: `main`.
+- Current audit commit: `8ae8d635e3fadf63fa0c78e98d1023b04446e622`.
+- Working tree at audit: clean.
+- Local command run on 2026-04-26:
+
+```bash
+pnpm check:production-safety && pnpm test:e2e
+```
+
+Result: passed locally with `pnpm test:e2e` reporting `full loop: capture -> feed -> comment/query -> convert -> act`, `pass 1`, `fail 0`.
+
+- CI evidence: GitHub Actions `Nhost Production Safety` run `24948043688` succeeded for commit `8ae8d635e3fadf63fa0c78e98d1023b04446e622`.
+- Implementation-branch evidence after quality/preference hardening:
+  - `pnpm --filter web test` passed 3/3 web production UX smoke tests.
+  - `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/authz-route-denials.test.ts` passed, including legacy preference path owner-scoping.
+  - `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e` passed locally; final E2E again reported `pass 1`, `fail 0`.
+
+This section is **not** staging signoff. All rows below still require real staging environment evidence with staging URLs, real staging tokens, CORS settings, and operator/date.
 
 ## Required evidence
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| CI production-safety gate | Passed on latest evidenced release-board run; rerun required for final release candidate | GitHub Actions run `24945724345` passed install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke. |
-| Local health/readiness smoke | Passed | `pnpm check:ops-smoke` covers unauthenticated `/health/live` and `/health/ready`; staging must repeat against deployed API. |
+| CI production-safety gate | Passed on current audit commit; rerun required for final release candidate | GitHub Actions run `24948043688` passed install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke for `8ae8d635e3fadf63fa0c78e98d1023b04446e622`. |
+| Local health/readiness smoke | Passed locally | `pnpm check:production-safety` includes `pnpm check:ops-smoke`; staging must repeat against deployed API. |
+| Local full-loop e2e | Passed locally | `pnpm test:e2e` reported `full loop: capture -> feed -> comment/query -> convert -> act`, pass 1/fail 0. |
 | Attachment production scope | Deferred | Storage lifecycle docs and UI tests enforce no production attachment upload claims/affordances by default. |
 | Web app loads | Pending | |
 | Login with real staging user | Pending | |

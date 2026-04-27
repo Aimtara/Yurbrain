@@ -51,6 +51,15 @@ pnpm check:production-safety
 
 ## Latest execution evidence
 
+Fresh current-state audit evidence from 2026-04-26:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `git status --short --branch && git rev-parse HEAD && git branch --show-current` | Passed | Branch `main`, clean tree, audit commit `8ae8d635e3fadf63fa0c78e98d1023b04446e622`. |
+| `gh run list --limit 5 --json databaseId,headSha,conclusion,status,workflowName,createdAt` | Passed | Read-only CI audit showed `Nhost Production Safety` run `24948043688` succeeded for `8ae8d635e3fadf63fa0c78e98d1023b04446e622`. |
+| `pnpm check:production-safety && pnpm test:e2e` | Passed | Local-only evidence. E2E final section: `full loop: capture -> feed -> comment/query -> convert -> act`, `pass 1`, `fail 0`. This is not staging or production proof. |
+| `git status --short --branch` | Passed | Working tree still clean after local verification. |
+
 Commands run on 2026-04-26 during P0 hardening:
 
 | Command | Result | Notes |
@@ -94,6 +103,28 @@ Additional P2 lifecycle evidence:
 | `pnpm --filter @yurbrain/db exec tsx --test src/__tests__/backup-restore-drill.test.ts` | Passed | Local backup/restore drill preserves core loop records from a filesystem snapshot. |
 | `pnpm check:storage-smoke` | Passed | Now includes attachment metadata smoke and local backup/restore drill. This is still not object upload/read/delete proof. |
 | `pnpm check:production-safety` | Passed | Final composite local safety gate after backup/restore drill coverage. |
+
+Additional production-readiness implementation evidence on branch `cursor/production-readiness-20260426`:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `pnpm --filter web test` | Passed | New web production UX smoke ran 3 tests covering Focus Feed home, capture/detail/comment/AI/task/session surfaces, and no production attachment upload claims. |
+| `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint17/authz-route-denials.test.ts` | Passed | Legacy `/preferences/:userId` compatibility path returns/updates the authenticated user's preferences and emits deprecation headers. |
+| `pnpm --filter api lint` | Passed | API typecheck passed after legacy preference deprecation headers. |
+| `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e` | Passed | Full local gate passed after docs, web smoke, CI parity, and preference compatibility changes; final e2e again reported full-loop pass 1 / fail 0. |
+| `pnpm --filter @yurbrain/nhost test && pnpm --filter @yurbrain/nhost lint` | Passed | Focused Nhost config-helper tests replaced the prior no-op package test; package typecheck passed. |
+| `pnpm test && pnpm lint && pnpm typecheck && pnpm check:production-safety && pnpm test:e2e` | Passed | Final local gate after route-doc reconciliation and Nhost package tests; final e2e reported `full loop: capture -> feed -> comment/query -> convert -> act`, pass 1/fail 0. |
+
+Feature branch CI evidence:
+
+| Run | Result | Notes |
+| --- | --- | --- |
+| GitHub Actions `Nhost Production Safety` run `24963304867` for `55a665e3ad71b398891c623b9c9c6051f6103422` | Passed | CI ran install, typecheck, lint, tests, build, security, authz smoke, storage smoke, ops smoke, production-safety composite, and e2e core loop. |
+| GitHub Actions `Nhost Production Safety` run `24963301758` for `55a665e3ad71b398891c623b9c9c6051f6103422` | Passed | Duplicate branch/PR-triggered CI run also completed successfully. |
+| GitHub Actions `Nhost Production Safety` run `24963628496` for `1b9b443f53a4f534b16b974cc779b6ae4ce2c7b5` | Passed | CI re-ran after recording CI evidence and completed the full workflow successfully. |
+| GitHub Actions `Nhost Production Safety` run `24963627760` for `1b9b443f53a4f534b16b974cc779b6ae4ce2c7b5` | Passed | Duplicate branch/PR-triggered CI run also completed successfully. |
+| GitHub Actions `Nhost Production Safety` run `24963980931` for `83a3cea925883150a7999a48be0016373818853e` | Passed | CI re-ran after recording latest-head CI evidence and completed install, typecheck, lint, tests, build, security, authz smoke, storage smoke, ops smoke, production-safety composite, and e2e. |
+| GitHub Actions `Nhost Production Safety` run `24963980033` for `83a3cea925883150a7999a48be0016373818853e` | Passed | Duplicate branch/PR-triggered CI run also completed successfully. |
 
 ## Remaining production blockers
 

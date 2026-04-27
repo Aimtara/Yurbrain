@@ -285,10 +285,10 @@ If any one of these drifts from behavior, update docs in the same change.
 - AI routes include deterministic fallback behavior for timeout/invalid model output.
 - Client requests use relative paths (`fetch(path)`), so local API routing/proxy setup controls runtime connectivity.
 - Item detail continuity is persisted via `GET /brain-items/:id/artifacts` (no local-storage dependency for AI artifact history).
-- Task/session continuity is persisted via `GET /sessions?taskId=...` and `GET /sessions?userId=...`.
+- Task/session continuity is persisted via `GET /sessions?taskId=...`; any legacy `userId` query is ignored by the API in favor of the authenticated current user.
 - Feed contract now includes source linkage/action semantics:
   - `taskId`, `availableActions`, `stateFlags`, `whyShown`
-- Founder mode + default lens preference is persisted via `GET/PUT /preferences/:userId` (`user_preferences` table), not only browser local storage.
+- Founder mode + default lens preference is persisted via canonical `GET/PUT /preferences/me` (`user_preferences` table), not only browser local storage. Legacy `GET/PUT /preferences/:userId` remains a deprecated compatibility path that ignores the path owner and scopes to the authenticated current user.
 - Capture now runs through a sheet/modal surface in web with:
   - autofocus + autosizing input
   - Save / Save + Plan / Save + Remind Later actions
@@ -301,7 +301,7 @@ If any one of these drifts from behavior, update docs in the same change.
 - Finishing a session now opens a supportive Finish/Rebalance sheet with planned vs actual timing, reclaimed/overflow delta, and next-step actions (Continue plan, Rebalance day, Take a break, Schedule rest later).
 - Feed postpone now opens a lightweight Postpone/Reschedule sheet with one-tap actions (Later today, Tomorrow, Suggest a slot, Break into smaller step), optional custom datetime slot, and persisted postpone count metadata for future ranking influence.
 - Me surface now provides lightweight insights (top insight, estimation accuracy, carry-forward pattern, postponement pattern, recommendation) computed deterministically from persisted tasks/sessions/feed data.
-- Personalization settings now persist through `GET/PUT /preferences/:userId` with values:
+- Personalization settings now persist through canonical `GET/PUT /preferences/me` with values:
   - `renderMode`: `focus` | `explore` (Focus remains default; Explore is preference-only for now)
   - `aiSummaryMode`: `concise` | `balanced` | `detailed`
   - `feedDensity`: `comfortable` | `compact`

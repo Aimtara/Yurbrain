@@ -52,3 +52,12 @@ jobs:
 
       - name: Storage smoke
         run: pnpm check:storage-smoke
+
+      - name: Ops smoke
+        run: pnpm check:ops-smoke
+
+      - name: Production safety composite
+        run: pnpm check:production-safety
+
+      - name: End-to-end core loop
+        run: pnpm test:e2e

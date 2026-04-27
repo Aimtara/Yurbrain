@@ -57,7 +57,7 @@ Not used for runtime truth:
   - Brain: `POST/GET/PATCH /brain-items`, `GET /brain-items/:id/artifacts`
   - Threads/messages: `POST /threads`, `GET /threads/:id`, `GET /threads/by-target`, `POST /messages`, `GET /threads/:id/messages`
   - Feed: `GET /feed`, `POST /feed/:id/dismiss`, `POST /feed/:id/snooze`, `POST /feed/:id/refresh`
-  - Preferences: `GET /preferences/:userId`, `PUT /preferences/:userId`
+  - Preferences: canonical `GET/PUT /preferences/me`; legacy `GET/PUT /preferences/:userId` remains owner-scoped compatibility only.
   - Tasks/sessions: `POST/GET/PATCH /tasks`, `GET /tasks`, `POST /tasks/:id/start`, `POST /sessions/:id/pause`, `POST /sessions/:id/finish`, `GET /sessions`
   - AI: `POST /functions/summarize`, `POST /functions/classify`, `POST /functions/query`, `POST /functions/convert`, `POST /functions/feed/generate-card`
 - Persistence across restart is covered by test (`apps/api/src/__tests__/sprint7/persistence.test.ts`).
@@ -92,7 +92,7 @@ Not used for runtime truth:
 - Web execution now includes an Active Task / Focus Mode surface with a large task hero, live session timer, reliable pause/finish controls, and an in-place source context peek that can reopen the linked item without leaving the execution flow.
 - Feed postpone now uses a dedicated Postpone/Reschedule sheet with one-tap actions (`Later today`, `Tomorrow`, `Suggest a slot`, `Break into smaller step`) plus optional custom datetime; postpone metadata (`postponeCount`, `lastPostponedAt`) is persisted and contributes a mild ranking penalty so repeated postpones can influence resurfacing deterministically.
 - Web now includes a lightweight `Me` surface with supportive reflection blocks: top insight card, estimation accuracy summary, carry-forward pattern, postponement pattern, and recommendation block derived deterministically from existing task/session/feed data.
-- Personalization settings are now persisted and restored through `/preferences/:userId` for render mode (`focus`/`explore`), AI summary mode (`concise`/`balanced`/`detailed`), feed density (`comfortable`/`compact`), and resurfacing intensity (`gentle`/`balanced`/`active`); Focus remains the default while Explore is a saved placeholder preference.
+- Personalization settings are now persisted and restored through canonical `/preferences/me` for render mode (`focus`/`explore`), AI summary mode (`concise`/`balanced`/`detailed`), feed density (`comfortable`/`compact`), and resurfacing intensity (`gentle`/`balanced`/`active`); legacy `/preferences/:userId` is compatibility-only and owner-scoped. Focus remains the default while Explore is a saved placeholder preference.
 - Explore Mode contract scaffolding now exists on `FeedCard` as optional `explore` metadata (`clusterId`, `position`, `salience`, `relationships`, and manual grouping fields) so future spatial rendering can ship without reworking current Focus-mode APIs.
 
 ### Feed semantics and contract (real)
