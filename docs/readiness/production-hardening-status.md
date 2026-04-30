@@ -4,7 +4,7 @@ Last updated: 2026-04-30
 
 ## Current recommendation
 
-- **Alpha:** conditional no-go until this hardening run and local verification complete.
+- **Alpha:** conditional GO for a web-first founder/internal alpha after staging evidence is collected and accepted.
 - **Production:** **NO-GO**. Production still requires external staging evidence, two-user isolation proof against real deployed users, alert test evidence, rollback rehearsal, backup/restore drill, launch-scope approvals, and final human go/no-go approval.
 
 ## Stage 0 baseline audit
@@ -85,8 +85,8 @@ This audit inspected the current Yurbrain repository before implementation work.
 | LLM model routing is not explicit. | Closed | Task-class model routing implemented with `fastModel`, `reasoningModel`, `taskModels` config and per-task env overrides (`YURBRAIN_LLM_*_MODEL`). | Closed in Stage 5. TypeScript types updated to require these fields. |
 | LLM semantic caching is missing. | Closed | Artifact-backed semantic cache implemented for both summarize-progress and what-should-i-do-next with conservative fingerprints. `cacheHit` field included in provider responses. | Closed in Stage 5. |
 | Context pruning is bounded but not explicit enough. | Closed | Synthesis grounding now includes at most the last three user/assistant turns per item/thread. Role type narrowing excludes system messages from prompt context. | Closed in Stage 5. |
-| Canonical readiness docs are incomplete/missing. | Medium | Several requested docs do not exist under canonical lowercase paths. | Create/update readiness, architecture, AI, and product docs. |
-| Staging evidence automation is missing. | High for production | No staging smoke scripts under `tooling/scripts`. | Add env-driven staging and two-user isolation smoke scripts plus operator checklist. |
+| Canonical readiness docs are incomplete/missing. | Closed locally | Requested readiness, architecture, AI, and product docs exist under canonical paths and were reviewed in this run. | Keep docs aligned with future implementation changes. |
+| Staging evidence automation is missing. | Closed locally; external evidence still required | `tooling/scripts/staging-smoke.mjs` and `tooling/scripts/two-user-isolation-smoke.mjs` exist, syntax-check, and fail closed without required env vars. | Execute scripts against real staging with User A/User B tokens. |
 | External launch evidence is unavailable from the repo. | Production blocker | No real staging packet, alert, rollback, backup/restore, or human approvals. | Document manual production tasks and keep production no-go. |
 
 ### Legacy compatibility exceptions
@@ -95,7 +95,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 - Existing domain response objects may continue to include `userId` as resource ownership metadata. The production blocker is caller-supplied owner selection in protected external request contracts, not owner fields in authenticated responses.
 - Nhost usage in app code is allowed only inside accepted auth/provider boundaries (`apps/*/src/nhost/*`) and package-level adapters (`packages/client`, `packages/nhost`). UI feature components should not contain raw GraphQL, Hasura-specific syntax, or direct Nhost calls.
 
-## Work planned in this run
+## Work completed or verified in this run
 
 1. Close unsafe caller-owned identity contracts and tests. **Stage 1 update:** normal protected request schemas now reject caller-supplied `userId` for create/capture/task/convert/session-list paths, and first-party REST helpers no longer send task/session owner query params. Legacy preference helpers still exist for compatibility but normal client paths use `/preferences/me`.
 2. Re-confirm Founder Review, diagnostics, and raw event safety.
@@ -109,29 +109,37 @@ This audit inspected the current Yurbrain repository before implementation work.
 
 ## Verification commands attempted in this execution run
 
-Verification has been completed in a subsequent Cloud Agent session with a fully configured environment (Node 22, pnpm 10.18.3). All commands below pass:
+Verification was completed in this execution environment with Node `v22.22.2` and pnpm `10.18.3`. The first targeted API test attempt omitted `YURBRAIN_TEST_MODE=1` and correctly failed protected routes closed with 401; the same targeted suite passed with test mode enabled.
 
 | Command | Result |
 | --- | --- |
-| `pnpm lint` | 9/9 tasks pass (0 TypeScript errors in API and web) |
-| `pnpm test` | 9/9 tasks pass (131 API, 3 web, 6 DB, 7 contracts tests) |
-| `pnpm check:secret-leaks` | Pass |
-| `pnpm check:nhost-safety` | Pass |
-| `pnpm test:e2e` | Pass (1/1 full-loop test) |
+| `node --version && pnpm --version` | Pass: Node `v22.22.2`, pnpm `10.18.3` |
+| `pnpm install --frozen-lockfile` | Pass: lockfile up to date |
+| `YURBRAIN_TEST_MODE=1 pnpm --filter api exec tsx --test src/__tests__/sprint14/strict-current-user-enforcement.test.ts src/__tests__/sprint13/event-safety.test.ts src/__tests__/sprint12/founder-review.test.ts src/__tests__/sprint17/rate-limit.test.ts src/__tests__/sprint12/summarize-progress-llm.test.ts src/__tests__/sprint12/what-should-i-do-next-llm.test.ts` | Pass: 46/46 targeted API hardening tests |
+| `pnpm --filter @yurbrain/client test` | Pass |
+| `pnpm --filter web test` | Pass: 3/3 web production UX tests |
+| `pnpm --filter @yurbrain/ui test` | Pass: 7/7 UI tests |
+| `node --check tooling/scripts/staging-smoke.mjs && node --check tooling/scripts/two-user-isolation-smoke.mjs` | Pass |
+| `pnpm check:package-boundaries` | Pass |
+| `pnpm lint` | Pass: 9/9 lint/typecheck tasks |
+| `pnpm test` | Pass: full workspace test suite |
+| `pnpm typecheck` | Pass: 9/9 typecheck tasks |
+| `pnpm build` | Pass: 8/8 build tasks; mobile build remains explicitly deferred |
+| `pnpm check:alpha` | Pass |
+| `pnpm check:production-safety` | Pass |
+| `pnpm test:e2e` | Pass: 1/1 full-loop test |
+| `node tooling/scripts/staging-smoke.mjs` without env | Pass as prerequisite check: exits with required-env error |
+| `node tooling/scripts/two-user-isolation-smoke.mjs` without env | Pass as prerequisite check: exits with required-env error |
 
-Remaining CI/human verification:
+Remaining human/external verification:
 
-1. `pnpm install --frozen-lockfile`
-2. `pnpm check:package-boundaries`
-3. `pnpm lint`
-4. `pnpm test`
-5. `pnpm typecheck`
-6. `pnpm build`
-7. `pnpm check:authz-smoke`
-8. `pnpm check:production-safety`
-9. `pnpm test:e2e`
-10. `pnpm smoke:staging` against staging with real env vars
-11. `pnpm smoke:two-user-isolation` against staging with real User A/User B tokens
+1. `pnpm smoke:staging` against staging with real `YURBRAIN_API_URL` and `YURBRAIN_TOKEN_A`.
+2. `pnpm smoke:two-user-isolation` against staging with real User A/User B tokens.
+3. Web core-loop staging checklist with screenshots/video.
+4. Alert test evidence.
+5. Rollback rehearsal evidence.
+6. Managed backup/restore drill evidence.
+7. Mobile/storage scope signoff and final human approval.
 
 Production remains **NO-GO** until those checks and the manual evidence packet pass.
 

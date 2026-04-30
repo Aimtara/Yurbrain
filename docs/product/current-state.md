@@ -53,7 +53,7 @@ Historical passing evidence from the prior audit:
 CI evidence:
 - GitHub Actions `Nhost Production Safety` run for commit `2ac8937` passed install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke.
 
-April 30 local command execution is blocked in the current cloud shell because `node`, `pnpm`, and `corepack` are not available on `PATH`. The Stage 8 status table records commands attempted and the exact blocker.
+April 30 follow-up verification ran successfully in this cloud shell with Node `v22.22.2` and pnpm `10.18.3`. The current run passed `pnpm install --frozen-lockfile`, targeted auth/event/rate-limit/LLM tests, `pnpm --filter @yurbrain/client test`, `pnpm --filter web test`, `pnpm --filter @yurbrain/ui test`, `pnpm check:package-boundaries`, `pnpm lint`, `pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm check:alpha`, `pnpm check:production-safety`, and `pnpm test:e2e`.
 
 Not used for runtime truth:
 - `pnpm --filter @yurbrain/db db:migrate` (Drizzle CLI workflow; local runtime uses startup SQL migrations in `@yurbrain/db` repository initialization).
@@ -148,7 +148,7 @@ Not used for runtime truth:
 
 ## Known technical debt
 
-- Source-consumed packages still use TypeScript source entrypoints internally, but apps must import package roots; `pnpm check:package-boundaries` enforces this once Node/pnpm are available.
+- Source-consumed packages still use TypeScript source entrypoints internally, but apps must import package roots; `pnpm check:package-boundaries` enforces this and passed in the April 30 follow-up verification.
 - Database schema keeps `confidence` as text in artifacts for compatibility with current migrations.
 - `/events` endpoint intentionally returns `403`; Founder Review/diagnostics expose derived summaries/actions only.
 

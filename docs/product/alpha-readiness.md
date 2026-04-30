@@ -4,7 +4,7 @@ Last updated: 2026-04-30
 
 ## Recommendation
 
-Yurbrain is **near alpha-ready for a web-first, founder-only cohort** after local quality gates pass on the exact release candidate and a staging evidence packet is collected.
+Yurbrain is **conditionally alpha-ready for a web-first, founder-only cohort** from a repository-quality perspective. Local quality gates pass on the current checkout; alpha still requires a staging evidence packet, mobile/storage deferral signoff, and a named support owner before launch.
 
 Production remains **NO-GO**.
 
@@ -22,7 +22,7 @@ Production remains **NO-GO**.
 
 Before alpha launch:
 
-1. Run local/CI checks on the exact release candidate:
+1. Confirm local/CI checks are green on the exact release candidate:
    - `pnpm check:package-boundaries`
    - `pnpm check:authz-smoke`
    - `pnpm check:production-safety`
@@ -37,7 +37,6 @@ Before alpha launch:
 
 ## Alpha blockers
 
-- This execution environment did not have `node`/`pnpm` available, so local commands could not be run here.
 - No real staging evidence packet is checked in yet.
 - No alert test, rollback rehearsal, or managed backup/restore drill evidence is attached.
 
