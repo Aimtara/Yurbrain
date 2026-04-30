@@ -4,6 +4,7 @@
 - `seed-dev-db.mjs`: seeds usable test data into the same runtime database path.
 - `nhost-production-safety-check.mjs`: validates Nhost production safety guardrails (no client admin-secret env usage, env-ignore hygiene, required `.env.example` presence).
 - `secret-leak-check.mjs`: scans tracked text files for high-risk secret patterns.
+- `package-boundary-check.mjs`: fails if app or package source files import package internals such as `packages/db/src`, `packages/ai/src`, or `packages/contracts/src`; apps must use package-root imports (`@yurbrain/db`, `@yurbrain/ai`, `@yurbrain/contracts`).
 
 Both scripts resolve defaults to:
 

@@ -47,6 +47,9 @@ jobs:
       - name: Security checks
         run: pnpm check:security
 
+      - name: Package boundaries
+        run: pnpm check:package-boundaries
+
       - name: Authz smoke
         run: pnpm check:authz-smoke
 

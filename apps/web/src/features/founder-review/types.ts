@@ -2,7 +2,7 @@ import type {
   FounderReviewAction,
   FounderReviewDiagnosticsResponse,
   FounderReviewResponse
-} from "../../../../../packages/contracts/src";
+} from "@yurbrain/contracts";
 
 export type FounderReviewModel = FounderReviewResponse;
 export type FounderReviewActionModel = FounderReviewAction;

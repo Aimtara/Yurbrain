@@ -81,7 +81,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 | --- | --- | --- | --- |
 | External request contracts still expose optional caller-owned `userId`. | Closed locally | Stage 1 removed optional `userId` from normal protected request/query schemas in `packages/contracts/src/api/api-contracts.ts`. | Keep response owner metadata only; monitor any downstream callers still sending rejected owner fields. |
 | Client helpers can still send legacy `userId` query/path values. | Mostly closed locally | Stage 1 stopped first-party task/session helpers from sending owner query params and made normal preference helpers use `/preferences/me`. Legacy preference overloads remain compatibility-only. | Document `/preferences/me` as normal and remove legacy overloads in a future breaking-change window. |
-| Direct app imports from package internals exist. | Medium | Found imports from `packages/contracts/src` and `packages/db/src` in API/web founder-review code. | Replace with package-root imports and add a CI-checkable package-boundary script. |
+| Direct app imports from package internals exist. | Closed locally | Stage 4 replaced API/web founder-review internal imports with package-root imports and added `check:package-boundaries`. | Keep package-boundary script in CI and update allowed adapter boundaries only by architecture review. |
 | LLM model routing is not explicit. | Medium | Provider uses one global `YURBRAIN_LLM_MODEL`. | Add task-class model routing with safe defaults and env overrides. |
 | LLM semantic caching is missing. | Medium | Synthesis routes always build prompt / invoke fallback/provider for repeated unchanged contexts. | Add artifact-backed cache with conservative fingerprints and tests. |
 | Context pruning is bounded but not explicit enough. | Medium | Current grounding uses latest user continuation only; no explicit last-three-turn policy. | Include at most the last three user/assistant turns per item/thread and test pruning. |
@@ -100,7 +100,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 1. Close unsafe caller-owned identity contracts and tests. **Stage 1 update:** normal protected request schemas now reject caller-supplied `userId` for create/capture/task/convert/session-list paths, and first-party REST helpers no longer send task/session owner query params. Legacy preference helpers still exist for compatibility but normal client paths use `/preferences/me`.
 2. Re-confirm Founder Review, diagnostics, and raw event safety.
 3. Strengthen rate-limit tests and canonical docs. **Stage 3 update:** `docs/readiness/rate-limits.md` now documents defaults and env overrides; tests cover AI route throttling, write-heavy throttling, and safe health probe behavior.
-4. Remove package-internal imports and add boundary tooling.
+4. Remove package-internal imports and add boundary tooling. **Stage 4 update:** app imports now use package roots for founder-review paths, `tooling/scripts/package-boundary-check.mjs` is wired into `check:production-safety`, and architecture docs describe package/client adapter boundaries.
 5. Add LLM model routing, explicit context pruning, and artifact-backed semantic caching.
 6. Adjust onboarding/first-run copy toward progressive disclosure.
 7. Add staging smoke automation and manual evidence templates.
