@@ -302,6 +302,21 @@ Recommended:
 - explicit `NHOST_GRAPHQL_URL`, `NHOST_AUTH_URL`, `NHOST_STORAGE_URL`, `NHOST_FUNCTIONS_URL`
 - `YURBRAIN_ALLOWED_ORIGINS` only while legacy env rollout is still in progress
 
+Optional (LLM provider — deterministic fallback used when disabled):
+
+- `YURBRAIN_LLM_ENABLED` (`true` to enable real LLM calls)
+- `YURBRAIN_LLM_PROVIDER` (`openai`)
+- `YURBRAIN_LLM_API_KEY` (required when enabled)
+- `YURBRAIN_LLM_BASE_URL` (defaults to `https://api.openai.com/v1`)
+- `YURBRAIN_LLM_MODEL`, `YURBRAIN_LLM_FAST_MODEL`, `YURBRAIN_LLM_REASONING_MODEL`
+- `YURBRAIN_LLM_TIMEOUT_MS`, `YURBRAIN_LLM_MAX_OUTPUT_TOKENS`, `YURBRAIN_LLM_TEMPERATURE`
+
+Optional (operational):
+
+- `NHOST_PROJECT_ENV` (drives CORS strictness, rate limits, identity enforcement)
+- `YURBRAIN_IDENTITY_MODE` (`strict` to force strict identity regardless of env)
+- `YURBRAIN_RATE_LIMIT_DISABLED`, `YURBRAIN_RATE_LIMIT_WINDOW_MS`
+
 ### Web (public vars)
 
 Required baseline:
@@ -327,6 +342,7 @@ Required baseline:
 
 ## Related docs
 
+- Deployment quick reference: `docs/DEPLOYMENT.md`
 - Local workflow: `docs/dev/nhost-local-setup.md`
 - Auth behavior + redirect semantics: `docs/nhost/auth.md`
 - Observability and safe error handling: `docs/nhost/observability.md`

@@ -54,10 +54,11 @@ Required before deployment:
 - API has health route
 - env vars documented
 
-Add:
-- `GET /health`
-- `GET /ready` (if needed)
-- environment validation on boot
+Already implemented:
+- `GET /health/live` — liveness probe
+- `GET /health/ready` — readiness probe with DB connectivity check
+- Environment-based config via `NHOST_PROJECT_ENV` and `apps/api/.env.example`
+- Full deployment reference: `docs/DEPLOYMENT.md`
 
 ## Phase 2 — Database Setup
 

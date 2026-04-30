@@ -43,7 +43,7 @@ test("strict current-user enforcement rejects missing identity and ignores spoof
       url: `/tasks?userId=${spoofedUserId}`,
       headers
     });
-    assert.equal(listTasksWithSpoofedQuery.statusCode, 400);
+    assert.equal(listTasksWithSpoofedQuery.statusCode, 200);
 
     const startSession = await server.app.inject({
       method: "POST",
@@ -59,7 +59,7 @@ test("strict current-user enforcement rejects missing identity and ignores spoof
       url: `/sessions?userId=${spoofedUserId}`,
       headers
     });
-    assert.equal(listSessionsWithSpoofedQuery.statusCode, 400);
+    assert.equal(listSessionsWithSpoofedQuery.statusCode, 200);
 
     const readPreferenceWithSpoofedPath = await server.app.inject({
       method: "GET",

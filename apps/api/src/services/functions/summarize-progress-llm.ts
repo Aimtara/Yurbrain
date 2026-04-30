@@ -192,7 +192,7 @@ async function buildPromptGrounding(
       .find((value): value is string => Boolean(value)) ?? null;
 
     const conversationalTurns = messageRows[index]
-      .filter((message) => message.role === "user" || message.role === "assistant")
+      .filter((message): message is typeof message & { role: "user" | "assistant" } => message.role === "user" || message.role === "assistant")
       .slice(0, 3)
       .reverse()
       .map((message) => ({

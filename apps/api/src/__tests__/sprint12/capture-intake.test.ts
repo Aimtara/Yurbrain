@@ -2,6 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { app } from "../../server";
+import { createTestJwt } from "../helpers/auth-token";
+
+async function buildStrictHeaders(userId: string): Promise<Record<string, string>> {
+  return {
+    authorization: `Bearer ${await createTestJwt(userId)}`,
+    "x-yurbrain-auth-mode": "strict"
+  };
+}
 
 test.after(async () => {
   await app.close();
@@ -9,13 +17,12 @@ test.after(async () => {
 
 test("POST /capture/intake accepts near-zero-friction payload and persists continuity metadata", async () => {
   const userId = "88888888-8888-4888-8888-888888888888";
-  const headers = { "x-yurbrain-user-id": userId };
+  const headers = await buildStrictHeaders(userId);
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
     headers,
     payload: {
-      userId,
       type: "link",
       content: "https://example.com/docs/intake-foundation",
       source: "Slack",
@@ -72,13 +79,12 @@ test("POST /capture/intake accepts near-zero-friction payload and persists conti
 
 test("POST /capture/intake accepts simplified deferred-capture payload", async () => {
   const userId = "8b8b8b8b-8b8b-48b8-8b8b-8b8b8b8b8b8b";
-  const headers = { "x-yurbrain-user-id": userId };
+  const headers = await buildStrictHeaders(userId);
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
     headers,
     payload: {
-      userId,
       type: "link",
       content: "https://example.com/continuity-loop",
       source: "Browser share sheet",
@@ -113,13 +119,12 @@ test("POST /capture/intake accepts simplified deferred-capture payload", async (
 
 test("capture enrichment failures do not block persistence", async () => {
   const userId = "89898989-8989-4898-8989-898989898989";
-  const headers = { "x-yurbrain-user-id": userId };
+  const headers = await buildStrictHeaders(userId);
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
     headers,
     payload: {
-      userId,
       type: "link",
       content: "http://[broken-url"
     }
@@ -140,13 +145,12 @@ test("capture enrichment failures do not block persistence", async () => {
 
 test("capture intake stores image reference metadata without faking file upload", async () => {
   const userId = "89999999-8999-4899-8999-899999999999";
-  const headers = { "x-yurbrain-user-id": userId };
+  const headers = await buildStrictHeaders(userId);
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
     headers,
     payload: {
-      userId,
       type: "image",
       content: "https://example.com/assets/product-screenshot.png",
       source: {
@@ -194,13 +198,12 @@ test("capture intake stores image reference metadata without faking file upload"
 
 test("capture intake rejects empty payload with graceful validation error", async () => {
   const userId = "8a8a8a8a-8a8a-48a8-8a8a-8a8a8a8a8a8a";
-  const headers = { "x-yurbrain-user-id": userId };
+  const headers = await buildStrictHeaders(userId);
   const response = await app.inject({
     method: "POST",
     url: "/capture/intake",
     headers,
     payload: {
-      userId,
       type: "text",
       source: "empty-capture-test"
     }
@@ -226,22 +229,19 @@ test("capture intake rejects empty payload with graceful validation error", asyn
 
 test("capture intake creates relation artifacts and a cluster feed card at threshold", async () => {
   const userId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-  const headers = { "x-yurbrain-user-id": userId };
+  const headers = await buildStrictHeaders(userId);
   const payloads = [
     {
-      userId,
       type: "text",
       content: "API migration checklist for incident readiness",
       topicGuess: "Engineering"
     },
     {
-      userId,
       type: "text",
       content: "Backend incident runbook updates for migration rollout",
       topicGuess: "Engineering"
     },
     {
-      userId,
       type: "text",
       content: "Production API bug triage and migration notes",
       topicGuess: "Engineering"

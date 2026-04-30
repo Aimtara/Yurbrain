@@ -180,10 +180,14 @@ Use this checklist as the final release gate for Yurbrain's Nhost-backed product
 | Item | Owner | Status | Date completed | Evidence |
 |---|---|---|---|---|
 | Required server-only `NHOST_*` vars are present |  | [ ] |  |  |
+| `NHOST_PROJECT_ENV` is set to `staging` or `production` (drives CORS, rate limits, identity) |  | [ ] |  |  |
 | Admin secret is server-side only (never in client env files) |  | [ ] |  |  |
 | Issuer/audience/JWKS auth settings are validated in production-like env |  | [ ] |  |  |
 | `API_ALLOWED_ORIGINS` / `YURBRAIN_ALLOWED_ORIGINS` are explicit and contain no wildcard fallback for staging/production |  | [ ] |  |  |
+| LLM config validated if enabled (`YURBRAIN_LLM_ENABLED`, `YURBRAIN_LLM_API_KEY`) |  | [ ] |  |  |
+| Rate limit settings reviewed for production load (see `docs/security/RATE_LIMITING.md`) |  | [ ] |  |  |
 | Legacy aliases (if present) are consistent and intentionally retained |  | [ ] |  |  |
+| All vars verified against `apps/api/.env.example` and `docs/DEPLOYMENT.md` |  | [ ] |  |  |
 
 ## 15) CI checks
 
@@ -247,6 +251,7 @@ Use this checklist as the final release gate for Yurbrain's Nhost-backed product
 
 ## Related references
 
+- `docs/DEPLOYMENT.md`
 - `docs/nhost/environments.md`
 - `docs/nhost/auth.md`
 - `docs/nhost/permissions.md`

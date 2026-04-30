@@ -15,10 +15,12 @@ Configuration:
 | `YURBRAIN_LLM_API_KEY` | Provider API key. Never commit it. |
 | `YURBRAIN_LLM_BASE_URL` | Optional OpenAI-compatible base URL. |
 | `YURBRAIN_LLM_MODEL` | Default model. |
-| `YURBRAIN_LLM_FAST_MODEL` | Cheap/fast model for summarization/classification/extraction. |
-| `YURBRAIN_LLM_REASONING_MODEL` | Stronger model for deeper next-step reasoning if approved. |
-| `YURBRAIN_LLM_MODEL_SUMMARIZE_PROGRESS` | Task-specific override for Summarize Progress. |
-| `YURBRAIN_LLM_MODEL_NEXT_STEP` | Task-specific override for What Should I Do Next. |
+| `YURBRAIN_LLM_FAST_MODEL` | Cheap/fast model for summarization/classification (defaults to `YURBRAIN_LLM_MODEL`). |
+| `YURBRAIN_LLM_REASONING_MODEL` | Stronger model for next-step reasoning (defaults to `YURBRAIN_LLM_MODEL`). |
+| `YURBRAIN_LLM_DEFAULT_MODEL` | Task-specific override for default task class. |
+| `YURBRAIN_LLM_SUMMARIZE_PROGRESS_MODEL` | Task-specific override for Summarize Progress (defaults to fast model). |
+| `YURBRAIN_LLM_NEXT_STEP_MODEL` | Task-specific override for What Should I Do Next (defaults to reasoning model). |
+| `YURBRAIN_LLM_CLASSIFICATION_MODEL` | Task-specific override for classification (defaults to fast model). |
 | `YURBRAIN_LLM_TIMEOUT_MS` | Provider timeout. |
 | `YURBRAIN_LLM_MAX_OUTPUT_TOKENS` | Output token ceiling. |
 | `YURBRAIN_LLM_TEMPERATURE` | Sampling temperature. |

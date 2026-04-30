@@ -17,7 +17,11 @@ const nextConfig: NextConfig = {
       { source: "/messages/:path*", destination: `${apiOrigin}/messages/:path*` },
       { source: "/preferences/:path*", destination: `${apiOrigin}/preferences/:path*` },
       { source: "/tasks/:path*", destination: `${apiOrigin}/tasks/:path*` },
-      { source: "/sessions/:path*", destination: `${apiOrigin}/sessions/:path*` }
+      { source: "/sessions/:path*", destination: `${apiOrigin}/sessions/:path*` },
+      { source: "/explore/:path*", destination: `${apiOrigin}/explore/:path*` },
+      { source: "/ai/:path*", destination: `${apiOrigin}/ai/:path*` },
+      { source: "/health/:path*", destination: `${apiOrigin}/health/:path*` },
+      { source: "/events", destination: `${apiOrigin}/events` }
     ];
   }
 };

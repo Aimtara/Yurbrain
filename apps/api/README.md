@@ -1,8 +1,18 @@
-Yurbrain API prototype (Fastify + TypeScript).
+Yurbrain API (Fastify + TypeScript + PGlite).
 
-Current reality:
-- routes and service logic are implemented under `src/`
-- runtime persistence is in-memory (`createState()`), not DB-backed
-- tests are under `src/__tests__/`
+Architecture:
+- Fastify HTTP server with route handlers under `src/routes/`
+- Embedded PGlite database via `@yurbrain/db` (persists to `.yurbrain-data/`)
+- Deterministic + optional LLM-backed AI synthesis via `src/services/ai/`
+- Nhost integration for auth (JWT verification) and admin GraphQL via `src/services/nhost/`
+- Tests under `src/__tests__/`
 
-Use `docs/product/current-state.md` and `docs/dev/runbook.md` as operational source-of-truth documents.
+Quick start:
+- `pnpm dev:api` — starts with `tsx --watch` on port 3001
+- `pnpm --filter api test` — runs all API tests
+- `pnpm --filter api lint` — TypeScript type check (`tsc --noEmit`)
+
+Health endpoints: `GET /health/live` (liveness), `GET /health/ready` (readiness + DB check).
+
+Environment: see `apps/api/.env.example` and `docs/DEPLOYMENT.md`.
+Operational runbook: `docs/dev/runbook.md`.

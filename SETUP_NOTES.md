@@ -31,7 +31,7 @@ The implementation here adds a dedicated `@yurbrain/nhost` package and app-local
 2. Configure app envs from the new examples:
    - `apps/web/.env.example` -> `.env.local`
    - `apps/mobile/.env.example` -> `.env`
-   - `apps/api/.env.example` -> runtime/server env source
+   - `apps/api/.env.example` -> runtime/server env source (includes deployment tier, LLM config, rate limits — see `docs/DEPLOYMENT.md`)
 3. Ensure deployment secrets are scoped correctly:
    - web/mobile only get `NEXT_PUBLIC_*` / `EXPO_PUBLIC_*`
    - api gets `NHOST_ADMIN_SECRET` (and optional server `NHOST_*` URLs)

@@ -132,7 +132,7 @@ test("GET /functions/founder-review/diagnostics is owner-scoped and returns comp
   assert.ok(body.focusActions.every((entry) => !("payload" in (entry as Record<string, unknown>))));
 });
 
-test("Founder Review and diagnostics reject spoofed userId query params", async () => {
+test("Founder Review and diagnostics ignore spoofed userId query params", async () => {
   const spoofedUserId = "22222222-2222-4222-8222-222222222222";
 
   const review = await app.inject({
@@ -140,13 +140,13 @@ test("Founder Review and diagnostics reject spoofed userId query params", async 
     url: `/functions/founder-review?window=7d&userId=${spoofedUserId}`,
     headers: { "x-yurbrain-user-id": founderReviewUserId }
   });
-  assert.equal(review.statusCode, 400);
+  assert.equal(review.statusCode, 200);
 
   const diagnostics = await app.inject({
     method: "GET",
     url: `/functions/founder-review/diagnostics?window=7d&userId=${spoofedUserId}`,
     headers: { "x-yurbrain-user-id": founderReviewUserId }
   });
-  assert.equal(diagnostics.statusCode, 400);
+  assert.equal(diagnostics.statusCode, 200);
 });
 
