@@ -7,15 +7,16 @@ This document is the canonical environment-key contract for N3 (Nhost foundation
 - Applies to Nhost bootstrap in `packages/client/src/auth/nhost.ts`.
 - Applies to GraphQL transport config in `packages/client/src/graphql/hasura-client.ts`.
 - Defines required/optional keys, precedence, and sample values.
-- Clarifies Nhost project config files used in this repo during migration (`nhost.toml` at the repository root for modern Nhost cloud deploys).
+- Clarifies Nhost project config files used in this repo during migration (`nhost/nhost.toml` plus Hasura metadata config for modern Nhost cloud deploys).
 
 ## Nhost project config file format (CLI)
 
 For Nhost project configuration in this repository:
 
-- Canonical checked-in config: root `nhost.toml`
-- Root `nhost.toml` declares Postgres 15 and enables Auth + Storage for Nhost cloud deploys.
-- Do not keep a legacy `nhost/config.yaml`; current Nhost cloud builders can misread it as Hasura metadata and fail before deploy.
+- Canonical Nhost cloud config: `nhost/nhost.toml`
+- `nhost/nhost.toml` declares Postgres 15 and enables Auth + Storage for Nhost cloud deploys.
+- Hasura metadata config: `nhost/config.yaml` with `version: 3`, `endpoint: http://localhost:8080`, and `metadata_directory: metadata`.
+- Do not reintroduce the old legacy project YAML shape (`project_name`, `region`, nested `postgres`/`auth`/`storage`) at `nhost/config.yaml`; current Nhost cloud builders can misread it as Hasura metadata and fail before deploy.
 - Hasura metadata remains under `nhost/metadata/`.
 
 ## A. Nhost bootstrap keys (`bootstrapNhostSession`)

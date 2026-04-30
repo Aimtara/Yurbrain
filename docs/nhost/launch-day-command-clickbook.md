@@ -16,7 +16,8 @@ Run from repo root unless stated otherwise.
    - `export NHOST_SUBDOMAIN="<production-project-subdomain>"`
    - `export NHOST_POSTGRES_URL="<production-public-postgres-url>"`
 3. Repository topology for this launch:
-   - Nhost project config lives in root `nhost.toml`.
+   - Nhost project config lives in `nhost/nhost.toml`.
+   - Hasura metadata config lives in `nhost/config.yaml` and uses `version: 3`.
    - Hasura metadata lives in `nhost/metadata`.
    - SQL migrations live in `packages/db/migrations`.
    - The repository contains `.functions-draft/aiRunner.ts`, but it is a migration stub intentionally hidden from Nhost's automatic `functions/` builder. Canonical `/functions/*` endpoints are implemented in `apps/api/src/routes/functions.ts` and ship with the API artifact, so there is no separate `nhost functions deploy` step for this repo.

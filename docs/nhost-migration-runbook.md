@@ -78,7 +78,7 @@ N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and
 Contract source of truth:
 
 - `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
-- Nhost initialization config for this migration uses root `nhost.toml`, which is the modern Nhost CLI/cloud shape. Legacy `nhost/config.yaml` was removed because staging deploys can misclassify it as metadata and crash.
+- Nhost initialization config for this migration uses `nhost/nhost.toml`, which is the modern Nhost CLI/cloud shape. Hasura metadata uses minimal v3 `nhost/config.yaml` so the engine can locate `nhost/metadata` without falling back to old project config semantics.
 
 ## N4 implementation baseline (current progress)
 
