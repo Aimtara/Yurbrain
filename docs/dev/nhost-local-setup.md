@@ -101,12 +101,9 @@ pnpm dev:mobile
 ```
 
 Notes:
-- `pnpm dev:web` and `pnpm dev:mobile` are the canonical scripts.
-- If `pnpm dev:api` hits the known `ts-node-dev` ESM mismatch, run:
-
-```bash
-pnpm --filter api exec tsx --watch src/index.ts
-```
+- All three dev scripts (`pnpm dev:api`, `pnpm dev:web`, `pnpm dev:mobile`) are the canonical commands.
+- `pnpm dev:api` uses `tsx --watch` for ESM-compatible hot-reloading.
+- API `.env.example` now includes deployment tier (`NHOST_PROJECT_ENV`), LLM config, and rate limit vars — see `docs/DEPLOYMENT.md` for staging/production details.
 
 ## 5) New contributor quick-start
 

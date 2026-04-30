@@ -7,6 +7,8 @@ This monorepo contains a Yurbrain MVP continuity-loop prototype with a lightweig
 
 For remaining gaps and an explicit checklist of unresolved items, see `docs/product/current-state.md`.
 
+For deployment to staging/production, see `docs/DEPLOYMENT.md`.
+
 For implementation sequencing, use `docs/product/ai-agent-execution-guide.md`.
 
 Included:
@@ -59,6 +61,9 @@ Included:
 5. **Log review checklist**
    - Ensure logs include `event`, `correlationId`, route metadata, and AI fallback signals.
 
-## Known current limitation
+## Notes
 
-- Core persistence is DB-backed, but UX/workflow behavior is still prototype-level and not production-hardened.
+- Core persistence is DB-backed (PGlite embedded). UX/workflow behavior is prototype-level.
+- Root `package.json` includes `pnpm.onlyBuiltDependencies` to allowlist `esbuild` and `sharp` for pnpm 10.
+- `pnpm dev:api` uses `tsx --watch` (not `ts-node-dev`).
+- Health endpoints: `GET /health/live`, `GET /health/ready`.

@@ -104,6 +104,10 @@ This layer is intentionally thin and does not change user-facing AI behavior yet
 - `YURBRAIN_LLM_API_KEY` (required when enabled)
 - `YURBRAIN_LLM_BASE_URL` (optional; defaults to `https://api.openai.com/v1`)
 - `YURBRAIN_LLM_MODEL` (optional; defaults to `gpt-4o-mini`)
+- `YURBRAIN_LLM_FAST_MODEL` (optional; defaults to `YURBRAIN_LLM_MODEL` — used for summarization/classification)
+- `YURBRAIN_LLM_REASONING_MODEL` (optional; defaults to `YURBRAIN_LLM_MODEL` — used for next-step reasoning)
+- Task-specific overrides (optional):
+  - `YURBRAIN_LLM_DEFAULT_MODEL`, `YURBRAIN_LLM_SUMMARIZE_PROGRESS_MODEL`, `YURBRAIN_LLM_NEXT_STEP_MODEL`, `YURBRAIN_LLM_CLASSIFICATION_MODEL`
 - `YURBRAIN_LLM_TIMEOUT_MS` (optional; default `1800`)
 - `YURBRAIN_LLM_MAX_OUTPUT_TOKENS` (optional; default `220`)
 - `YURBRAIN_LLM_TEMPERATURE` (optional; default `0.2`)
@@ -112,7 +116,7 @@ This layer is intentionally thin and does not change user-facing AI behavior yet
 
 Future feature slices should call one API:
 
-- `invokeLlm({ instruction, context, timeoutMs?, temperature?, maxOutputTokens? })`
+- `invokeLlm({ instruction, context, taskClass?, model?, timeoutMs?, temperature?, maxOutputTokens? })`
 
 and handle typed provider errors:
 

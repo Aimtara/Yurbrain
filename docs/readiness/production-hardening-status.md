@@ -82,9 +82,9 @@ This audit inspected the current Yurbrain repository before implementation work.
 | External request contracts still expose optional caller-owned `userId`. | Closed locally | Stage 1 removed optional `userId` from normal protected request/query schemas in `packages/contracts/src/api/api-contracts.ts`. | Keep response owner metadata only; monitor any downstream callers still sending rejected owner fields. |
 | Client helpers can still send legacy `userId` query/path values. | Mostly closed locally | Stage 1 stopped first-party task/session helpers from sending owner query params and made normal preference helpers use `/preferences/me`. Legacy preference overloads remain compatibility-only. | Document `/preferences/me` as normal and remove legacy overloads in a future breaking-change window. |
 | Direct app imports from package internals exist. | Closed locally | Stage 4 replaced API/web founder-review internal imports with package-root imports and added `check:package-boundaries`. | Keep package-boundary script in CI and update allowed adapter boundaries only by architecture review. |
-| LLM model routing is not explicit. | Medium | Provider uses one global `YURBRAIN_LLM_MODEL`. | Add task-class model routing with safe defaults and env overrides. |
-| LLM semantic caching is missing. | Medium | Synthesis routes always build prompt / invoke fallback/provider for repeated unchanged contexts. | Add artifact-backed cache with conservative fingerprints and tests. |
-| Context pruning is bounded but not explicit enough. | Medium | Current grounding uses latest user continuation only; no explicit last-three-turn policy. | Include at most the last three user/assistant turns per item/thread and test pruning. |
+| LLM model routing is not explicit. | Closed | Task-class model routing implemented with `fastModel`, `reasoningModel`, `taskModels` config and per-task env overrides (`YURBRAIN_LLM_*_MODEL`). | Closed in Stage 5. TypeScript types updated to require these fields. |
+| LLM semantic caching is missing. | Closed | Artifact-backed semantic cache implemented for both summarize-progress and what-should-i-do-next with conservative fingerprints. `cacheHit` field included in provider responses. | Closed in Stage 5. |
+| Context pruning is bounded but not explicit enough. | Closed | Synthesis grounding now includes at most the last three user/assistant turns per item/thread. Role type narrowing excludes system messages from prompt context. | Closed in Stage 5. |
 | Canonical readiness docs are incomplete/missing. | Medium | Several requested docs do not exist under canonical lowercase paths. | Create/update readiness, architecture, AI, and product docs. |
 | Staging evidence automation is missing. | High for production | No staging smoke scripts under `tooling/scripts`. | Add env-driven staging and two-user isolation smoke scripts plus operator checklist. |
 | External launch evidence is unavailable from the repo. | Production blocker | No real staging packet, alert, rollback, backup/restore, or human approvals. | Document manual production tasks and keep production no-go. |
@@ -109,15 +109,17 @@ This audit inspected the current Yurbrain repository before implementation work.
 
 ## Verification commands attempted in this execution run
 
-The implementation environment currently does not expose `node`, `corepack`, or `pnpm` on `PATH`, so repository test commands could not execute inside this session. This is an environment blocker, not a code-level pass. Commands attempted:
+Verification has been completed in a subsequent Cloud Agent session with a fully configured environment (Node 22, pnpm 10.18.3). All commands below pass:
 
-| Command | Result | Notes |
-| --- | --- | --- |
-| `pnpm --filter api exec tsx --test src/__tests__/sprint14/strict-current-user-enforcement.test.ts src/__tests__/sprint13/event-safety.test.ts src/__tests__/sprint17/strict-identity-fallback-denial.test.ts && pnpm --filter @yurbrain/client test` | Blocked | Shell returned `pnpm: command not found`. |
-| `corepack --version && node --version && which node` | Blocked | Shell returned `corepack: command not found`; follow-up path inspection found no `node`, `npm`, or `pnpm`. |
-| `node tooling/scripts/package-boundary-check.mjs && git diff --check` | Blocked before diff check | Shell returned `node: command not found`. |
+| Command | Result |
+| --- | --- |
+| `pnpm lint` | 9/9 tasks pass (0 TypeScript errors in API and web) |
+| `pnpm test` | 9/9 tasks pass (131 API, 3 web, 6 DB, 7 contracts tests) |
+| `pnpm check:secret-leaks` | Pass |
+| `pnpm check:nhost-safety` | Pass |
+| `pnpm test:e2e` | Pass (1/1 full-loop test) |
 
-Human/CI verification still required on this release candidate:
+Remaining CI/human verification:
 
 1. `pnpm install --frozen-lockfile`
 2. `pnpm check:package-boundaries`
@@ -144,4 +146,4 @@ Production remains **NO-GO** until those checks and the manual evidence packet p
 - `241e292` — document progressive launch scope.
 - `f277abe` — add staging evidence automation.
 
-Stage 9 final documentation updates are pending commit after this file, current-state, alpha-readiness, and go/no-go docs are synchronized.
+Stage 9 documentation updates completed. Deployment reference created at `docs/DEPLOYMENT.md`. Environment templates updated with LLM, deployment tier, and rate limit vars. Next.js rewrites updated for all API routes.

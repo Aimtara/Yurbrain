@@ -52,7 +52,7 @@ nhost up
 pnpm install
 ```
 
-Expected: succeeds. You may see a warning about ignored build scripts (`esbuild`, `sharp`).
+Expected: succeeds. The root `package.json` includes `pnpm.onlyBuiltDependencies` to allowlist `esbuild` and `sharp` build scripts for pnpm 10.
 
 ### Cloud agent environment expectation
 
@@ -65,10 +65,10 @@ Use [cursor.com/onboard](https://cursor.com/onboard) and apply this prompt:
 
 ### API
 ```bash
-pnpm --filter api exec tsx --watch src/index.ts
+pnpm dev:api
 ```
-- Runs Fastify on port `3001` with a watch loop that works with the monorepo ESM package setup.
-- Prefer this command over `pnpm --filter api dev` until the package script is aligned; the older `ts-node-dev` path has ESM compatibility issues with workspace packages.
+- Runs Fastify on port `3001` via `tsx --watch src/index.ts`.
+- Equivalent to `pnpm --filter api exec tsx --watch src/index.ts`.
 
 ### Web
 ```bash
@@ -217,16 +217,25 @@ The API now includes an isolated provider foundation at:
 
 Current behavior is unchanged: user-facing AI routes still use deterministic/fallback logic.
 
-### Provider env keys (future feature wiring)
+### Provider env keys
 
 - `YURBRAIN_LLM_ENABLED` (`true`/`false`, default `true`)
 - `YURBRAIN_LLM_PROVIDER` (currently `openai`)
 - `YURBRAIN_LLM_API_KEY` (required to enable real provider path)
 - `YURBRAIN_LLM_BASE_URL` (optional, defaults to `https://api.openai.com/v1`)
 - `YURBRAIN_LLM_MODEL` (optional, defaults to `gpt-4o-mini`)
+- `YURBRAIN_LLM_FAST_MODEL` (optional, defaults to `YURBRAIN_LLM_MODEL`)
+- `YURBRAIN_LLM_REASONING_MODEL` (optional, defaults to `YURBRAIN_LLM_MODEL`)
+- Task-specific overrides (optional, default to fast/reasoning models):
+  - `YURBRAIN_LLM_DEFAULT_MODEL`
+  - `YURBRAIN_LLM_SUMMARIZE_PROGRESS_MODEL`
+  - `YURBRAIN_LLM_NEXT_STEP_MODEL`
+  - `YURBRAIN_LLM_CLASSIFICATION_MODEL`
 - `YURBRAIN_LLM_TIMEOUT_MS` (optional, defaults to `1800`)
 - `YURBRAIN_LLM_MAX_OUTPUT_TOKENS` (optional, defaults to `220`)
 - `YURBRAIN_LLM_TEMPERATURE` (optional, defaults to `0.2`)
+
+Full env reference: `apps/api/.env.example` and `docs/ai/llm-cost-latency-caching.md`.
 
 ### Integration rule
 
