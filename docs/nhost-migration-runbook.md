@@ -78,7 +78,7 @@ N3 cannot be marked complete until `docs/nhost-env-contract.md` is satisfied and
 Contract source of truth:
 
 - `docs/nhost-env-contract.md` (required/optional keys, precedence, sample values, and minimal env examples).
-- Nhost initialization config for this migration includes `nhost/config.yaml`, with TOML (`nhost/nhost.toml` + overlays) documented as the modern CLI-forward path.
+- Nhost initialization config for this migration uses root `nhost.toml`, which is the modern Nhost CLI/cloud shape. Legacy `nhost/config.yaml` was removed because staging deploys can misclassify it as metadata and crash.
 
 ## N4 implementation baseline (current progress)
 

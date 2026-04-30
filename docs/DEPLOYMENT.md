@@ -17,10 +17,12 @@ Quick reference for deploying Yurbrain to staging and production. For the full e
 ### Nhost
 
 Auth and storage are provided by Nhost. Configuration lives in:
-- `nhost/config.yaml` — project definition (region, Postgres version, auth/storage enabled)
+- `nhost.toml` — project definition (Postgres version, auth/storage enabled)
 - `nhost/metadata/` — Hasura metadata (tables, permissions)
 - `packages/nhost/` — shared SDK wrapper (`@yurbrain/nhost`)
 - `apps/*/src/nhost/` — per-app Nhost client initialization
+
+The root `functions/` directory is intentionally absent from the deployable tree. Draft serverless-function migration code lives under `.functions-draft/` so Nhost does not try to build monorepo-local package imports during staging deploys. The production `/functions/*` API routes are served by `apps/api`.
 
 Dashboard setup required:
 - Auth → redirect URL allowlist must match web/mobile redirect env vars

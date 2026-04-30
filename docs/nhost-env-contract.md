@@ -7,17 +7,16 @@ This document is the canonical environment-key contract for N3 (Nhost foundation
 - Applies to Nhost bootstrap in `packages/client/src/auth/nhost.ts`.
 - Applies to GraphQL transport config in `packages/client/src/graphql/hasura-client.ts`.
 - Defines required/optional keys, precedence, and sample values.
-- Clarifies Nhost project config files used in this repo during migration (`nhost/config.yaml` bootstrap + TOML overlays for modern CLI workflows).
+- Clarifies Nhost project config files used in this repo during migration (`nhost.toml` at the repository root for modern Nhost cloud deploys).
 
 ## Nhost project config file format (CLI)
 
 For Nhost project configuration in this repository:
 
-- Bootstrap config checked into repo: `nhost/config.yaml` (project name, region, postgres version, auth/storage toggles)
-- Preferred modern CLI shape: `nhost/nhost.toml`
-- Environment overlays: `nhost/nhost.<env>.toml` (for example `nhost/nhost.prod.toml`)
-
-Use TOML + overlays for new CLI-driven environments, while keeping `nhost/config.yaml` as an explicit initialization artifact for migration bootstrap.
+- Canonical checked-in config: root `nhost.toml`
+- Root `nhost.toml` declares Postgres 15 and enables Auth + Storage for Nhost cloud deploys.
+- Do not keep a legacy `nhost/config.yaml`; current Nhost cloud builders can misread it as Hasura metadata and fail before deploy.
+- Hasura metadata remains under `nhost/metadata/`.
 
 ## A. Nhost bootstrap keys (`bootstrapNhostSession`)
 

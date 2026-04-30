@@ -16,10 +16,10 @@ Run from repo root unless stated otherwise.
    - `export NHOST_SUBDOMAIN="<production-project-subdomain>"`
    - `export NHOST_POSTGRES_URL="<production-public-postgres-url>"`
 3. Repository topology for this launch:
-   - Hasura/Nhost project config lives in `nhost/config.yaml`.
+   - Nhost project config lives in root `nhost.toml`.
    - Hasura metadata lives in `nhost/metadata`.
    - SQL migrations live in `packages/db/migrations`.
-   - The repository contains `functions/aiRunner.ts`, but it is a migration stub rather than a deployable Nhost Functions tree. Canonical `/functions/*` endpoints are implemented in `apps/api/src/routes/functions.ts` and ship with the API artifact, so there is no separate `nhost functions deploy` step for this repo.
+   - The repository contains `.functions-draft/aiRunner.ts`, but it is a migration stub intentionally hidden from Nhost's automatic `functions/` builder. Canonical `/functions/*` endpoints are implemented in `apps/api/src/routes/functions.ts` and ship with the API artifact, so there is no separate `nhost functions deploy` step for this repo.
 
 ## Roles
 
@@ -104,7 +104,7 @@ Go/no-go:
 
 1. Deploy API release artifact for the approved commit SHA.
    - This ships the canonical `/functions/*` endpoints implemented in `apps/api/src/routes/functions.ts`.
-   - Do **not** run `nhost functions deploy` for this repository; there is no standalone Nhost `functions/` source tree to deploy separately.
+   - Do **not** run `nhost functions deploy` for this repository; the standalone function stub lives in `.functions-draft/` until it is productionized.
 2. Deploy web release artifact for the same SHA.
 3. Promote/build mobile release with production `EXPO_PUBLIC_*` values.
 4. Verify runtime env injection:

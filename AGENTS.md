@@ -28,7 +28,7 @@ For deployment configuration and environment variable documentation, see:
 - **CI safety gate**: `.github/workflows/nhost-production-safety.yml` — runs on all PRs and pushes to `main`/`cursor/**`
 
 Key deployment details:
-- **Nhost**: Auth + storage via Nhost (`nhost/config.yaml`). Config in `packages/nhost/`, web/mobile clients in `apps/*/src/nhost/`, server admin in `apps/api/src/services/nhost/`.
+- **Nhost**: Auth + storage via Nhost (`nhost.toml`). Config helpers in `packages/nhost/`, web/mobile clients in `apps/*/src/nhost/`, server admin in `apps/api/src/services/nhost/`.
 - **Web deploy (Vercel)**: Set `YURBRAIN_API_ORIGIN` to the deployed API URL for Next.js rewrites in `next.config.ts`. All API routes are proxied via same-origin rewrites.
 - **API deploy**: Set `NHOST_PROJECT_ENV=staging|production`, `API_ALLOWED_ORIGINS`, Nhost service URLs, JWT verification vars (`NHOST_JWKS_URL`, `NHOST_JWT_ISSUER`), and `NHOST_ADMIN_SECRET`.
 - **LLM**: Optional — set `YURBRAIN_LLM_ENABLED=true` + `YURBRAIN_LLM_API_KEY` for real AI. Deterministic mock used when disabled.

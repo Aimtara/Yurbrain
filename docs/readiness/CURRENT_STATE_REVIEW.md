@@ -40,7 +40,7 @@ This review is a current-state source of truth. It records local and CI evidence
 | `@yurbrain/ai` | Deterministic AI fallback/context/validation helpers | Bounded optional AI behavior |
 | `@yurbrain/nhost` | Nhost config/client helper package | Auth/Nhost integration |
 | `@yurbrain/ui` | Shared React UI components | UX consistency |
-| `functions/aiRunner.ts` | Legacy/serverless function stub wrapping deterministic AI/ranking behavior | Compatibility/migration scaffold |
+| `.functions-draft/aiRunner.ts` | Legacy/serverless function stub wrapping deterministic AI/ranking behavior | Compatibility/migration scaffold hidden from Nhost's automatic functions builder |
 | `nhost/*` | Nhost config and Hasura metadata scaffolding | Staging/production migration support |
 
 ## 5. Scripts inventory by package
