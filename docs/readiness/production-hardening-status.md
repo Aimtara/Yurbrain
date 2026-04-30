@@ -103,7 +103,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 4. Remove package-internal imports and add boundary tooling. **Stage 4 update:** app imports now use package roots for founder-review paths, `tooling/scripts/package-boundary-check.mjs` is wired into `check:production-safety`, and architecture docs describe package/client adapter boundaries.
 5. Add LLM model routing, explicit context pruning, and artifact-backed semantic caching. **Stage 5 update:** provider calls now support task-class model routing, synthesis prompts include at most the last three user/assistant turns, and unchanged synthesis contexts can return item-artifact cache hits without re-invoking the provider.
 6. Adjust onboarding/first-run copy toward progressive disclosure. **Stage 6 update:** capture/feed/card/postpone copy now introduces Capture + Focus Feed first, keeps Plan This contextual, and frames postpone/rebalance behavior only when work is deferred.
-7. Add staging smoke automation and manual evidence templates.
+7. Add staging smoke automation and manual evidence templates. **Stage 7 update:** `smoke:staging` and `smoke:two-user-isolation` scripts were added with env-only tokens, plus operator checklists for staging, alerts, rollback, backup/restore, and release evidence.
 8. Run local quality checks and record exact results.
 9. Update final current-state, alpha-readiness, manual tasks, and go/no-go docs.
 

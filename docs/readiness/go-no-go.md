@@ -1,6 +1,19 @@
 # Yurbrain go / no-go readiness
 
-_Last updated: April 26, 2026 after enterprise hardening local/CI gates._
+_Last updated: April 30, 2026 after production-hardening implementation updates._
+
+## April 30 hardening update
+
+This repository now includes canonical production-hardening docs, rate-limit docs, mobile/storage launch-scope decisions, package-boundary docs, LLM cost/cache docs, progressive onboarding docs, and env-driven staging smoke scripts.
+
+New operator evidence entry points:
+
+- `pnpm smoke:staging`
+- `pnpm smoke:two-user-isolation`
+- `docs/readiness/staging-evidence-checklist.md`
+- `docs/readiness/manual-production-tasks.md`
+
+Production remains **NO-GO** until those scripts/checklists are executed against a real staging release candidate and alert, rollback, backup/restore, and launch approval evidence is attached.
 
 This document summarizes the current release gate for MVP, Alpha, and Production using the latest verified code paths, scripts, and manual runbooks. Canonical release criteria now live in:
 

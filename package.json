@@ -15,6 +15,8 @@
     "reset": "node tooling/scripts/reset-dev-db.mjs",
     "seed": "node tooling/scripts/seed-dev-db.mjs",
     "reseed": "pnpm reset && pnpm seed",
+    "smoke:staging": "node tooling/scripts/staging-smoke.mjs",
+    "smoke:two-user-isolation": "node tooling/scripts/two-user-isolation-smoke.mjs",
     "test:e2e": "NODE_ENV=test pnpm --filter api exec tsx --test ../../e2e/full-loop.spec.ts",
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
