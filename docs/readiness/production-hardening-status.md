@@ -107,6 +107,41 @@ This audit inspected the current Yurbrain repository before implementation work.
 8. Run local quality checks and record exact results.
 9. Update final current-state, alpha-readiness, manual tasks, and go/no-go docs.
 
-## Evidence status
+## Verification commands attempted in this execution run
 
-No commands from this execution run have been recorded yet beyond audit searches and source inspection. Final verification commands and results will be appended in Stage 8.
+The implementation environment currently does not expose `node`, `corepack`, or `pnpm` on `PATH`, so repository test commands could not execute inside this session. This is an environment blocker, not a code-level pass. Commands attempted:
+
+| Command | Result | Notes |
+| --- | --- | --- |
+| `pnpm --filter api exec tsx --test src/__tests__/sprint14/strict-current-user-enforcement.test.ts src/__tests__/sprint13/event-safety.test.ts src/__tests__/sprint17/strict-identity-fallback-denial.test.ts && pnpm --filter @yurbrain/client test` | Blocked | Shell returned `pnpm: command not found`. |
+| `corepack --version && node --version && which node` | Blocked | Shell returned `corepack: command not found`; follow-up path inspection found no `node`, `npm`, or `pnpm`. |
+| `node tooling/scripts/package-boundary-check.mjs && git diff --check` | Blocked before diff check | Shell returned `node: command not found`. |
+
+Human/CI verification still required on this release candidate:
+
+1. `pnpm install --frozen-lockfile`
+2. `pnpm check:package-boundaries`
+3. `pnpm lint`
+4. `pnpm test`
+5. `pnpm typecheck`
+6. `pnpm build`
+7. `pnpm check:authz-smoke`
+8. `pnpm check:production-safety`
+9. `pnpm test:e2e`
+10. `pnpm smoke:staging` against staging with real env vars
+11. `pnpm smoke:two-user-isolation` against staging with real User A/User B tokens
+
+Production remains **NO-GO** until those checks and the manual evidence packet pass.
+
+## Implementation commits from this hardening run
+
+- `92db30d` — audit production hardening status.
+- `70786e8` — close caller identity contracts.
+- `ea0194a` — reinforce Founder Review / event safety tests.
+- `f27a6ba` — document and test route rate limits.
+- `84a8607` — enforce package boundary imports.
+- `4d1832b` — bound and cache synthesis LLM calls.
+- `241e292` — document progressive launch scope.
+- `f277abe` — add staging evidence automation.
+
+Stage 9 final documentation updates are pending commit after this file, current-state, alpha-readiness, and go/no-go docs are synchronized.

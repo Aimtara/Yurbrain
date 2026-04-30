@@ -27,8 +27,8 @@ This document summarizes the current release gate for MVP, Alpha, and Production
 
 | Stage | Current status | Notes |
 | --- | --- | --- |
-| MVP | Conditional go | Core loop and local/CI gates are green; a real staged smoke pass and explicit acceptance of known limitations are still required. |
-| Alpha | Not yet go | Security posture and local authz evidence are stronger, but staging validation with two real users remains the main blocker. |
+| MVP | Conditional go | Core loop code paths are intact and launch-scope decisions are documented; local verification is environment-blocked in this run because Node/pnpm are unavailable in the VM shell. |
+| Alpha | Conditional go after staging evidence | Current-user contract closure, event safety, rate-limit docs/tests, package-boundary tooling, LLM bounds/cache, and progressive onboarding are in place. Alpha still requires release-candidate CI plus real staging smoke with two users. |
 | Production | No-go | Local/CI production-safety is green, but staging signoff, managed backup/restore, rollback, alerts, and launch approvals are not complete. |
 
 ## Commands to run

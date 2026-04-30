@@ -1,26 +1,33 @@
 # Yurbrain Current Implementation State
 
-_Last audited: April 26, 2026 (UTC), after enterprise hardening local + CI gates._
+_Last audited: April 30, 2026 (UTC), after production-readiness hardening code updates._
 
 This document is factual current state after code inspection plus command verification.
-Production is currently **NO-GO**; see `docs/readiness/CURRENT_VERIFICATION_STATUS.md` for the live hardening gate and latest local/CI evidence.
+Production is currently **NO-GO**; see `docs/readiness/production-hardening-status.md` and `docs/readiness/go-no-go.md` for the current hardening gate.
 
 ## Enterprise hardening delta
 
 Latest enterprise-hardening state:
 
 - strict identity fallback is fixed locally and covered by regression tests;
+- normal protected request contracts no longer accept caller-supplied owner `userId` fields;
+- `/preferences/me` is the normal preference route; `/preferences/:userId` remains deprecated compatibility only;
+- Founder Review and diagnostics are current-user scoped and derived-only, with tests asserting raw event/payload fields are not exposed;
+- route-class rate limiting exists for auth, write-heavy, AI, feed, storage/write, and analytics/Founder Review paths;
+- app source now uses package-root imports for `@yurbrain/db`, `@yurbrain/ai`, and `@yurbrain/contracts`, with a package-boundary check wired into production-safety scripts;
+- thin-slice LLM calls now have task-class model routing, explicit last-three-turn context pruning, deterministic fallback, and artifact-backed semantic cache records;
+- first-run/product copy is simplified around Capture + Focus Feed first, with Plan This and Revisit Later introduced contextually;
 - the prior `@nhost/nextjs` web build issue is resolved; web uses the internal Nhost provider and `pnpm build` passes;
 - root enterprise verification gates exist and pass locally and in CI;
 - attachment object lifecycle remains intentionally production-deferred unless a later release implements upload/read/list/delete isolation.
 
 Web remains the first intended production surface. Mobile remains preview/deferred until mobile production smoke evidence exists.
 
-For implementation-truth details and known package-boundary notes, see `docs/dev/current-state.md`.
+For implementation-truth details and package/client boundary rules, see `docs/architecture/package-boundaries.md` and `docs/architecture/client-adapter-boundary.md`.
 
 ## Verified command evidence
 
-Passing in this audit:
+Historical passing evidence from the prior audit:
 - `pnpm install`
 - `pnpm reset`
 - `pnpm seed`
@@ -45,6 +52,8 @@ Passing in this audit:
 
 CI evidence:
 - GitHub Actions `Nhost Production Safety` run for commit `2ac8937` passed install, typecheck, lint, tests, build, security checks, authz smoke, and storage smoke.
+
+April 30 local command execution is blocked in the current cloud shell because `node`, `pnpm`, and `corepack` are not available on `PATH`. The Stage 8 status table records commands attempted and the exact blocker.
 
 Not used for runtime truth:
 - `pnpm --filter @yurbrain/db db:migrate` (Drizzle CLI workflow; local runtime uses startup SQL migrations in `@yurbrain/db` repository initialization).
@@ -71,10 +80,9 @@ Not used for runtime truth:
   - convert to task
   - start/finish sessions
   - refresh/reload continuity from DB-backed APIs
-- Capture sheet now supports a mobile-first flow with autofocus and autosizing input and three actions:
+- Capture sheet now supports a mobile-first flow with autofocus and autosizing input and progressive-disclosure copy:
   - Save
-  - Save + Plan (routes to existing convert flow)
-  - Save + Remind Later (current lightweight stub notice without new domain objects)
+  - Save + Plan if clear (routes to existing convert flow, but is secondary to capture-first behavior)
 - Native attachment/file upload and voice capture are hidden/deferred for production launch; image capture is URL/reference-only unless future storage lifecycle work enables it.
 - Item detail continuation now uses one inline `CommentComposer` with mode toggle (`Comment` / `Ask Yurbrain`) so both flows share the same continuity surface.
 - Ask mode now appends both user question and assistant reply into the same continuity timeline with explicit role labels (`You`, `Yurbrain`) for recognition-first re-entry.
@@ -140,9 +148,9 @@ Not used for runtime truth:
 
 ## Known technical debt
 
-- Repository uses app-local import path from API to `packages/db/src` instead of published package build boundaries.
+- Source-consumed packages still use TypeScript source entrypoints internally, but apps must import package roots; `pnpm check:package-boundaries` enforces this once Node/pnpm are available.
 - Database schema keeps `confidence` as text in artifacts for compatibility with current migrations.
-- `/events` endpoint intentionally returns `403` until auth/per-user filtering is implemented.
+- `/events` endpoint intentionally returns `403`; Founder Review/diagnostics expose derived summaries/actions only.
 
 ## Missing pieces relative to full product direction (not MVP blockers)
 
