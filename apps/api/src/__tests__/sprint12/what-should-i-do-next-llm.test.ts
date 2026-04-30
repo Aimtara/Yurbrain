@@ -9,6 +9,7 @@ type Task = Awaited<ReturnType<DbRepository["listTasks"]>>[number];
 type Session = Awaited<ReturnType<DbRepository["listSessions"]>>[number];
 type Thread = Awaited<ReturnType<DbRepository["listThreads"]>>[number];
 type Message = Awaited<ReturnType<DbRepository["listMessagesByThread"]>>[number];
+type Artifact = Awaited<ReturnType<DbRepository["listArtifactsByItem"]>>[number];
 
 function createBaseData() {
   const userId = "21111111-1111-1111-1111-111111111111";
@@ -78,6 +79,8 @@ function buildMockRepo(overrides: {
   listTasks?: (query: { userId?: string; status?: "todo" | "in_progress" | "done" }) => Promise<Task[]>;
   listSessions?: (query: { taskId?: string; userId?: string; state?: "running" | "paused" | "finished" }) => Promise<Session[]>;
   listMessagesByThread?: (threadId: string) => Promise<Message[]>;
+  createArtifact?: (artifact: Artifact) => Promise<Artifact>;
+  listArtifactsByItem?: (itemId: string, query?: { type?: "summary" | "classification" | "relation" | "feed_card" }) => Promise<Artifact[]>;
 } = {}): DbRepository {
   const base = createBaseData();
   return {
@@ -121,11 +124,9 @@ function buildMockRepo(overrides: {
     findActiveSessionByTaskId: async () => null,
     listSessions: overrides.listSessions ?? (async () => [base.session]),
     updateSession: async () => null,
-    createArtifact: async () => {
-      throw new Error("not used");
-    },
+    createArtifact: (overrides.createArtifact as DbRepository["createArtifact"] | undefined) ?? (async (artifact) => artifact),
     getArtifactById: async () => null,
-    listArtifactsByItem: async () => [],
+    listArtifactsByItem: (overrides.listArtifactsByItem as DbRepository["listArtifactsByItem"] | undefined) ?? (async () => []),
     getUserProfileById: async () => null,
     upsertUserProfile: async () => {
       throw new Error("not used");
@@ -454,6 +455,125 @@ test("what-should-i-do-next falls back when grounding fails", async () => {
   assert.equal(result.fallbackReason, "provider_error");
   assert.equal(result.confidence, 0.35);
   assert.ok(result.suggestedNextAction.length > 0);
+});
+
+test("what-should-i-do-next uses artifact cache for unchanged context", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  let fetchCalls = 0;
+  const artifacts: Artifact[] = [];
+  const repo = buildMockRepo({
+    createArtifact: async (artifact) => {
+      artifacts.unshift(artifact);
+      return artifact;
+    },
+    listArtifactsByItem: async () => artifacts
+  });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: "Migration rollout has one immediate release unblock step.",
+                suggestedNextStep: "Request final sign-off for the migration checklist task immediately.",
+                sourceSignals: ["Recent user note: waiting on final sign-off"],
+                reason: "Sign-off is the single blocker to restart execution.",
+                confidence: 0.8
+              })
+            }
+          }
+        ]
+      })
+    } as Response;
+  };
+
+  try {
+    const first = await buildWhatShouldIDoNextWithLlm(repo, [createBaseData().item.id]);
+    const second = await buildWhatShouldIDoNextWithLlm(repo, [createBaseData().item.id]);
+    assert.equal(first.usedFallback, false);
+    assert.equal(second.cacheHit, true);
+    assert.equal(fetchCalls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("what-should-i-do-next cache misses after new conversation turn", async () => {
+  setLlmProviderConfigResolverForTests(() => ({
+    enabled: true,
+    provider: "openai",
+    apiKey: "test-key",
+    baseUrl: "https://example.test/v1",
+    model: "gpt-test",
+    timeoutMs: 2_000,
+    maxOutputTokens: 220,
+    temperature: 0.2
+  }));
+
+  let fetchCalls = 0;
+  const artifacts: Artifact[] = [];
+  const messages = [createBaseData().message];
+  const repo = buildMockRepo({
+    createArtifact: async (artifact) => {
+      artifacts.unshift(artifact);
+      return artifact;
+    },
+    listArtifactsByItem: async () => artifacts,
+    listMessagesByThread: async () => messages
+  });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    fetchCalls += 1;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: "Migration rollout is waiting on a concrete unblock.",
+                suggestedNextStep: "Request final sign-off for the migration checklist task immediately.",
+                sourceSignals: ["Recent user note: waiting on final sign-off"],
+                reason: "Sign-off is the single blocker to restart execution.",
+                confidence: 0.78
+              })
+            }
+          }
+        ]
+      })
+    } as Response;
+  };
+
+  try {
+    await buildWhatShouldIDoNextWithLlm(repo, [createBaseData().item.id]);
+    messages.unshift({
+      ...createBaseData().message,
+      id: "77777777-7777-4777-8777-777777777777",
+      content: "Approval landed; now I need the next release action.",
+      createdAt: "2026-04-02T10:10:00.000Z"
+    });
+    const second = await buildWhatShouldIDoNextWithLlm(repo, [createBaseData().item.id]);
+    assert.equal(second.cacheHit, false);
+    assert.equal(fetchCalls, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("what-should-i-do-next sanitizes overlong provider output", async () => {

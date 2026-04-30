@@ -101,7 +101,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 2. Re-confirm Founder Review, diagnostics, and raw event safety.
 3. Strengthen rate-limit tests and canonical docs. **Stage 3 update:** `docs/readiness/rate-limits.md` now documents defaults and env overrides; tests cover AI route throttling, write-heavy throttling, and safe health probe behavior.
 4. Remove package-internal imports and add boundary tooling. **Stage 4 update:** app imports now use package roots for founder-review paths, `tooling/scripts/package-boundary-check.mjs` is wired into `check:production-safety`, and architecture docs describe package/client adapter boundaries.
-5. Add LLM model routing, explicit context pruning, and artifact-backed semantic caching.
+5. Add LLM model routing, explicit context pruning, and artifact-backed semantic caching. **Stage 5 update:** provider calls now support task-class model routing, synthesis prompts include at most the last three user/assistant turns, and unchanged synthesis contexts can return item-artifact cache hits without re-invoking the provider.
 6. Adjust onboarding/first-run copy toward progressive disclosure.
 7. Add staging smoke automation and manual evidence templates.
 8. Run local quality checks and record exact results.

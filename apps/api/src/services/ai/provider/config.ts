@@ -6,6 +6,7 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 220;
 const DEFAULT_TEMPERATURE = 0.2;
 
 export type LlmProviderName = "openai";
+export type LlmTaskClass = "default" | "summarize_progress" | "next_step" | "classification";
 
 export type LlmProviderConfig =
   | {
@@ -18,6 +19,9 @@ export type LlmProviderConfig =
       apiKey: string;
       baseUrl: string;
       model: string;
+      fastModel: string;
+      reasoningModel: string;
+      taskModels: Partial<Record<LlmTaskClass, string>>;
       timeoutMs: number;
       maxOutputTokens: number;
       temperature: number;
@@ -60,6 +64,20 @@ function normalizeBaseUrl(value: string | undefined): string {
   return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
 }
 
+export function resolveLlmModelForTask(
+  config: Extract<LlmProviderConfig, { enabled: true }>,
+  taskClass: LlmTaskClass = "default",
+  modelOverride?: string
+): string {
+  const requested = normalizeString(modelOverride);
+  if (requested) return requested;
+  const taskModel = config.taskModels[taskClass];
+  if (taskModel) return taskModel;
+  if (taskClass === "summarize_progress" || taskClass === "classification") return config.fastModel;
+  if (taskClass === "next_step") return config.reasoningModel;
+  return config.model;
+}
+
 export function resolveLlmProviderConfig(env: LlmEnv = process.env): LlmProviderConfig {
   const enabled = parseBoolean(env.YURBRAIN_LLM_ENABLED, true);
   if (!enabled) {
@@ -85,12 +103,24 @@ export function resolveLlmProviderConfig(env: LlmEnv = process.env): LlmProvider
     };
   }
 
+  const model = normalizeString(env.YURBRAIN_LLM_MODEL) ?? DEFAULT_OPENAI_MODEL;
+  const fastModel = normalizeString(env.YURBRAIN_LLM_FAST_MODEL) ?? model;
+  const reasoningModel = normalizeString(env.YURBRAIN_LLM_REASONING_MODEL) ?? model;
+
   return {
     enabled: true,
     provider,
     apiKey,
     baseUrl: normalizeBaseUrl(env.YURBRAIN_LLM_BASE_URL),
-    model: normalizeString(env.YURBRAIN_LLM_MODEL) ?? DEFAULT_OPENAI_MODEL,
+    model,
+    fastModel,
+    reasoningModel,
+    taskModels: {
+      default: normalizeString(env.YURBRAIN_LLM_DEFAULT_MODEL) ?? model,
+      summarize_progress: normalizeString(env.YURBRAIN_LLM_SUMMARIZE_PROGRESS_MODEL) ?? fastModel,
+      next_step: normalizeString(env.YURBRAIN_LLM_NEXT_STEP_MODEL) ?? reasoningModel,
+      classification: normalizeString(env.YURBRAIN_LLM_CLASSIFICATION_MODEL) ?? fastModel
+    },
     timeoutMs: parseNumber(env.YURBRAIN_LLM_TIMEOUT_MS, DEFAULT_TIMEOUT_MS, 100, 30_000),
     maxOutputTokens: parseNumber(env.YURBRAIN_LLM_MAX_OUTPUT_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, 32, 1_024),
     temperature: parseNumber(env.YURBRAIN_LLM_TEMPERATURE, DEFAULT_TEMPERATURE, 0, 1)

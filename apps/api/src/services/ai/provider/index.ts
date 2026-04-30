@@ -1,8 +1,8 @@
 import { createLlmClient, type LlmClient, type LlmInvocationInput, type LlmInvocationOutput, LlmProviderError } from "./client";
-import { resolveLlmProviderConfig, type LlmProviderConfig } from "./config";
+import { resolveLlmModelForTask, resolveLlmProviderConfig, type LlmProviderConfig } from "./config";
 
-export type { LlmProviderConfig, LlmProviderName } from "./config";
-export { resolveLlmProviderConfig };
+export type { LlmProviderConfig, LlmProviderName, LlmTaskClass } from "./config";
+export { resolveLlmModelForTask, resolveLlmProviderConfig };
 export type { LlmClient, LlmInvocationInput, LlmInvocationOutput, LlmProviderErrorCode } from "./client";
 export { createLlmClient, LlmProviderError };
 

@@ -5,6 +5,11 @@ type NextStepPromptItem = {
   updatedAt: string;
   topicGuess: string | null;
   latestContinuation: string | null;
+  recentTurns: Array<{
+    role: "user" | "assistant";
+    content: string;
+    createdAt: string;
+  }>;
 };
 
 type NextStepPromptTask = {
@@ -39,7 +44,11 @@ function normalizeItems(items: NextStepPromptItem[]): NextStepPromptItem[] {
     ...item,
     title: compact(item.title),
     snippet: compact(item.snippet),
-    latestContinuation: item.latestContinuation ? compact(item.latestContinuation) : null
+    latestContinuation: item.latestContinuation ? compact(item.latestContinuation) : null,
+    recentTurns: item.recentTurns.slice(0, 3).map((turn) => ({
+      ...turn,
+      content: compact(turn.content)
+    }))
   }));
 }
 
@@ -84,6 +93,7 @@ export function buildWhatShouldIDoNextPrompt(
     "- reason: one concise justification, <= 220 chars",
     "- confidence: number in [0,1], calibrated to groundedness of this exact next step",
     "- suggestedNextStep must stay single-step (no multi-step plan)",
+    "- Use at most the provided recentTurns; never assume hidden or full conversation history.",
     "No markdown, no code fences, no extra keys."
   ].join("\n");
 

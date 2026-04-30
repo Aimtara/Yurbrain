@@ -6,6 +6,11 @@ type SummarizeProgressPromptItem = {
   topicGuess: string | null;
   latestSummary: string | null;
   latestContinuation: string | null;
+  recentTurns: Array<{
+    role: "user" | "assistant";
+    content: string;
+    createdAt: string;
+  }>;
 };
 
 type SummarizeProgressPromptTask = {
@@ -39,7 +44,11 @@ function normalizeItems(items: SummarizeProgressPromptItem[]): SummarizeProgress
     title: compact(item.title),
     snippet: compact(item.snippet),
     latestSummary: item.latestSummary ? compact(item.latestSummary) : null,
-    latestContinuation: item.latestContinuation ? compact(item.latestContinuation) : null
+    latestContinuation: item.latestContinuation ? compact(item.latestContinuation) : null,
+    recentTurns: item.recentTurns.slice(0, 3).map((turn) => ({
+      ...turn,
+      content: compact(turn.content)
+    }))
   }));
 }
 

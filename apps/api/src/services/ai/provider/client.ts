@@ -18,6 +18,8 @@ const OpenAiChatCompletionResponseSchema = z
 export type LlmInvocationInput = {
   instruction: string;
   context: string;
+  taskClass?: LlmTaskClass;
+  model?: string;
   timeoutMs?: number;
   temperature?: number;
   maxOutputTokens?: number;
@@ -71,8 +73,9 @@ function buildRequestBody(
 ): OpenAiChatRequestBody {
   const instruction = compact(input.instruction);
   const context = compact(input.context);
+  const model = input.model ?? resolveModelForTaskClass(config, input.taskClass);
   return {
-    model: config.model,
+    model,
     temperature: input.temperature ?? config.temperature,
     max_tokens: input.maxOutputTokens ?? config.maxOutputTokens,
     messages: [
@@ -133,7 +136,7 @@ async function invokeOpenAi(
     return {
       text: bounded(content, 1_200),
       provider: "openai",
-      model: config.model,
+      model: input.model ?? resolveModelForTaskClass(config, input.taskClass),
       latencyMs: Math.max(0, deps.now() - startedAt)
     };
   } catch (error) {

@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import type { FastifyBaseLogger } from "fastify";
 import type { DbRepository } from "@yurbrain/db";
 import { z } from "zod";
@@ -22,13 +23,27 @@ const SummaryResponseSchema = z
   .strict();
 
 type SynthesisFallback = Awaited<ReturnType<typeof synthesizeFromItems>>;
+type BrainItem = NonNullable<Awaited<ReturnType<DbRepository["getBrainItemById"]>>>;
+type Task = Awaited<ReturnType<DbRepository["listTasks"]>>[number];
+type Session = Awaited<ReturnType<DbRepository["listSessions"]>>[number];
+type Message = Awaited<ReturnType<DbRepository["listMessagesByThread"]>>[number];
+type Artifact = Awaited<ReturnType<DbRepository["listArtifactsByItem"]>>[number];
 
 export type SummarizeProgressResult = SynthesisFallback & {
   blockers?: string[];
   sourceSignals?: string[];
   usedFallback?: boolean;
   fallbackReason?: LlmFallbackReason;
+  cacheHit?: boolean;
 };
+
+type GroundingBundle = {
+  grounding: Awaited<ReturnType<typeof buildPromptGrounding>>;
+  fingerprint: string;
+  anchorItemId: string | null;
+};
+
+const CACHE_KIND = "summarize_progress_cache";
 
 function compact(input: string): string {
   return input.replace(/\s+/g, " ").trim();
@@ -50,6 +65,71 @@ function extractArtifactContent(payload: Record<string, unknown>): string | null
     return content.trim();
   }
   return null;
+}
+
+function sha256Json(value: unknown): string {
+  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function extractCachedResult(payload: Record<string, unknown>, fingerprint: string): SummarizeProgressResult | null {
+  if (payload.kind !== CACHE_KIND || payload.fingerprint !== fingerprint || !isRecord(payload.result)) {
+    return null;
+  }
+  const result = payload.result as Partial<SummarizeProgressResult>;
+  if (typeof result.summary !== "string" || typeof result.suggestedNextAction !== "string" || typeof result.reason !== "string") {
+    return null;
+  }
+  return {
+    summary: result.summary,
+    repeatedIdeas: Array.isArray(result.repeatedIdeas) ? result.repeatedIdeas.filter((value): value is string => typeof value === "string") : undefined,
+    suggestedNextAction: result.suggestedNextAction,
+    reason: result.reason,
+    blockers: Array.isArray(result.blockers) ? result.blockers.filter((value): value is string => typeof value === "string") : undefined,
+    sourceSignals: Array.isArray(result.sourceSignals) ? result.sourceSignals.filter((value): value is string => typeof value === "string") : undefined,
+    usedFallback: Boolean(result.usedFallback),
+    fallbackReason: result.fallbackReason,
+    cacheHit: true
+  };
+}
+
+async function readCachedResult(repo: DbRepository, anchorItemId: string | null, fingerprint: string): Promise<SummarizeProgressResult | null> {
+  if (!anchorItemId) return null;
+  const artifacts = await repo.listArtifactsByItem(anchorItemId, { type: "summary" });
+  for (const artifact of artifacts) {
+    const cached = extractCachedResult(artifact.payload, fingerprint);
+    if (cached) return cached;
+  }
+  return null;
+}
+
+async function writeCachedResult(repo: DbRepository, anchorItemId: string | null, fingerprint: string, itemIds: string[], result: SummarizeProgressResult) {
+  if (!anchorItemId) return;
+  await repo.createArtifact({
+    id: randomUUID(),
+    itemId: anchorItemId,
+    type: "summary",
+    payload: {
+      kind: CACHE_KIND,
+      itemIds,
+      fingerprint,
+      result: {
+        summary: result.summary,
+        repeatedIdeas: result.repeatedIdeas,
+        suggestedNextAction: result.suggestedNextAction,
+        reason: result.reason,
+        blockers: result.blockers,
+        sourceSignals: result.sourceSignals,
+        usedFallback: result.usedFallback,
+        fallbackReason: result.fallbackReason
+      }
+    },
+    confidence: result.usedFallback ? 0.35 : 0.7,
+    createdAt: new Date().toISOString()
+  });
 }
 
 function parseModelSummary(raw: string): z.infer<typeof SummaryResponseSchema> | null {
@@ -111,8 +191,18 @@ async function buildPromptGrounding(
       .map((artifact) => extractArtifactContent(artifact.payload))
       .find((value): value is string => Boolean(value)) ?? null;
 
-    const latestContinuation =
-      messageRows[index].find((message) => message.role === "user")?.content ?? null;
+    const conversationalTurns = messageRows[index]
+      .filter((message) => message.role === "user" || message.role === "assistant")
+      .slice(0, 3)
+      .reverse()
+      .map((message) => ({
+        role: message.role,
+        content: clamp(message.content, 220),
+        createdAt: message.createdAt
+      }));
+
+    const latestUserTurn = [...conversationalTurns].reverse().find((message) => message.role === "user");
+    const latestContinuation = latestUserTurn?.content ?? null;
 
     return {
       id: item.id,
@@ -121,7 +211,8 @@ async function buildPromptGrounding(
       updatedAt: item.updatedAt,
       topicGuess: item.topicGuess ?? null,
       latestSummary: latestSummary ? clamp(latestSummary, 220) : null,
-      latestContinuation: latestContinuation ? clamp(latestContinuation, 220) : null
+      latestContinuation: latestContinuation ? clamp(latestContinuation, 220) : null,
+      recentTurns: conversationalTurns
     };
   });
 
@@ -169,6 +260,48 @@ async function buildPromptGrounding(
   };
 }
 
+async function buildGroundingBundle(repo: DbRepository, itemIds: string[], deterministic: SynthesisFallback): Promise<GroundingBundle> {
+  const grounding = await buildPromptGrounding(repo, itemIds, deterministic);
+  const uniqueItemIds = [...new Set(itemIds)];
+  const items = (
+    await Promise.all(uniqueItemIds.map((itemId) => repo.getBrainItemById(itemId)))
+  ).filter((item): item is BrainItem => Boolean(item));
+  const users = [...new Set(items.map((item) => item.userId))];
+  const tasks = (
+    await Promise.all(users.map((userId) => repo.listTasks({ userId })))
+  )
+    .flat()
+    .filter((task) => task.sourceItemId && uniqueItemIds.includes(task.sourceItemId)) as Task[];
+  const sessions = (await Promise.all(tasks.map((task) => repo.listSessions({ taskId: task.id })))).flat() as Session[];
+  const messages = (
+    await Promise.all(
+      items.map(async (item) => {
+        const threads = await repo.listThreads(item.id);
+        return (await Promise.all(threads.map((thread) => repo.listMessagesByThread(thread.id)))).flat();
+      })
+    )
+  ).flat() as Message[];
+  const artifacts = (await Promise.all(items.map((item) => repo.listArtifactsByItem(item.id, { type: "summary" })))).flat() as Artifact[];
+  const fingerprint = sha256Json({
+    kind: CACHE_KIND,
+    itemIds: uniqueItemIds,
+    items: items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      rawContent: item.rawContent,
+      updatedAt: item.updatedAt,
+      status: item.status
+    })),
+    tasks: tasks.map((task) => ({ id: task.id, title: task.title, status: task.status, updatedAt: task.updatedAt })),
+    sessions: sessions.map((session) => ({ id: session.id, taskId: session.taskId, state: session.state, startedAt: session.startedAt, endedAt: session.endedAt })),
+    messages: messages.map((message) => ({ id: message.id, role: message.role, content: clamp(message.content, 220), createdAt: message.createdAt })),
+    artifacts: artifacts
+      .filter((artifact) => artifact.payload.kind !== CACHE_KIND)
+      .map((artifact) => ({ id: artifact.id, type: artifact.type, createdAt: artifact.createdAt, confidence: artifact.confidence }))
+  });
+  return { grounding, fingerprint, anchorItemId: items[0]?.id ?? null };
+}
+
 function buildFallbackResponse(
   deterministic: SynthesisFallback,
   reason: SummarizeProgressResult["fallbackReason"]
@@ -200,7 +333,19 @@ export async function buildSummarizeProgressWithLlm(
   const deterministic = await synthesizeFromItems(repo, itemIds, "cluster_summary");
 
   try {
-    const grounding = await buildPromptGrounding(repo, itemIds, deterministic);
+    const { grounding, fingerprint, anchorItemId } = await buildGroundingBundle(repo, itemIds, deterministic);
+    const cached = await readCachedResult(repo, anchorItemId, fingerprint);
+    if (cached) {
+      options.log?.info(
+        {
+          event: "summarize_progress_cache_hit",
+          correlationId: options.correlationId,
+          itemCount: grounding.items.length
+        },
+        "summarize progress cache hit"
+      );
+      return cached;
+    }
     const prompt = buildSummarizeProgressPrompt(grounding);
     options.log?.info(
       {
@@ -215,6 +360,7 @@ export async function buildSummarizeProgressWithLlm(
     const llm = await invokeLlm({
       instruction: prompt.instruction,
       context: prompt.groundedContext,
+      taskClass: "summarize_progress",
       timeoutMs: options.timeoutMs
     });
     const parsed = parseModelSummary(llm.text);
@@ -232,7 +378,9 @@ export async function buildSummarizeProgressWithLlm(
         },
         "summarize progress llm parse failed"
       );
-      return buildFallbackResponse(deterministic, "parse_failed");
+      const fallback = buildFallbackResponse(deterministic, "parse_failed");
+      await writeCachedResult(repo, anchorItemId, fingerprint, grounding.itemIds, fallback);
+      return fallback;
     }
     const qualityIssue = summarizeProgressQualityIssue(parsed);
     if (qualityIssue) {
@@ -250,7 +398,9 @@ export async function buildSummarizeProgressWithLlm(
         },
         "summarize progress llm output quality guard fallback"
       );
-      return buildFallbackResponse(deterministic, qualityFallbackReason);
+      const fallback = buildFallbackResponse(deterministic, qualityFallbackReason);
+      await writeCachedResult(repo, anchorItemId, fingerprint, grounding.itemIds, fallback);
+      return fallback;
     }
 
     options.log?.info(
@@ -265,15 +415,18 @@ export async function buildSummarizeProgressWithLlm(
       "summarize progress llm completed"
     );
 
-    return {
+    const result: SummarizeProgressResult = {
       summary: parsed.summary,
       repeatedIdeas: deterministic.repeatedIdeas,
       suggestedNextAction: parsed.suggestedNextStep,
       reason: parsed.reason,
       blockers: parsed.blockers,
       sourceSignals: parsed.sourceSignals,
-      usedFallback: false
+      usedFallback: false,
+      cacheHit: false
     };
+    await writeCachedResult(repo, anchorItemId, fingerprint, grounding.itemIds, result);
+    return result;
   } catch (error) {
     const fallbackStage =
       error instanceof LlmProviderError
@@ -297,6 +450,13 @@ export async function buildSummarizeProgressWithLlm(
       },
       "summarize progress llm fallback used"
     );
-    return buildFallbackResponse(deterministic, fallbackReason);
+    const fallback = buildFallbackResponse(deterministic, fallbackReason);
+    try {
+      const { grounding, fingerprint, anchorItemId } = await buildGroundingBundle(repo, itemIds, deterministic);
+      await writeCachedResult(repo, anchorItemId, fingerprint, grounding.itemIds, fallback);
+    } catch {
+      // Caching must never prevent deterministic fallback delivery.
+    }
+    return fallback;
   }
 }
