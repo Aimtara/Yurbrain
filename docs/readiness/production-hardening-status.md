@@ -69,7 +69,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 | Raw events | `/events` returns 403 and is not broadly exposed. |
 | Founder Review | Function routes derive `userId` from `currentUser.id` and parse only `window` / `includeAi`. |
 | Event payload safety | Existing tests verify allowlisted event payload fields and no broad raw payload exposure in diagnostics. |
-| Rate limiting | Route-class rate limiting exists for auth, feed, AI, storage/write, diagnostics, and standard read/write classes. |
+| Rate limiting | Route-class rate limiting exists for auth, feed, AI, storage/write, diagnostics, and standard read/write classes. Stage 3 added canonical rate-limit docs and targeted AI/write-heavy/health route regression coverage. |
 | Deterministic AI fallback | LLM routes keep deterministic fallback behavior for provider, timeout, parse, and quality failures. |
 | Web-first posture | Web is the primary production surface; mobile already has a deferred build script. |
 | CI | Existing workflow runs install, typecheck, lint, tests, build, safety checks, and e2e on `main` / `cursor/**`. |
@@ -99,7 +99,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 
 1. Close unsafe caller-owned identity contracts and tests. **Stage 1 update:** normal protected request schemas now reject caller-supplied `userId` for create/capture/task/convert/session-list paths, and first-party REST helpers no longer send task/session owner query params. Legacy preference helpers still exist for compatibility but normal client paths use `/preferences/me`.
 2. Re-confirm Founder Review, diagnostics, and raw event safety.
-3. Strengthen rate-limit tests and canonical docs.
+3. Strengthen rate-limit tests and canonical docs. **Stage 3 update:** `docs/readiness/rate-limits.md` now documents defaults and env overrides; tests cover AI route throttling, write-heavy throttling, and safe health probe behavior.
 4. Remove package-internal imports and add boundary tooling.
 5. Add LLM model routing, explicit context pruning, and artifact-backed semantic caching.
 6. Adjust onboarding/first-run copy toward progressive disclosure.
