@@ -73,13 +73,14 @@ This audit inspected the current Yurbrain repository before implementation work.
 | Deterministic AI fallback | LLM routes keep deterministic fallback behavior for provider, timeout, parse, and quality failures. |
 | Web-first posture | Web is the primary production surface; mobile already has a deferred build script. |
 | CI | Existing workflow runs install, typecheck, lint, tests, build, safety checks, and e2e on `main` / `cursor/**`. |
+| Stage 2 analytics safety | Founder Review and diagnostics continue to parse only `window` / `includeAi`, derive owner context from verified current user, and expose derived summaries/actions rather than raw events. |
 
 ### Remaining blockers and risks
 
 | Risk | Severity | Evidence | Planned change in this run |
 | --- | --- | --- | --- |
-| External request contracts still expose optional caller-owned `userId`. | High | `packages/contracts/src/api/api-contracts.ts` includes optional `userId` in several protected request/query schemas. | Remove `userId` from normal protected external contracts and update first-party clients/tests. |
-| Client helpers can still send legacy `userId` query/path values. | Medium | `packages/client/src/hooks/useMutations.ts`, `useYurbrainApi.ts`, and domain client preference helpers expose `userId` shapes. | Prefer `/preferences/me`; stop sending task/session owner query params. |
+| External request contracts still expose optional caller-owned `userId`. | Closed locally | Stage 1 removed optional `userId` from normal protected request/query schemas in `packages/contracts/src/api/api-contracts.ts`. | Keep response owner metadata only; monitor any downstream callers still sending rejected owner fields. |
+| Client helpers can still send legacy `userId` query/path values. | Mostly closed locally | Stage 1 stopped first-party task/session helpers from sending owner query params and made normal preference helpers use `/preferences/me`. Legacy preference overloads remain compatibility-only. | Document `/preferences/me` as normal and remove legacy overloads in a future breaking-change window. |
 | Direct app imports from package internals exist. | Medium | Found imports from `packages/contracts/src` and `packages/db/src` in API/web founder-review code. | Replace with package-root imports and add a CI-checkable package-boundary script. |
 | LLM model routing is not explicit. | Medium | Provider uses one global `YURBRAIN_LLM_MODEL`. | Add task-class model routing with safe defaults and env overrides. |
 | LLM semantic caching is missing. | Medium | Synthesis routes always build prompt / invoke fallback/provider for repeated unchanged contexts. | Add artifact-backed cache with conservative fingerprints and tests. |

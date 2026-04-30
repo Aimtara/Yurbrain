@@ -39,6 +39,9 @@ test("GET /functions/founder-review returns a UI-ready deterministic model", asy
   assert.ok(body.founderExecutionSummary.blocked >= 0);
   assert.ok(body.founderExecutionSummary.stale >= 0);
   assert.ok(body.currentReadout.recommendedNextMove.action.target === "feed" || body.currentReadout.recommendedNextMove.action.target === "item");
+  assert.equal("events" in (body as Record<string, unknown>), false);
+  assert.equal("rawEvents" in (body as Record<string, unknown>), false);
+  assert.equal("payload" in (body as Record<string, unknown>), false);
 });
 
 test("GET /functions/founder-review with ai wording adds concise explanatory copy", async () => {
@@ -123,5 +126,27 @@ test("GET /functions/founder-review/diagnostics is owner-scoped and returns comp
   assert.equal(typeof body.summary.blockedCount, "number");
   assert.equal(typeof body.summary.staleCount, "number");
   assert.equal(typeof body.summary.continuationGapCount, "number");
+  assert.equal("events" in (body as Record<string, unknown>), false);
+  assert.equal("rawEvents" in (body as Record<string, unknown>), false);
+  assert.ok(body.focusItems.every((entry) => !("payload" in (entry as Record<string, unknown>))));
+  assert.ok(body.focusActions.every((entry) => !("payload" in (entry as Record<string, unknown>))));
+});
+
+test("Founder Review and diagnostics reject spoofed userId query params", async () => {
+  const spoofedUserId = "22222222-2222-4222-8222-222222222222";
+
+  const review = await app.inject({
+    method: "GET",
+    url: `/functions/founder-review?window=7d&userId=${spoofedUserId}`,
+    headers: { "x-yurbrain-user-id": founderReviewUserId }
+  });
+  assert.equal(review.statusCode, 400);
+
+  const diagnostics = await app.inject({
+    method: "GET",
+    url: `/functions/founder-review/diagnostics?window=7d&userId=${spoofedUserId}`,
+    headers: { "x-yurbrain-user-id": founderReviewUserId }
+  });
+  assert.equal(diagnostics.statusCode, 400);
 });
 
