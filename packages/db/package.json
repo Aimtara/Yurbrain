@@ -16,14 +16,14 @@
     "build": "echo \"@yurbrain/db is source-consumed in the monorepo; no package build artifact is emitted\""
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.4.4",
-    "drizzle-orm": "^0.44.2",
+    "@electric-sql/pglite": "^0.4.5",
+    "drizzle-orm": "^0.45.2",
     "pg": "^8.13.3"
   },
   "devDependencies": {
+    "@types/node": "^22.19.17",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.21.0",
-    "typescript": "^5.8.3",
-    "@types/node": "^22.15.3"
+    "typescript": "^5.9.3"
   }
 }

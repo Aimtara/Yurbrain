@@ -17,14 +17,14 @@
     "@yurbrain/nhost": "workspace:*",
     "@yurbrain/ui": "workspace:*",
     "expo": "^54.0.0",
-    "react": "^19.0.0",
-    "react-dom": "19.0.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "react-native": "^0.81.0",
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
-    "@types/node": "^24.9.1",
-    "typescript": "^5.8.3",
-    "tsx": "^4.21.0"
+    "@types/node": "^24.12.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
