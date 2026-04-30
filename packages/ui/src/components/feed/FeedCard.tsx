@@ -187,7 +187,7 @@ export function FeedCard({
         ) : null}
         {onSnooze && canUseAction("snooze") ? (
           <button type="button" onClick={() => onSnooze(120)} style={actionButtonStyles.secondary} aria-label={`Snooze ${title} for two hours`}>
-            Revisit Later
+            Return Later
           </button>
         ) : null}
         {onRefresh && canUseAction("refresh") ? (

@@ -88,7 +88,7 @@ export function FocusFeedScreen({
   onRetry,
   onReload,
   title = "Focus Feed",
-  subtitle = "What matters now, why it matters, and your smallest next move.",
+  subtitle = "Capture quickly, find it again, and continue when the thread is ready.",
   reentryMessage,
   founderToggle,
   executionLens,
@@ -121,7 +121,7 @@ export function FocusFeedScreen({
         <FeedLensBar lenses={lenses} activeLens={activeLens} onChange={onLensChange} />
         {executionLens}
         <p style={{ margin: 0, fontSize: "14px", lineHeight: "20px", color: "#475569" }}>
-          Each card answers what it is, why now, and your next light move.
+          Start with capture and resurfacing. Planning appears only when a saved thread is ready for a concrete next move.
         </p>
         {loading ? <p style={{ margin: 0 }}>Gathering a few thoughts worth resurfacing...</p> : null}
         {errorMessage ? (
@@ -138,7 +138,9 @@ export function FocusFeedScreen({
         {!loading && !errorMessage && !hasCards ? (
           <div style={styles.stateCard}>
             <p style={{ margin: 0, fontWeight: 600 }}>This lens is quiet right now.</p>
-            <p style={{ margin: "8px 0 0", color: "#475569" }}>Capture freely. Your feed will repopulate when threads are ready to revisit.</p>
+            <p style={{ margin: "8px 0 0", color: "#475569" }}>
+              Capture one thing you may want later. Yurbrain will bring it back here so you can continue without rebuilding context.
+            </p>
           </div>
         ) : null}
         {!loading && !errorMessage && hasCards ? <div style={styles.cardStack}>{feedContent}</div> : null}

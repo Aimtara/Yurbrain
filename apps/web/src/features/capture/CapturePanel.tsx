@@ -51,7 +51,7 @@ export function CapturePanel({
         </div>
       </div>
       <p style={{ margin: 0, color: "#475569" }}>
-        Capture first, then choose Save or Save + Plan.
+        Stage 1: save it now, find it again in Focus Feed, and continue later. Planning appears when a saved item is ready for action.
       </p>
       {captureLoading ? <p style={{ margin: 0 }}>Saving capture...</p> : null}
       {captureStatusNotice ? <p style={{ margin: 0 }}>{captureStatusNotice}</p> : null}

@@ -94,7 +94,7 @@ export function PostponeRescheduleSheet({
           }}
         >
           <p style={{ margin: 0 }}>
-            Pick one quick option. Each completes in one tap and keeps this item in your continuity flow.
+            Pick one quick return option after work stalls or a session stays incomplete. Yurbrain keeps the context nearby without turning it into a permanent task list.
           </p>
           <p style={{ margin: 0, color: "#64748b", fontSize: "14px" }}>{postponeLabel}</p>
         </div>

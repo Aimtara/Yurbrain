@@ -114,7 +114,7 @@ export function CaptureComposer({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
           <div>
             <h3 style={{ margin: 0, fontSize: "22px", lineHeight: "28px" }}>Capture</h3>
-            <p style={{ margin: "4px 0 0", color: "#475569", fontSize: "14px" }}>Capture first. Decide what to do next after.</p>
+            <p style={{ margin: "4px 0 0", color: "#475569", fontSize: "14px" }}>Save it now. Yurbrain will help you find it again and continue later.</p>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             {productionMode ? null : (
@@ -222,14 +222,15 @@ export function CaptureComposer({
             onClick={() => onSubmit("save")}
             disabled={isSubmitting || !canSubmit}
           >
-            Save
+            Save capture
           </button>
           <button
             type="button"
             onClick={() => onSubmit("save_and_plan")}
             disabled={isSubmitting || !canSubmit}
+            title="Use after the capture already has a clear next move."
           >
-            Save + Plan
+            Save + Plan if clear
           </button>
           {productionMode ? null : (
             <button type="button" disabled aria-disabled style={{ opacity: 0.6 }}>

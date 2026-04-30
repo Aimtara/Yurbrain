@@ -70,7 +70,7 @@ export function FocusFeedSurface({
     <>
       <FocusFeedScreen
         title="Focus Feed"
-        subtitle="Resurfaced thoughts worth revisiting, without pressure."
+        subtitle="Find saved thoughts again and continue when one is ready."
         reentryMessage={reentryMessage}
         activeLens={activeLens}
         lenses={["all", "keep_in_mind", "open_loops", "learning", "in_progress", "recently_commented"]}
