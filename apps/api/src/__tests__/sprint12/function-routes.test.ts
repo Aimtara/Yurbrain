@@ -156,6 +156,9 @@ test("synthesis function routes use provider path when configured", async () => 
     apiKey: "live-provider-route-test-key",
     baseUrl: "https://provider-route.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 1_500,
     maxOutputTokens: 220,
     temperature: 0.2

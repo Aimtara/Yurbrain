@@ -422,6 +422,7 @@ function toProviderResponse(
     reason: parsed.reason,
     sourceSignals: parsed.sourceSignals,
     usedFallback: false,
-    confidence: parsed.confidence
+    confidence: parsed.confidence,
+    cacheHit: false
   };
 }

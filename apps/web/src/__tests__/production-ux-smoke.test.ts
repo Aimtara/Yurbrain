@@ -36,11 +36,11 @@ test("web Focus Feed keeps calm capture and downstream conversion language", () 
   const itemDetailSource = readWebFile("src/features/item-detail/ItemDetailSurface.tsx");
 
   assert.match(focusFeedSource, /title="Focus Feed"/);
-  assert.match(focusFeedSource, /Capture quickly, find it again, and continue when the thread is ready\./);
-  assert.match(captureSource, /Start with a quick capture\. Yurbrain will resurface it in the Focus Feed so you can continue later\./);
-  assert.match(captureComposerSource, /Save it now\. Yurbrain can resurface it later when it is ready to continue\./);
-  assert.match(captureComposerSource, /Plan This is available from resurfaced cards and item detail when you are ready to turn context into action\./);
-  assert.match(captureSource, /Save/);
+  assert.match(focusFeedSource, /Find saved thoughts again and continue when one is ready\./);
+  assert.match(captureSource, /Stage 1: save it now, find it again in Focus Feed, and continue later\. Planning appears when a saved item is ready for action\./);
+  assert.match(captureComposerSource, /Save it now\. Yurbrain will help you find it again and continue later\./);
+  assert.match(captureComposerSource, /Save \+ Plan if clear/);
+  assert.match(captureSource, /Saving capture/);
   assert.match(itemDetailSource, /onAddComment/);
   assert.match(itemDetailSource, /onAskYurbrain/);
   assert.match(itemDetailSource, /onConvertCommentToTask/);

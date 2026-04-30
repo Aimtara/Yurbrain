@@ -84,6 +84,9 @@ test("createLlmClient returns normalized output on success", async () => {
       apiKey: "test-key",
       baseUrl: "https://example.test/v1",
       model: "gpt-test",
+      fastModel: "gpt-test",
+      reasoningModel: "gpt-test",
+      taskModels: {},
       timeoutMs: 500,
       maxOutputTokens: 220,
       temperature: 0.2
@@ -120,6 +123,9 @@ test("createLlmClient maps aborted request to timeout error", async () => {
       apiKey: "test-key",
       baseUrl: "https://example.test/v1",
       model: "gpt-test",
+      fastModel: "gpt-test",
+      reasoningModel: "gpt-test",
+      taskModels: {},
       timeoutMs: 1,
       maxOutputTokens: 220,
       temperature: 0.2
@@ -162,6 +168,9 @@ test("createLlmClient rejects invalid provider payload shape", async () => {
       apiKey: "test-key",
       baseUrl: "https://example.test/v1",
       model: "gpt-test",
+      fastModel: "gpt-test",
+      reasoningModel: "gpt-test",
+      taskModels: {},
       timeoutMs: 500,
       maxOutputTokens: 220,
       temperature: 0.2

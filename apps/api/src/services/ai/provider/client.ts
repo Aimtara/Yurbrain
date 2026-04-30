@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { LlmProviderConfig } from "./config";
+import type { LlmProviderConfig, LlmTaskClass } from "./config";
+import { resolveLlmModelForTask as resolveModelForTaskClass } from "./config";
 
 const OpenAiChatCompletionResponseSchema = z
   .object({
