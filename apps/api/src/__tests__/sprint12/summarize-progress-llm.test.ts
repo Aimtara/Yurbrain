@@ -182,6 +182,9 @@ test("summarize-progress uses provider output when configured", async () => {
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -240,6 +243,9 @@ test("summarize-progress falls back on timeout", async () => {
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 20,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -271,6 +277,9 @@ test("summarize-progress falls back on provider error", async () => {
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -300,6 +309,9 @@ test("summarize-progress falls back on parse failure", async () => {
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -331,6 +343,9 @@ test("summarize-progress falls back when model omits source signals", async () =
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -374,6 +389,9 @@ test("summarize-progress falls back when grounding fails", async () => {
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -398,6 +416,9 @@ test("summarize-progress logs fallback classification with stage", async () => {
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -437,6 +458,9 @@ test("summarize-progress maps invalid provider response to parse_failed", async 
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -466,6 +490,9 @@ test("summarize-progress sanitizes overlong provider output fields", async () =>
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -514,6 +541,9 @@ test("summarize-progress sanitizes overlong blocker and source signal entries", 
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -562,6 +592,9 @@ test("summarize-progress falls back when provider output is generic/non-grounded
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -607,6 +640,7 @@ test("summarize-progress routes through fast model and caches unchanged context"
     model: "default-model",
     fastModel: "fast-model",
     reasoningModel: "reasoning-model",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
@@ -666,6 +700,9 @@ test("summarize-progress cache misses when latest messages change", async () => 
     apiKey: "test-key",
     baseUrl: "https://example.test/v1",
     model: "gpt-test",
+    fastModel: "gpt-test",
+    reasoningModel: "gpt-test",
+    taskModels: {},
     timeoutMs: 2_000,
     maxOutputTokens: 220,
     temperature: 0.2
