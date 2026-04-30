@@ -25,7 +25,6 @@ import {
 
 export const CreateBrainItemRequestSchema = z
   .object({
-    userId: z.string().uuid().optional(),
     type: BrainItemTypeSchema,
     title: z.string().min(1).max(200),
     rawContent: z.string().min(1)
@@ -43,7 +42,6 @@ const CaptureSourceSchema = z.union([z.string().min(1).max(500), CaptureSourceOb
 
 export const CaptureIntakeRequestSchema = z
   .object({
-    userId: z.string().uuid().optional(),
     type: CaptureContentTypeSchema.optional(),
     content: z.string().min(1).max(10_000).optional(),
     text: z.string().min(1).max(10_000).optional(),
@@ -144,7 +142,6 @@ export const GenerateFeedCardRequestSchema = z
   .strict();
 export const ManualConvertTaskRequestSchema = z
   .object({
-    userId: z.string().uuid().optional(),
     sourceItemId: z.string().uuid(),
     content: z.string().min(1)
   })
@@ -152,7 +149,6 @@ export const ManualConvertTaskRequestSchema = z
 
 export const CreateTaskRequestSchema = z
   .object({
-    userId: z.string().uuid().optional(),
     title: z.string().min(1).max(200),
     sourceItemId: z.string().uuid().nullable().optional(),
     sourceMessageId: z.string().uuid().nullable().optional()
@@ -169,7 +165,6 @@ export const UpdateTaskRequestSchema = z
 
 export const ListTasksQuerySchema = z
   .object({
-    userId: z.string().uuid().optional(),
     status: TaskStatusSchema.optional()
   })
   .strict();
@@ -182,7 +177,6 @@ export const TaskListResponseSchema = z.array(TaskResponseSchema);
 
 export const AiConvertRequestSchema = z
   .object({
-    userId: z.string().uuid().optional(),
     sourceItemId: z.string().uuid().nullable().optional(),
     sourceMessageId: z.string().uuid().nullable().optional(),
     content: z.string().min(1)
@@ -384,11 +378,9 @@ export const ManualConvertTaskResponseSchema = TaskSchema;
 export const ListSessionsQuerySchema = z
   .object({
     taskId: z.string().uuid().optional(),
-    userId: z.string().uuid().optional(),
     state: SessionStateSchema.optional()
   })
-  .strict()
-  .refine((value) => Object.keys(value).length > 0, { message: "At least one filter must be provided" });
+  .strict();
 export const SessionListResponseSchema = z.array(SessionSchema);
 export const UserPreferenceResponseSchema = UserPreferenceSchema;
 export const UserPreferenceMeResponseSchema = UserPreferenceSchema;

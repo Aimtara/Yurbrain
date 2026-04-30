@@ -81,7 +81,6 @@ type BrainItemSearchQuery = {
 
 type TaskListQuery = {
   status?: "todo" | "in_progress" | "done";
-  userId?: string;
 };
 
 type FounderReviewQuery = {
@@ -160,7 +159,6 @@ export type YurbrainDomainClient = {
   planThis: <T>(payload: unknown) => Promise<T>;
   listSessions: <T>(query: {
     taskId?: string;
-    userId?: string;
     state?: "running" | "paused" | "finished";
   }) => Promise<T>;
   startSession: <T>(taskId: string) => Promise<T>;
@@ -219,7 +217,7 @@ function createRestDomainClient(): YurbrainDomainClient {
     getNextStep: getBrainItemNextStep,
     requestNextStep,
     listTasks: (query = {}) =>
-      apiClient(`${endpoints.tasks}${renderQuery(query)}`),
+      apiClient(`${endpoints.tasks}${renderQuery({ status: query.status })}`),
     createTask,
     updateTask,
     manualConvertTask,

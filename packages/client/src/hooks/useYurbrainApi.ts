@@ -122,10 +122,10 @@ export function useYurbrainApi() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload)
       }),
-    getUserPreference: <T>(userId?: string) =>
-      userId ? apiClient<T>(`${endpoints.preferences}/${encodeURIComponent(userId)}`) : apiClient<T>(endpoints.preferencesMe),
+    getUserPreference: <T>(_userId?: string) =>
+      apiClient<T>(endpoints.preferencesMe),
     updateUserPreference: <T>(first: string | unknown, second?: unknown) =>
-      apiClient<T>(typeof first === "string" ? `${endpoints.preferences}/${encodeURIComponent(first)}` : endpoints.preferencesMe, {
+      apiClient<T>(endpoints.preferencesMe, {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(typeof first === "string" ? second : first)

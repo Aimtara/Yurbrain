@@ -1,6 +1,5 @@
 import { endpoints } from "../api/endpoints";
 import { apiClient, isApiClientError } from "../api/client";
-import { getCurrentUserId } from "../auth/current-user";
 
 export type NormalizedMutationError = {
   code: "NETWORK" | "VALIDATION" | "NOT_FOUND" | "SERVER" | "UNKNOWN";
@@ -121,10 +120,9 @@ export async function finishSession<T>(sessionId: string) {
   return postJson<T>(`/sessions/${sessionId}/finish`, {});
 }
 
-export async function listSessions<T>(query: { taskId?: string; userId?: string; state?: "running" | "paused" | "finished" }) {
+export async function listSessions<T>(query: { taskId?: string; state?: "running" | "paused" | "finished" }) {
   const params = new URLSearchParams();
   if (query.taskId) params.set("taskId", query.taskId);
-  if (query.userId && query.userId !== getCurrentUserId()) params.set("userId", query.userId);
   if (query.state) params.set("state", query.state);
   const rendered = params.toString();
   return withNormalizedErrors(() => apiClient<T>(`${endpoints.sessions}${rendered ? `?${rendered}` : ""}`));

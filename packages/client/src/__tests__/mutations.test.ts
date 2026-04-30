@@ -67,10 +67,10 @@ test("mutation errors without status code fall back to NETWORK", async () => {
 test("listSessions builds query string from filter fields", async () => {
   const calls = installFetch(() => new Response("[]", { status: 200 }));
 
-  await listSessions({ userId: "22222222-2222-4222-8222-222222222222", state: "running" });
+  await listSessions({ state: "running" });
   await listSessions({});
 
-  assert.equal(calls[0]?.url, "/sessions?userId=22222222-2222-4222-8222-222222222222&state=running");
+  assert.equal(calls[0]?.url, "/sessions?state=running");
   assert.equal(calls[1]?.url, "/sessions");
 });
 

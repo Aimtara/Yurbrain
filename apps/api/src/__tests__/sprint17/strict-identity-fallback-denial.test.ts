@@ -52,16 +52,15 @@ test("explicit strict mode rejects query and body userId spoofing without bearer
     });
     assert.equal(querySpoof.statusCode, 401);
 
-    const bodySpoof = await server.app.inject({
+    const bodyWithoutBearer = await server.app.inject({
       method: "POST",
       url: "/tasks",
       headers: strictHeaders(),
       payload: {
-        userId: spoofedUserId,
         title: "Spoofed task without bearer identity"
       }
     });
-    assert.equal(bodySpoof.statusCode, 401);
+    assert.equal(bodyWithoutBearer.statusCode, 401);
   } finally {
     await server.app.close();
     await rm(dbPath, { recursive: true, force: true });
@@ -107,7 +106,6 @@ test("explicit strict mode uses verified bearer identity and ignores spoofed cal
         "x-yurbrain-user-id": spoofedUserId
       }),
       payload: {
-        userId: spoofedUserId,
         title: "Bearer-owned strict task"
       }
     });
@@ -115,6 +113,19 @@ test("explicit strict mode uses verified bearer identity and ignores spoofed cal
     assert.equal(response.statusCode, 201);
     const task = response.json<{ userId: string }>();
     assert.equal(task.userId, bearerUserId);
+
+    const rejectedBodyOwner = await server.app.inject({
+      method: "POST",
+      url: "/tasks",
+      headers: strictHeaders({
+        authorization: `Bearer ${token}`
+      }),
+      payload: {
+        userId: spoofedUserId,
+        title: "Rejected caller owner field"
+      }
+    });
+    assert.equal(rejectedBodyOwner.statusCode, 400);
   } finally {
     await server.app.close();
     await rm(dbPath, { recursive: true, force: true });

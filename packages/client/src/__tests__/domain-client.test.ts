@@ -185,8 +185,7 @@ test("domain client listSessions GraphQL path queries sessions by user ownership
   const client = createYurbrainDomainClient();
 
   const sessions = await client.listSessions<Array<{ id: string; state: string }>>({
-    state: "running",
-    userId: "11111111-1111-4111-8111-111111111111"
+    state: "running"
   });
 
   assert.equal(sessions.length, 1);

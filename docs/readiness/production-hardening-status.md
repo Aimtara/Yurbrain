@@ -96,7 +96,7 @@ This audit inspected the current Yurbrain repository before implementation work.
 
 ## Work planned in this run
 
-1. Close unsafe caller-owned identity contracts and tests.
+1. Close unsafe caller-owned identity contracts and tests. **Stage 1 update:** normal protected request schemas now reject caller-supplied `userId` for create/capture/task/convert/session-list paths, and first-party REST helpers no longer send task/session owner query params. Legacy preference helpers still exist for compatibility but normal client paths use `/preferences/me`.
 2. Re-confirm Founder Review, diagnostics, and raw event safety.
 3. Strengthen rate-limit tests and canonical docs.
 4. Remove package-internal imports and add boundary tooling.

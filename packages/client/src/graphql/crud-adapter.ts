@@ -74,12 +74,10 @@ type PreferenceRow = {
 
 type TaskListQuery = {
   status?: "todo" | "in_progress" | "done";
-  userId?: string;
 };
 
 type SessionListQuery = {
   taskId?: string;
-  userId?: string;
   state?: "running" | "paused" | "finished";
 };
 
@@ -606,7 +604,6 @@ export async function sendMessageGraphql<T>(payload: unknown): Promise<T> {
 
 export async function listTasksGraphql<T>(query: TaskListQuery = {}): Promise<T> {
   const userId = requireCurrentUserId();
-  const scopedUserId = query.userId && query.userId === userId ? query.userId : userId;
   const data = query.status
     ? await hasuraGraphqlRequest<{ tasks: TaskRow[] }>(
         `
@@ -626,7 +623,7 @@ export async function listTasksGraphql<T>(query: TaskListQuery = {}): Promise<T>
             }
           }
         `,
-        { userId: scopedUserId, status: query.status }
+        { userId, status: query.status }
       )
     : await hasuraGraphqlRequest<{ tasks: TaskRow[] }>(
         `
@@ -646,7 +643,7 @@ export async function listTasksGraphql<T>(query: TaskListQuery = {}): Promise<T>
             }
           }
         `,
-        { userId: scopedUserId }
+        { userId }
       );
   return data.tasks.map(mapTask) as T;
 }
@@ -757,10 +754,9 @@ export async function updateTaskGraphql<T>(taskId: string, payload: unknown): Pr
 
 export async function listSessionsGraphql<T>(query: SessionListQuery = {}): Promise<T> {
   const userId = requireCurrentUserId();
-  const scopedUserId = query.userId && query.userId === userId ? query.userId : userId;
 
   if (query.taskId) {
-    await getTaskForUser(query.taskId, scopedUserId);
+    await getTaskForUser(query.taskId, userId);
   }
 
   const data = query.state
@@ -784,7 +780,7 @@ export async function listSessionsGraphql<T>(query: SessionListQuery = {}): Prom
               }
             }
           `,
-          { userId: scopedUserId, state: query.state, taskId: query.taskId }
+          { userId, state: query.state, taskId: query.taskId }
         )
       : await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
           `
@@ -804,7 +800,7 @@ export async function listSessionsGraphql<T>(query: SessionListQuery = {}): Prom
               }
             }
           `,
-          { userId: scopedUserId, state: query.state }
+          { userId, state: query.state }
         )
     : query.taskId
       ? await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
@@ -825,7 +821,7 @@ export async function listSessionsGraphql<T>(query: SessionListQuery = {}): Prom
               }
             }
           `,
-          { userId: scopedUserId, taskId: query.taskId }
+          { userId, taskId: query.taskId }
         )
       : await hasuraGraphqlRequest<{ sessions: SessionRow[] }>(
           `
@@ -844,7 +840,7 @@ export async function listSessionsGraphql<T>(query: SessionListQuery = {}): Prom
               }
             }
           `,
-          { userId: scopedUserId }
+          { userId }
         );
 
   return (data.sessions ?? []).map(mapSession) as T;
