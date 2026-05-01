@@ -173,6 +173,10 @@ async function findNhostConfigViolations() {
     for (const requiredSnippet of [
       "[hasura]",
       'version = "v2.33.0"',
+      "[[hasura.jwtSecrets]]",
+      'type = "HS256"',
+      'key = "{{ secrets.HASURA_GRAPHQL_JWT_SECRET }}"',
+      'claims_namespace = "https://hasura.io/jwt/claims"',
       "[hasura.resources]",
       "cpu = 500",
       "memory = 1024",

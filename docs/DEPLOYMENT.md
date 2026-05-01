@@ -23,6 +23,9 @@ Auth and storage are provided by Nhost. Configuration lives in:
 - `packages/nhost/` — shared SDK wrapper (`@yurbrain/nhost`)
 - `apps/*/src/nhost/` — per-app Nhost client initialization
 
+`nhost/nhost.toml` references the cloud secret `HASURA_GRAPHQL_JWT_SECRET` for `[[hasura.jwtSecrets]]`.
+Set that value in the Nhost dashboard / project secrets before deploying; never commit the raw signing key.
+
 The root `functions/` directory is intentionally absent from the deployable tree. Draft serverless-function migration code lives under `.functions-draft/` so Nhost does not try to build monorepo-local package imports during staging deploys. The production `/functions/*` API routes are served by `apps/api`.
 
 Dashboard setup required:
