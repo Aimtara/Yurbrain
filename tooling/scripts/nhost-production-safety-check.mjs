@@ -173,6 +173,9 @@ async function findNhostConfigViolations() {
     for (const requiredSnippet of [
       "[hasura]",
       'version = "v2.33.0"',
+      "[hasura.resources]",
+      "cpu = 500",
+      "memory = 1024",
       "[postgres]",
       'version = "15"',
       "[postgres.resources]",
@@ -181,7 +184,13 @@ async function findNhostConfigViolations() {
       "compute.memory = 1024",
       "[auth]",
       "enabled = true",
+      "[auth.resources]",
+      "cpu = 500",
+      "memory = 1024",
       "[storage]",
+      "[storage.resources]",
+      "cpu = 500",
+      "memory = 1024",
       "[observability]",
       "grafana.enabled = false"
     ]) {

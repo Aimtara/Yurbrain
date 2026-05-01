@@ -14,7 +14,8 @@ This document is the canonical environment-key contract for N3 (Nhost foundation
 For Nhost project configuration in this repository:
 
 - Canonical Nhost cloud config: `nhost/nhost.toml`
-- `nhost/nhost.toml` declares Hasura, Postgres 15, required Postgres resources, Auth, Storage, and an explicit Observability object for Nhost cloud deploys. The resources/observability values use inline object keys (`storage.capacity`, `compute.cpu`, `grafana.enabled`) to match current Nhost schema validation.
+- `nhost/nhost.toml` declares Hasura, Postgres 15, Auth, Storage, Observability, and explicit compute resources for Hasura/Auth/Storage plus Postgres compute/storage resources.
+- Nhost requires resources to be consistently represented across services. Keep these blocks synchronized with dashboard/project plan settings before production launch, especially `postgres.resources.storage.capacity` because storage capacity generally cannot be decreased.
 - Hasura metadata config: `nhost/config.yaml` with `version: 3`, `endpoint: http://localhost:8080`, and `metadata_directory: metadata`.
 - Do not reintroduce the old legacy project YAML shape (`project_name`, `region`, nested `postgres`/`auth`/`storage`) at `nhost/config.yaml`; current Nhost cloud builders can misread it as Hasura metadata and fail before deploy.
 - Hasura metadata remains under `nhost/metadata/`.

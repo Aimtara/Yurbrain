@@ -1,6 +1,10 @@
 [hasura]
 version = "v2.33.0"
 
+[hasura.resources]
+compute.cpu = 500
+compute.memory = 1024
+
 [postgres]
 version = "15"
 
@@ -12,8 +16,16 @@ compute.memory = 1024
 [auth]
 enabled = true
 
+[auth.resources]
+compute.cpu = 500
+compute.memory = 1024
+
 [storage]
 enabled = true
+
+[storage.resources]
+compute.cpu = 500
+compute.memory = 1024
 
 [observability]
 grafana.enabled = false
