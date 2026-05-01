@@ -177,7 +177,8 @@ async function findNhostConfigViolations() {
       'version = "15"',
       "[auth]",
       "enabled = true",
-      "[storage]"
+      "[storage]",
+      "[observability.grafana.alerting]"
     ]) {
       if (!toml.includes(requiredSnippet)) {
         violations.push(`nhost/nhost.toml is missing required snippet: ${requiredSnippet}`);

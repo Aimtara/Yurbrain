@@ -1,6 +1,9 @@
 [hasura]
 version = "v2.33.0"
 
+[observability.grafana.alerting]
+enabled = false
+
 [postgres]
 version = "15"
 
