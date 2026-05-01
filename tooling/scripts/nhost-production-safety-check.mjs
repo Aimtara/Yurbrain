@@ -167,48 +167,13 @@ function parseSimpleYamlObject(source) {
 async function findNhostConfigViolations() {
   const violations = [];
   const toml = await readTextIfPresent("nhost/nhost.toml");
-  if (!toml) {
-    violations.push("Missing nhost/nhost.toml for Nhost cloud project configuration.");
-  } else {
-    for (const requiredSnippet of [
-      "[hasura]",
-      'version = "v2.33.0"',
-      'adminSecret = "{{ secrets.NHOST_ADMIN_SECRET }}"',
-      'webhookSecret = "{{ secrets.NHOST_WEBHOOK_SECRET }}"',
-      "[[hasura.jwtSecrets]]",
-      'type = "HS256"',
-      'key = "{{ secrets.NHOST_JWT_SECRET }}"',
-      'claims_namespace = "https://hasura.io/jwt/claims"',
-      "[hasura.resources]",
-      "cpu = 500",
-      "memory = 1024",
-      "[postgres]",
-      'version = "15"',
-      "[postgres.resources]",
-      "storage.capacity = 1",
-      "compute.cpu = 500",
-      "compute.memory = 1024",
-      "[auth]",
-      "enabled = true",
-      "[auth.resources]",
-      "cpu = 500",
-      "memory = 1024",
-      "[storage]",
-      "[storage.resources]",
-      "cpu = 500",
-      "memory = 1024",
-      "[observability]",
-      "grafana.enabled = false"
-    ]) {
-      if (!toml.includes(requiredSnippet)) {
-        violations.push(`nhost/nhost.toml is missing required snippet: ${requiredSnippet}`);
-      }
-    }
+  if (toml) {
+    violations.push("nhost/nhost.toml should not be present while staging uses Nhost-managed project config; keep only Hasura metadata config in nhost/config.yaml.");
   }
 
   const rootToml = await readTextIfPresent("nhost.toml");
   if (rootToml) {
-    violations.push("Root nhost.toml should not be present; Nhost cloud expects nhost/nhost.toml.");
+    violations.push("Root nhost.toml should not be present while staging uses Nhost-managed project config.");
   }
 
   const hasuraConfigText = await readTextIfPresent("nhost/config.yaml");

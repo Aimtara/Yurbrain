@@ -17,15 +17,16 @@ Quick reference for deploying Yurbrain to staging and production. For the full e
 ### Nhost
 
 Auth and storage are provided by Nhost. Configuration lives in:
-- `nhost/nhost.toml` — Nhost cloud project definition (Hasura/Postgres versions, auth/storage/observability enabled, and complete service resource blocks)
 - `nhost/config.yaml` — minimal Hasura CLI v3 metadata config pointing at `nhost/metadata`
 - `nhost/metadata/` — Hasura metadata (tables, permissions)
 - `packages/nhost/` — shared SDK wrapper (`@yurbrain/nhost`)
 - `apps/*/src/nhost/` — per-app Nhost client initialization
 
-`nhost/nhost.toml` references the cloud secret `HASURA_GRAPHQL_JWT_SECRET` for `[[hasura.jwtSecrets]]`.
-It also references `NHOST_ADMIN_SECRET` and `NHOST_WEBHOOK_SECRET` for Hasura admin/webhook configuration.
-Set those values in the Nhost dashboard / project secrets before deploying; never commit raw secret values.
+This repository intentionally does not commit `nhost/nhost.toml` while staging is using
+Nhost-managed project infrastructure defaults. That lets the cloud deploy skip the Project
+Config replacement step and proceed to migrations/metadata. Keep infrastructure-level
+settings such as Hasura/Admin/JWT secrets and resource sizes in the Nhost dashboard unless
+you first pull and validate a complete project config with the Nhost CLI.
 
 The root `functions/` directory is intentionally absent from the deployable tree. Draft serverless-function migration code lives under `.functions-draft/` so Nhost does not try to build monorepo-local package imports during staging deploys. The production `/functions/*` API routes are served by `apps/api`.
 

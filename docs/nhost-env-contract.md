@@ -7,16 +7,14 @@ This document is the canonical environment-key contract for N3 (Nhost foundation
 - Applies to Nhost bootstrap in `packages/client/src/auth/nhost.ts`.
 - Applies to GraphQL transport config in `packages/client/src/graphql/hasura-client.ts`.
 - Defines required/optional keys, precedence, and sample values.
-- Clarifies Nhost project config files used in this repo during migration (`nhost/nhost.toml` plus Hasura metadata config for modern Nhost cloud deploys).
+- Clarifies Nhost config files used in this repo during migration (metadata-only Git deploy config; Nhost cloud project settings stay dashboard-managed).
 
 ## Nhost project config file format (CLI)
 
 For Nhost project configuration in this repository:
 
-- Canonical Nhost cloud config: `nhost/nhost.toml`
-- `nhost/nhost.toml` declares Hasura, Postgres 15, Hasura admin/webhook/JWT secret references, Auth, Storage, Observability, and explicit compute resources for Hasura/Auth/Storage plus Postgres compute/storage resources.
-- Required Nhost cloud secrets referenced by config: `NHOST_ADMIN_SECRET`, `NHOST_WEBHOOK_SECRET`, and `HASURA_GRAPHQL_JWT_SECRET`.
-- Nhost requires resources to be consistently represented across services. Keep these blocks synchronized with dashboard/project plan settings before production launch, especially `postgres.resources.storage.capacity` because storage capacity generally cannot be decreased.
+- No checked-in `nhost/nhost.toml` is currently used. Leaving it absent lets Nhost keep the existing dashboard-managed project configuration and skips the cloud `replaceConfig` step.
+- Do not add `nhost/nhost.toml` unless you first pull/validate the full remote config with the Nhost CLI and intentionally take ownership of all required project settings/resources/secrets in code.
 - Hasura metadata config: `nhost/config.yaml` with `version: 3`, `endpoint: http://localhost:8080`, and `metadata_directory: metadata`.
 - Do not reintroduce the old legacy project YAML shape (`project_name`, `region`, nested `postgres`/`auth`/`storage`) at `nhost/config.yaml`; current Nhost cloud builders can misread it as Hasura metadata and fail before deploy.
 - Hasura metadata remains under `nhost/metadata/`.
