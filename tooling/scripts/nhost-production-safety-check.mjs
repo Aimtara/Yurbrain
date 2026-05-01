@@ -2,7 +2,6 @@ import { readdir, readFile } from "node:fs/promises";
 import path, { relative } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-
 const WORKSPACE_ROOT = process.cwd();
 const execFileAsync = promisify(execFile);
 
@@ -141,6 +140,80 @@ async function findClientEnvExampleViolations() {
   return violations;
 }
 
+async function readTextIfPresent(filePath) {
+  try {
+    return await readFile(filePath, "utf8");
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function parseSimpleYamlObject(source) {
+  const parsed = {};
+  for (const rawLine of source.split("\n")) {
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const separatorIndex = trimmed.indexOf(":");
+    if (separatorIndex <= 0) continue;
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const unquoted = rawValue.replace(/^["']|["']$/g, "");
+    parsed[key] = /^\d+$/.test(unquoted) ? Number(unquoted) : unquoted;
+  }
+  return parsed;
+}
+
+async function findNhostConfigViolations() {
+  const violations = [];
+  const toml = await readTextIfPresent("nhost/nhost.toml");
+  if (!toml) {
+    violations.push("Missing nhost/nhost.toml for Nhost cloud project configuration.");
+  } else {
+    for (const requiredSnippet of [
+      "[hasura]",
+      'version = "v2.33.0"',
+      "[postgres]",
+      'version = "15"',
+      "[auth]",
+      "enabled = true",
+      "[storage]"
+    ]) {
+      if (!toml.includes(requiredSnippet)) {
+        violations.push(`nhost/nhost.toml is missing required snippet: ${requiredSnippet}`);
+      }
+    }
+  }
+
+  const rootToml = await readTextIfPresent("nhost.toml");
+  if (rootToml) {
+    violations.push("Root nhost.toml should not be present; Nhost cloud expects nhost/nhost.toml.");
+  }
+
+  const hasuraConfigText = await readTextIfPresent("nhost/config.yaml");
+  if (!hasuraConfigText) {
+    violations.push("Missing nhost/config.yaml Hasura v3 metadata config.");
+  } else {
+    const parsed = parseSimpleYamlObject(hasuraConfigText);
+    if (parsed?.version !== 3) {
+      violations.push("nhost/config.yaml must use Hasura metadata config version: 3.");
+    }
+    if (parsed?.metadata_directory !== "metadata") {
+      violations.push('nhost/config.yaml must set metadata_directory: "metadata".');
+    }
+    if ("project_name" in (parsed ?? {}) || "postgres" in (parsed ?? {}) || "auth" in (parsed ?? {}) || "storage" in (parsed ?? {})) {
+      violations.push("nhost/config.yaml must remain a minimal Hasura v3 metadata pointer, not legacy Nhost project config.");
+    }
+  }
+
+  const functionTree = await readTextIfPresent("functions/aiRunner.ts");
+  if (functionTree) {
+    violations.push("Root functions/aiRunner.ts should not be present; keep the draft stub under .functions-draft/ to avoid Nhost monorepo build failures.");
+  }
+
+  return violations;
+}
+
 async function main() {
   const errors = [];
 
@@ -185,6 +258,14 @@ async function main() {
     errors.push(
       "[secret-safety] Client env examples must not reference NHOST_ADMIN_SECRET:\n" +
         clientExampleViolations.map((path) => `  - ${path}`).join("\n")
+    );
+  }
+
+  const nhostConfigViolations = await findNhostConfigViolations();
+  if (nhostConfigViolations.length > 0) {
+    errors.push(
+      "[nhost-config] Nhost deploy config is not staging-safe:\n" +
+        nhostConfigViolations.map((violation) => `  - ${violation}`).join("\n")
     );
   }
 
