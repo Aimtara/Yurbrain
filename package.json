@@ -25,6 +25,7 @@
     "check:secrets": "pnpm run check:secret-leaks",
     "check:secret-leaks": "node tooling/scripts/secret-leak-check.mjs",
     "check:nhost-safety": "node tooling/scripts/nhost-production-safety-check.mjs",
+    "check:nhost-config": "node tooling/scripts/nhost-production-safety-check.mjs",
     "check:package-boundaries": "node tooling/scripts/package-boundary-check.mjs",
     "check:alpha-smoke": "pnpm test && pnpm lint && pnpm typecheck && pnpm build",
     "check:alpha": "pnpm check:secret-leaks && pnpm check:nhost-safety && pnpm check:package-boundaries && pnpm typecheck && pnpm lint && pnpm --filter api test && pnpm --filter @yurbrain/client test && pnpm --filter @yurbrain/db test && pnpm --filter mobile test && pnpm --filter web build",

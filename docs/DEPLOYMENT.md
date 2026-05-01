@@ -17,7 +17,7 @@ Quick reference for deploying Yurbrain to staging and production. For the full e
 ### Nhost
 
 Auth and storage are provided by Nhost. Configuration lives in:
-- `nhost/nhost.toml` — Nhost cloud project definition (Hasura/Postgres versions, Postgres resources, auth/storage/observability enabled)
+- `nhost/nhost.toml` — Nhost cloud project definition (Hasura/Postgres versions, nested Postgres resources, auth/storage/observability enabled)
 - `nhost/config.yaml` — minimal Hasura CLI v3 metadata config pointing at `nhost/metadata`
 - `nhost/metadata/` — Hasura metadata (tables, permissions)
 - `packages/nhost/` — shared SDK wrapper (`@yurbrain/nhost`)

@@ -175,15 +175,15 @@ async function findNhostConfigViolations() {
       'version = "v2.33.0"',
       "[postgres]",
       'version = "15"',
-      "[postgres.resources.compute]",
-      "cpu = 500",
-      "memory = 1024",
-      "[postgres.resources.storage]",
-      "capacity = 1",
+      "[postgres.resources]",
+      "storage.capacity = 1",
+      "compute.cpu = 500",
+      "compute.memory = 1024",
       "[auth]",
       "enabled = true",
       "[storage]",
-      "[observability.grafana.alerting]"
+      "[observability]",
+      "grafana.enabled = false"
     ]) {
       if (!toml.includes(requiredSnippet)) {
         violations.push(`nhost/nhost.toml is missing required snippet: ${requiredSnippet}`);
